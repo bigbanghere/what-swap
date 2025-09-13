@@ -14,7 +14,11 @@ export function SwapForm() {
 
     return (
         <div className='m-[15px] flex flex-col'>
-            <div>Swap form</div>
+            <div
+                style={{
+                    color: colors.text,
+                }}
+            >Swap form</div>
             <div>Swap form</div>
             <div>Swap form</div>
         </div>

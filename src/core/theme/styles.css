@@ -1,119 +1,156 @@
 /* Custom theme styles for Whatever app */
 
+/* Theme CSS Variables - These will be set by the theme provider */
 :root {
-  /* Default light theme variables */
-  --whatever-primary: #1ABCFF;
-  --whatever-primary-hover: #17A8E6;
-  --whatever-primary-active: #1494CC;
-  --whatever-background: #FFFFFF;
-  --whatever-secondary-background: #F8F9FA;
-  --whatever-tertiary-background: #E9ECEF;
-  --whatever-text: #212529;
-  --whatever-text-secondary: #6C757D;
-  --whatever-text-tertiary: #ADB5BD;
-  --whatever-text-inverse: #FFFFFF;
-  --whatever-border: #DEE2E6;
-  --whatever-border-secondary: #E9ECEF;
-  --whatever-border-focus: #1ABCFF;
-  --whatever-success: #28A745;
-  --whatever-warning: #FFC107;
-  --whatever-error: #DC3545;
-  --whatever-info: #17A2B8;
-  --whatever-hover: #F8F9FA;
-  --whatever-active: #E9ECEF;
-  --whatever-disabled: #ADB5BD;
-  --whatever-accent: #1ABCFF;
-  --whatever-accent-hover: #17A8E6;
-  --whatever-accent-active: #1494CC;
-  --whatever-swap-primary: #1ABCFF;
-  --whatever-swap-secondary: #F8F9FA;
-  --whatever-swap-accent: #1ABCFF;
-  --whatever-swap-background: #FFFFFF;
-  --whatever-swap-border: #DEE2E6;
+  /* Default fallback values */
+  --theme-background: #ffffff;
+  --theme-secondaryBackground: #efefef;
+  --theme-tertiaryBackground: #f8f9fa;
+  --theme-text: #000000;
+  --theme-secondaryText: #616161;
+  --theme-mutedText: #9aa0a6;
+  --theme-border: #dadce0;
+  --theme-secondaryBorder: #e8eaed;
+  --theme-primary: #1a73e8;
+  --theme-primaryHover: #1557b0;
+  --theme-secondary: #efefef;
+  --theme-secondaryHover: #e0e0e0;
+  --theme-success: #34a853;
+  --theme-warning: #fbbc04;
+  --theme-error: #ea4335;
+  --theme-cardBackground: #ffffff;
+  --theme-inputBackground: #efefef;
+  --theme-buttonBackground: #1a73e8;
+  --theme-buttonText: #ffffff;
+  --theme-buttonHover: #1557b0;
+  --theme-divider: #efefef;
+  --theme-segmentedBackground: #efefef;
+  --theme-segmentedSelectedBackground: #ffffff;
+  --theme-segmentedSelectedText: #333333;
+  --theme-segmentedUnselectedText: #616161;
+  --theme-switchBackground: #efefef;
+  --theme-switchThumb: #ffffff;
+  --theme-switchTrack: #efefef;
 }
 
-/* Dark theme variables */
-[data-theme="dark"] {
-  --whatever-primary: #1ABCFF;
-  --whatever-primary-hover: #17A8E6;
-  --whatever-primary-active: #1494CC;
-  --whatever-background: #0D1117;
-  --whatever-secondary-background: #161B22;
-  --whatever-tertiary-background: #21262D;
-  --whatever-text: #F0F6FC;
-  --whatever-text-secondary: #8B949E;
-  --whatever-text-tertiary: #6E7681;
-  --whatever-text-inverse: #0D1117;
-  --whatever-border: #30363D;
-  --whatever-border-secondary: #21262D;
-  --whatever-border-focus: #1ABCFF;
-  --whatever-success: #3FB950;
-  --whatever-warning: #D29922;
-  --whatever-error: #F85149;
-  --whatever-info: #58A6FF;
-  --whatever-hover: #161B22;
-  --whatever-active: #21262D;
-  --whatever-disabled: #6E7681;
-  --whatever-accent: #1ABCFF;
-  --whatever-accent-hover: #17A8E6;
-  --whatever-accent-active: #1494CC;
-  --whatever-swap-primary: #1ABCFF;
-  --whatever-swap-secondary: #161B22;
-  --whatever-swap-accent: #1ABCFF;
-  --whatever-swap-background: #0D1117;
-  --whatever-swap-border: #30363D;
+/* Apply theme background to entire viewport */
+html {
+  background-color: var(--theme-background) !important;
+  color: var(--theme-text) !important;
+  min-height: 100vh;
+  font-family: 'Arial', system-ui, sans-serif;
+  font-weight: 500; /* Medium weight */
+  font-size: 14px; /* Default font size */
 }
 
-/* Global theme-aware styles */
-html, body {
-  height: 100%;
+/* Apply theme background to body */
+body {
+  background-color: var(--theme-background) !important;
+  color: var(--theme-text) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
+  font-family: 'Arial', system-ui, sans-serif;
+  font-weight: 500; /* Medium weight */
+  font-size: 14px; /* Default font size */
 }
 
-body {
-  background-color: var(--whatever-background);
-  color: var(--whatever-text);
-  transition: background-color 0.3s ease, color 0.3s ease;
+html, body {
+  height: 100%;
 }
 
-/* Ensure AppRoot doesn't interfere with height */
 #__next, #__next > div {
+  height: 100%;
+  min-height: 100vh;
+  background-color: var(--theme-background) !important;
+}
+
+/* Prevent AppRoot from interfering with height */
+#__next > div > div {
   height: 100%;
   min-height: 100vh;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Remove iOS tap highlight on buttons/links */
+button, [role="button"], a {
+  -webkit-tap-highlight-color: transparent;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--whatever-secondary-background);
+/* Normalize native button appearance (prevents odd borders in Safari/WebView) */
+button {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--whatever-border);
-  border-radius: 3px;
+/* Example theme-aware utility classes */
+.theme-bg {
+  background-color: var(--theme-background);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--whatever-text-tertiary);
+.theme-text {
+  color: var(--theme-text);
 }
 
-/* Focus styles */
-*:focus-visible {
-  outline: 2px solid var(--whatever-border-focus);
-  outline-offset: 2px;
+.theme-border {
+  border-color: var(--theme-border);
 }
 
-/* Selection styles */
-::selection {
-  background-color: var(--whatever-primary);
-  color: var(--whatever-text-inverse);
+.theme-card {
+  background-color: var(--theme-cardBackground);
+  border: 1px solid var(--theme-border);
 }
 
-/* Smooth transitions for theme changes */
+.theme-button {
+  background-color: var(--theme-buttonBackground);
+  color: var(--theme-buttonText);
+}
+
+.theme-button:hover {
+  background-color: var(--theme-buttonHover);
+}
+
+/* Segmented control utility classes */
+.theme-segmented {
+  background-color: var(--theme-segmentedBackground);
+}
+
+.theme-segmented-selected {
+  background-color: var(--theme-segmentedSelectedBackground);
+  color: var(--theme-segmentedSelectedText);
+}
+
+.theme-segmented-unselected {
+  color: var(--theme-segmentedUnselectedText);
+}
+
+/* Prevent zoom on mobile */
 * {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  font-family: 'Arial', system-ui, sans-serif;
+  font-weight: 500; /* Medium weight */
+  font-size: 14px; /* Default font size */
+}
+
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Root loading styles */
+.root__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--theme-background);
+  color: var(--theme-text);
 }

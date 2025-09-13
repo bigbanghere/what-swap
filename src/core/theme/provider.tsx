@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useSignal, miniApp } from '@telegram-apps/sdk-react';
 import { Theme, ThemeColors, themes, lightTheme, darkTheme, defaultTheme } from './config';
+import { applyThemeColors } from './styles';
 
 interface ThemeContextType {
   theme: Theme;
@@ -53,23 +54,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Apply theme colors as CSS variables
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const root = document.documentElement;
-      
-      // Set data-theme attribute for CSS selectors
-      root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      
-      // Apply custom theme colors
-      Object.entries(colors).forEach(([key, value]) => {
-        const cssVar = `--whatever-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-        root.style.setProperty(cssVar, value);
-      });
-
-      // Also apply Telegram theme colors for compatibility
-      root.style.setProperty('--tg-theme-bg-color', colors.background);
-      root.style.setProperty('--tg-theme-text-color', colors.text);
-    }
-  }, [colors, isDark]);
+    applyThemeColors(colors);
+  }, [colors]);
 
   const value: ThemeContextType = {
     theme,

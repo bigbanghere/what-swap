@@ -23,7 +23,7 @@ export function Swap() {
 
     return (
         <div 
-            className="flex-1 flex flex-col items-center justify-center relative"
+            className="flex-1 flex flex-col items-center justify-center relative overflow-hidden"
             style={{ backgroundColor: 'rgba(26, 188, 255, 0.22)' }}
         >
             {/* Decorative overlay */}
@@ -32,11 +32,12 @@ export function Swap() {
                 alt="Decorative pattern"
                 width={1012}
                 height={952}
-                className="absolute inset-0 w-full h-full pointer-events-none"
+                className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
+                style={{ minWidth: '1012px', minHeight: '952px' }}
             />
             
             {/* Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center">
+            <div className="w-full max-w-[420px] p-[20px] relative z-10 flex flex-col items-center justify-center">
                 {t('swap_tokens')}
                 <div 
                     style={{ 
@@ -44,7 +45,7 @@ export function Swap() {
                         borderRadius: '15px', 
                         backgroundColor: colors.background,
                     }}
-                    className="w-full max-w-[420px]"
+                    className=""
                 >
                     <SwapForm />
                 </div>

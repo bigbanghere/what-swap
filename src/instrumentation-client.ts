@@ -25,16 +25,21 @@ mockEnv().then(() => {
         mockForMacOS: platform === 'macos',
       });
     } catch (e) {
-      console.log('❌ Error retrieving launch params:', e);
-      // Fallback initialization for development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Using fallback initialization...');
-        init({
-          debug: true,
-          eruda: false,
-          mockForMacOS: false,
-        });
-      }
+      console.log('⚠️ Error retrieving launch params, using fallback initialization:', e);
+      // Fallback initialization for browser environment
+      init({
+        debug: process.env.NODE_ENV === 'development',
+        eruda: false,
+        mockForMacOS: false,
+      });
     }
   }, 100);
+}).catch((error) => {
+  console.log('⚠️ Error during mock environment setup, using fallback initialization:', error);
+  // Fallback initialization if mockEnv fails
+  init({
+    debug: process.env.NODE_ENV === 'development',
+    eruda: false,
+    mockForMacOS: false,
+  });
 });
