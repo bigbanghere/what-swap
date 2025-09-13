@@ -1,0 +1,119 @@
+/* Custom theme styles for Whatever app */
+
+:root {
+  /* Default light theme variables */
+  --whatever-primary: #1ABCFF;
+  --whatever-primary-hover: #17A8E6;
+  --whatever-primary-active: #1494CC;
+  --whatever-background: #FFFFFF;
+  --whatever-secondary-background: #F8F9FA;
+  --whatever-tertiary-background: #E9ECEF;
+  --whatever-text: #212529;
+  --whatever-text-secondary: #6C757D;
+  --whatever-text-tertiary: #ADB5BD;
+  --whatever-text-inverse: #FFFFFF;
+  --whatever-border: #DEE2E6;
+  --whatever-border-secondary: #E9ECEF;
+  --whatever-border-focus: #1ABCFF;
+  --whatever-success: #28A745;
+  --whatever-warning: #FFC107;
+  --whatever-error: #DC3545;
+  --whatever-info: #17A2B8;
+  --whatever-hover: #F8F9FA;
+  --whatever-active: #E9ECEF;
+  --whatever-disabled: #ADB5BD;
+  --whatever-accent: #1ABCFF;
+  --whatever-accent-hover: #17A8E6;
+  --whatever-accent-active: #1494CC;
+  --whatever-swap-primary: #1ABCFF;
+  --whatever-swap-secondary: #F8F9FA;
+  --whatever-swap-accent: #1ABCFF;
+  --whatever-swap-background: #FFFFFF;
+  --whatever-swap-border: #DEE2E6;
+}
+
+/* Dark theme variables */
+[data-theme="dark"] {
+  --whatever-primary: #1ABCFF;
+  --whatever-primary-hover: #17A8E6;
+  --whatever-primary-active: #1494CC;
+  --whatever-background: #0D1117;
+  --whatever-secondary-background: #161B22;
+  --whatever-tertiary-background: #21262D;
+  --whatever-text: #F0F6FC;
+  --whatever-text-secondary: #8B949E;
+  --whatever-text-tertiary: #6E7681;
+  --whatever-text-inverse: #0D1117;
+  --whatever-border: #30363D;
+  --whatever-border-secondary: #21262D;
+  --whatever-border-focus: #1ABCFF;
+  --whatever-success: #3FB950;
+  --whatever-warning: #D29922;
+  --whatever-error: #F85149;
+  --whatever-info: #58A6FF;
+  --whatever-hover: #161B22;
+  --whatever-active: #21262D;
+  --whatever-disabled: #6E7681;
+  --whatever-accent: #1ABCFF;
+  --whatever-accent-hover: #17A8E6;
+  --whatever-accent-active: #1494CC;
+  --whatever-swap-primary: #1ABCFF;
+  --whatever-swap-secondary: #161B22;
+  --whatever-swap-accent: #1ABCFF;
+  --whatever-swap-background: #0D1117;
+  --whatever-swap-border: #30363D;
+}
+
+/* Global theme-aware styles */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--whatever-background);
+  color: var(--whatever-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Ensure AppRoot doesn't interfere with height */
+#__next, #__next > div {
+  height: 100%;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--whatever-secondary-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--whatever-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--whatever-text-tertiary);
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--whatever-border-focus);
+  outline-offset: 2px;
+}
+
+/* Selection styles */
+::selection {
+  background-color: var(--whatever-primary);
+  color: var(--whatever-text-inverse);
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
