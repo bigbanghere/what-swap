@@ -1,6 +1,7 @@
 {
   "translations": {
     "swap_tokens": "Swap tokens",
-    "get": "Get"
+    "get": "Get",
+    "connect": "Connect"
   }
 }

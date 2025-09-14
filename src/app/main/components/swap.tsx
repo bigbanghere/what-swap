@@ -37,15 +37,17 @@ export function Swap() {
             />
             
             {/* Content */}
-            <div className="w-full max-w-[420px] p-[20px] relative z-10 flex flex-col items-center justify-center">
-                {t('swap_tokens')}
+            <div className="w-full max-w-[460px] p-[20px] relative z-10 flex flex-col items-center justify-center mx-auto mb-[22px]">
+                <span className="text-[33px] mb-[20px] text-center">
+                    {t('swap_tokens')}
+                </span>
                 <div 
                     style={{ 
                         border: '1px solid rgba(26, 188, 255, 1)', 
                         borderRadius: '15px', 
                         backgroundColor: colors.background,
                     }}
-                    className=""
+                    className="w-full"
                 >
                     <SwapForm />
                 </div>

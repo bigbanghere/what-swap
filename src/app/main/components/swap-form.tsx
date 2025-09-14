@@ -1,9 +1,12 @@
 "use client";
 
+import Image from 'next/image';
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
+import { MdKeyboardArrowRight } from 'react-icons/md';
+import { IoWalletSharp } from 'react-icons/io5';
 
 export function SwapForm() {
     const { colors } = useTheme();
@@ -13,14 +16,298 @@ export function SwapForm() {
     const t = useTranslations('translations');
 
     return (
-        <div className='m-[15px] flex flex-col'>
-            <div
-                style={{
-                    color: colors.text,
-                }}
-            >Swap form</div>
-            <div>Swap form</div>
-            <div>Swap form</div>
+        <div className='w-full p-[15px] flex flex-col'>
+            <div className='flex flex-row items-center justify-between'>
+                <div className='flex flex-row w-full items-center gap-[5px]'>
+                    {!shouldBeCompact ? <Image
+                        src="/logo_sign.svg"
+                        alt="sign"
+                        width="25"
+                        height="20"
+                        style={{
+                            width: '25px !important',
+                            height: '20px !important',
+                            minWidth: '25px',
+                            minHeight: '20px',
+                            maxWidth: '25px',
+                            maxHeight: '20px',
+                            display: 'block',
+                        }}
+                    /> : null}
+                    Send
+                </div>
+                <div className='text-[#1ABCFF]'>
+                    MAX
+                </div>
+                <div className='w-full flex justify-end gap-[5px]'>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/ston.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/not.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/ces.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/duck.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+            <div className='flex flex-row items-center gap-[5px] my-[5px]'>
+                <div className='w-full text-[#1ABCFF] text-[33px]'>
+                    1
+                </div>
+                <div className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px]'>
+                    <Image
+                        src="/usdt.svg"
+                        alt="sign"
+                        width="20"
+                        height="20"
+                        style={{
+                            width: '20px !important',
+                            height: '20px !important',
+                            minWidth: '20px',
+                            minHeight: '20px',
+                            maxWidth: '20px',
+                            maxHeight: '20px',
+                            display: 'block',
+                        }}
+                    />
+                    <span className='text-[#1ABCFF]'>
+                        USDT
+                    </span>
+                    <MdKeyboardArrowRight 
+                        style={{
+                            width: '20px',
+                            height: '20px',
+                            color: '#1ABCFF',
+                        }}
+                    />
+                </div>
+            </div>
+            <div className='flex flex-row justify-between items-center'>
+                <div className='w-full' style={{ opacity: 0.66 }}>
+                    $1
+                </div>
+                <div className='flex flex-row gap-[5px]'>
+                    <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
+                    <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>1111.00 USDT</span>
+                </div>
+                <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
+                    On TON
+                </div>
+            </div>
+            <div className='flex flex-row items-center gap-[5px] mt-[5px] mb-[5px]'>
+                <div className='h-[1px] w-full bg-[#1ABCFF]'></div>
+                <div className='w-[30px] h-[30px] flex items-center justify-center'>
+                    <Image
+                        src="/rotate.svg"
+                        alt="Rotate"
+                        width="30"
+                        height="30"
+                        style={{
+                            width: '30px !important',
+                            height: '30px !important',
+                            minWidth: '30px',
+                            minHeight: '30px',
+                            maxWidth: '30px',
+                            maxHeight: '30px',
+                            display: 'block',
+                        }}
+                    />
+                </div>
+                <div className='h-[1px] w-full bg-[#1ABCFF]'></div>
+            </div>
+            <div className='flex flex-row items-center justify-between'>
+                Get
+                <div className='w-full flex justify-end gap-[5px]'>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/ston.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/not.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/ces.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                    <div 
+                        className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                    >
+                        <Image
+                            src="/duck.svg"
+                            alt="arrow"
+                            width="15"
+                            height="15"
+                            style={{
+                                width: '15px !important',
+                                height: '15px !important',
+                                minWidth: '15px',
+                                minHeight: '15px',
+                                maxWidth: '15px',
+                                maxHeight: '15px',
+                                display: 'block',
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+            <div className='flex flex-row items-center gap-[5px] my-[5px]'>
+                <div className='w-full text-[#1ABCFF] text-[33px]'>
+                    0.31
+                </div>
+                <div className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px]'>
+                    <Image
+                        src="/usdt.svg"
+                        alt="sign"
+                        width="20"
+                        height="20"
+                        style={{
+                            width: '20px !important',
+                            height: '20px !important',
+                            minWidth: '20px',
+                            minHeight: '20px',
+                            maxWidth: '20px',
+                            maxHeight: '20px',
+                            display: 'block',
+                        }}
+                    />
+                    <span className='text-[#1ABCFF]'>
+                        USDT
+                    </span>
+                    <MdKeyboardArrowRight 
+                        style={{
+                            width: '20px',
+                            height: '20px',
+                            color: '#1ABCFF',
+                        }}
+                    />
+                </div>
+            </div>
+            <div className='flex flex-row justify-between items-center'>
+                <div className='w-full' style={{ opacity: 0.66 }}>
+                    $1
+                </div>
+                <div className='flex flex-row gap-[5px]'>
+                    <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
+                    <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>576.00 TON</span>
+                </div>
+                <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
+                    On TON
+                </div>
+            </div>
         </div>
     );
 }

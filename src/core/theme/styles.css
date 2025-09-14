@@ -38,7 +38,7 @@ html {
   background-color: var(--theme-background) !important;
   color: var(--theme-text) !important;
   min-height: 100vh;
-  font-family: 'Arial', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-weight: 500; /* Medium weight */
   font-size: 14px; /* Default font size */
 }
@@ -51,7 +51,7 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  font-family: 'Arial', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-weight: 500; /* Medium weight */
   font-size: 14px; /* Default font size */
 }
@@ -135,7 +135,7 @@ button {
   user-select: none;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
-  font-family: 'Arial', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-weight: 500; /* Medium weight */
   font-size: 14px; /* Default font size */
 }

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
+import { CustomTonConnectButton } from "./full-tc-button";
 
 export function Header() {
   const { isDark } = useTheme();
@@ -15,8 +16,9 @@ export function Header() {
 
   return (
     <header 
-      className="flex items-center justify-between px-4 py-3 transition-all duration-300"
+      className={`flex items-center justify-between transition-all duration-300 ${shouldBeCompact ? 'p-[20px]' : 'p-[15px]'}`}
       style={{ 
+        borderTop: `1px solid #1ABCFF`,
         borderBottom: `1px solid #1ABCFF`
       }}
     >
@@ -30,6 +32,7 @@ export function Header() {
           priority
         />
       </div>
+      <CustomTonConnectButton />
     </header>
   );
 }
