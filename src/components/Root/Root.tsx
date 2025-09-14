@@ -45,7 +45,7 @@ function RootInner({ children }: PropsWithChildren) {
   }, [initDataUser]);
 
   return (
-    <TonConnectUIProvider manifestUrl="/tonconnect-manifest.json">
+    <TonConnectUIProvider manifestUrl="https://whatever-zeta-two.vercel.app/tonconnect-manifest.json">
       <AppRoot
         appearance={isDark ? 'dark' : 'light'}
         platform={

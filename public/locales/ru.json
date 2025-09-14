@@ -2,6 +2,7 @@
   "translations": {
     "swap_tokens": "Меняйте токены",
     "get": "Получить",
-    "connect": "Подключить"
+    "connect": "Подключить",
+    "disconnect": "Отключить"
   }
 }

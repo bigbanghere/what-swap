@@ -1,5 +1,7 @@
 {
-  "url": "https://ton.vote",
-  "name": "TON Vote",
-  "iconUrl": "https://ton.vote/logo.png"
+  "url": "https://whatever-zeta-two.vercel.app/",
+  "name": "Whatever",
+  "iconUrl": "https://your-domain.com/icon.png",
+  "termsOfUseUrl": "https://your-domain.com/terms",
+  "privacyPolicyUrl": "https://your-domain.com/privacy"
 }

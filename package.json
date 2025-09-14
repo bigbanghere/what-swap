@@ -12,8 +12,12 @@
   "dependencies": {
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-toast": "^1.2.15",
+    "@ston-fi/api": "^0.25.0",
+    "@ston-fi/sdk": "^2.5.0",
     "@telegram-apps/sdk-react": "^3.2.4",
     "@telegram-apps/telegram-ui": "^2.1.5",
+    "@ton-api/client": "^0.4.0",
+    "@ton/ton": "^15.3.1",
     "@tonconnect/ui-react": "^2.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

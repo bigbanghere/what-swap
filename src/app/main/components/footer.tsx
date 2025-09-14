@@ -32,7 +32,7 @@ export function Footer() {
           }`}
           style={{ 
             backgroundColor: '#1ABCFF',
-            color: colors.background,
+            color: colors.text,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = '0.8';

@@ -7,8 +7,11 @@ import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 import { MdKeyboardArrowRight } from 'react-icons/md';
 import { IoWalletSharp } from 'react-icons/io5';
+import { useTonAddress, useTonConnectUI, useTonWallet } from "@tonconnect/ui-react";
+import { CustomTonConnectButton } from "./full-tc-button";
 
 export function SwapForm() {
+    const walletAddress = useTonAddress();
     const { colors } = useTheme();
     const [fromAmount, setFromAmount] = useState<string>('1');
     const [toAmount, setToAmount] = useState<string>('1');
@@ -36,9 +39,9 @@ export function SwapForm() {
                     /> : null}
                     Send
                 </div>
-                <div className='text-[#1ABCFF]'>
+                {walletAddress ? <div className='text-[#1ABCFF]'>
                     MAX
-                </div>
+                </div> : null}
                 <div className='w-full flex justify-end gap-[5px]'>
                     <div 
                         className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
@@ -154,10 +157,10 @@ export function SwapForm() {
                 <div className='w-full' style={{ opacity: 0.66 }}>
                     $1
                 </div>
-                <div className='flex flex-row gap-[5px]'>
+                {walletAddress ? <div className='flex flex-row gap-[5px]'>
                     <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
                     <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>1111.00 USDT</span>
-                </div>
+                </div> : null}
                 <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
                     On TON
                 </div>
@@ -301,8 +304,22 @@ export function SwapForm() {
                     $1
                 </div>
                 <div className='flex flex-row gap-[5px]'>
-                    <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
-                    <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>576.00 TON</span>
+                    {!shouldBeCompact ? 
+                        (!walletAddress ? 
+                            <CustomTonConnectButton />
+                            : 
+                            <>
+                                <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
+                                <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>576.00 TON</span> 
+                            </> ) : 
+                        (walletAddress ?
+                            <>
+                                <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
+                                <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>576.00 TON</span> 
+                            </>
+                            : 
+                            null
+                        )}
                 </div>
                 <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
                     On TON

@@ -54,8 +54,12 @@ export function CustomTonConnectButton() {
   if (!walletAddress) {
     if (shouldBeCompact) {
       return (
-        <div
+        <div className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
           onClick={() => tonConnectUI.openModal()}
+          style={{
+            backgroundColor: "#1ABCFF",
+            color: colors.text,
+          }}
         >
           <IoWalletSharp />
           {t('connect')}
@@ -64,10 +68,9 @@ export function CustomTonConnectButton() {
     }
     return (
       <div
-        className="h-[40px] gap-[5px] px-[10px]"
+        className="flex flex-row items-center gap-[5px]"
         style={{
-          backgroundColor: "#1ABCFF",
-          color: colors.background,
+          color: "#1ABCFF",
         }}
         onClick={() => tonConnectUI.openModal()}
       >
@@ -77,11 +80,12 @@ export function CustomTonConnectButton() {
     );
   }
 
-    if (shouldBeCompact) {
+    if (!shouldBeCompact) {
       return (
         <div
           onClick={() => tonConnectUI.openModal()}
         >
+          WC
           <IoWalletSharp />
           {t('connect')}
         </div>
@@ -92,14 +96,14 @@ export function CustomTonConnectButton() {
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div
-          className="h-[40px] gap-2 transition-colors px-[10px]"
+          className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
           style={{
             backgroundColor: "#1ABCFF",
-            color: colors.background,
+            color: colors.text,
           }}
         >
-          <IoWalletSharp className="w-4 h-4" />
-          <span className="mt-[2px]">
+          <IoWalletSharp className="" />
+          <span className="">
             {walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : ''}
           </span>
           <IoChevronDownSharp className={`!w-[16px] !h-[16px] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -144,10 +148,11 @@ export function CustomTonConnectButton() {
             }}
           />
             <div
-              className="text-[14px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0"
+              className="text-[14px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0 cursor-pointer"
               onClick={handleDisconnect}
               onBlur={(e) => e.currentTarget.blur()}
             >
+            WF
             {t('disconnect')}
             <IoLogOutSharp 
               className="ml-[2px] !w-[20px] !h-[20px]"
