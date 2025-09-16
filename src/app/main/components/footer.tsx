@@ -12,7 +12,7 @@ export function Footer() {
 
   return (
     <footer 
-      className={`flex-shrink-0 transition-all duration-300 flex justify-center ${
+      className={`z-20 flex-shrink-0 transition-all duration-300 flex justify-center ${
         !shouldBeCompact ? 'p-[20px] mb-[1px] border-b-[1px] border-[#1ABCFF]' : 'p-[15px]'
       }`}
       style={{ 
@@ -32,7 +32,7 @@ export function Footer() {
           }`}
           style={{ 
             backgroundColor: '#1ABCFF',
-            color: colors.text,
+            color: "#FFFFFF",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = '0.8';

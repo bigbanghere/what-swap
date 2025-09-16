@@ -3,6 +3,7 @@
     "swap_tokens": "Swap tokens",
     "get": "Get",
     "connect": "Connect",
-    "disconnect": "Disconnect"
+    "disconnect": "Disconnect",
+    "copy_address": "Copy address"
   }
 }

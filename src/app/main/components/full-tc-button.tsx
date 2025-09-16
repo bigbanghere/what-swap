@@ -58,7 +58,7 @@ export function CustomTonConnectButton() {
           onClick={() => tonConnectUI.openModal()}
           style={{
             backgroundColor: "#1ABCFF",
-            color: colors.text,
+            color: "#FFFFFF",
           }}
         >
           <IoWalletSharp />
@@ -85,7 +85,6 @@ export function CustomTonConnectButton() {
         <div
           onClick={() => tonConnectUI.openModal()}
         >
-          WC
           <IoWalletSharp />
           {t('connect')}
         </div>
@@ -99,7 +98,7 @@ export function CustomTonConnectButton() {
           className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
           style={{
             backgroundColor: "#1ABCFF",
-            color: colors.text,
+            color: "#FFFFFF",
           }}
         >
           <IoWalletSharp className="" />
@@ -120,11 +119,11 @@ export function CustomTonConnectButton() {
          align="end">
         <div className="pl-[16px] space-y-[10px]">
             <div
-              className="text-[14px] mr-[16px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0"
+              className="mr-[16px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0"
               onClick={handleCopyAddress}
               onBlur={(e) => e.currentTarget.blur()}
             >
-            {formatAddress(walletAddress)}
+            {t('copy_address')}
             {isCopied ? (
               <IoCheckmarkSharp 
                 className="ml-[2px] !w-[16px] !h-[16px]"
@@ -148,11 +147,10 @@ export function CustomTonConnectButton() {
             }}
           />
             <div
-              className="text-[14px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0 cursor-pointer"
+              className="flex flex-row items-center text-[14px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0 cursor-pointer"
               onClick={handleDisconnect}
               onBlur={(e) => e.currentTarget.blur()}
             >
-            WF
             {t('disconnect')}
             <IoLogOutSharp 
               className="ml-[2px] !w-[20px] !h-[20px]"

@@ -29,7 +29,7 @@ export function SwapForm() {
     }, [setInputFocused]);
 
     return (
-        <div className='w-full p-[15px] flex flex-col'>
+        <div className='z-20 w-full p-[15px] flex flex-col'>
             <div className='flex flex-row items-center justify-between'>
                 <div className='flex flex-row w-full items-center gap-[5px]'>
                     {shouldBeCompact ? <Image

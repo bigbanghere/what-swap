@@ -16,7 +16,7 @@ export function Header() {
 
   return (
     <header 
-      className={`flex items-center justify-between transition-all duration-300 ${shouldBeCompact ? 'p-[20px]' : 'p-[15px]'}`}
+      className={`z-20 flex items-center justify-between transition-all duration-300 ${shouldBeCompact ? 'p-[20px]' : 'p-[15px]'}`}
       style={{ 
         borderTop: `1px solid #1ABCFF`,
         borderBottom: `1px solid #1ABCFF`

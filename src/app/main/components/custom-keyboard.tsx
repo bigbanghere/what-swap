@@ -59,13 +59,11 @@ export function CustomKeyboard() {
           height={952}
           className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
           style={{ 
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center'
+            minWidth: '1012px',
+            minHeight: '952px'
           }}
       />
-        <div className='flex-1 grid grid-cols-3 gap-[5px]'>
+      <div className='flex-1 grid grid-cols-3 gap-[15px] relative z-10'>
           {keys.flat().map((key, index) => (
             <button
               key={index}
