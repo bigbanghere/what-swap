@@ -10,7 +10,7 @@ export function Header() {
   const { shouldBeCompact } = useKeyboardDetection();
 
   // Hide header when keyboard is open OR viewport is expanded
-  if (!shouldBeCompact) {
+  if (shouldBeCompact) {
     return null;
   }
 

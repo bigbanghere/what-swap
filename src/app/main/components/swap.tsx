@@ -15,7 +15,8 @@ export function Swap() {
     const { isDark } = useTheme();
     const t = useTranslations('translations');
 
-    if (!shouldBeCompact) {
+
+    if (shouldBeCompact) {
         return (
             <SwapForm />
         );

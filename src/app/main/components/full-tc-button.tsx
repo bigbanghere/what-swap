@@ -52,7 +52,7 @@ export function CustomTonConnectButton() {
   };
 
   if (!walletAddress) {
-    if (shouldBeCompact) {
+    if (!shouldBeCompact) {
       return (
         <div className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
           onClick={() => tonConnectUI.openModal()}
@@ -80,7 +80,7 @@ export function CustomTonConnectButton() {
     );
   }
 
-    if (!shouldBeCompact) {
+    if (shouldBeCompact) {
       return (
         <div
           onClick={() => tonConnectUI.openModal()}

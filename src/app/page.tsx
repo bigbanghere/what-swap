@@ -6,10 +6,14 @@ import { Swap } from './main/components/swap';
 import { Footer } from './main/components/footer';
 import { useAppReady } from '@/hooks/use-app-ready';
 import { useTheme } from '@/core/theme';
+import { CustomKeyboard } from './main/components/custom-keyboard';
+import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 
 export default function Home() {
   const { colors } = useTheme();
   const { isAppReady, loadingReason, isLoading } = useAppReady();
+  const { isInputFocused } = useKeyboardDetection();
+
 
   if (isLoading) {
     return (
@@ -38,6 +42,7 @@ export default function Home() {
       <Header />
       <Swap />
       <Footer />
+      {isInputFocused ? <CustomKeyboard /> : null}
     </div>
   );
 }

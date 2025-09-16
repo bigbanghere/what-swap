@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
@@ -9,20 +9,30 @@ import { MdKeyboardArrowRight } from 'react-icons/md';
 import { IoWalletSharp } from 'react-icons/io5';
 import { useTonAddress, useTonConnectUI, useTonWallet } from "@tonconnect/ui-react";
 import { CustomTonConnectButton } from "./full-tc-button";
+import { CustomInput } from "./custom-input";
 
 export function SwapForm() {
     const walletAddress = useTonAddress();
     const { colors } = useTheme();
     const [fromAmount, setFromAmount] = useState<string>('1');
     const [toAmount, setToAmount] = useState<string>('1');
-    const { shouldBeCompact } = useKeyboardDetection();
+    const { shouldBeCompact, setInputFocused } = useKeyboardDetection();
     const t = useTranslations('translations');
+
+    const handleFocusChange = useCallback((isFocused: boolean) => {
+        console.log('🔍 ===== SwapForm FOCUS CHANGE HANDLER =====');
+        console.log('🔍 SwapForm handleFocusChange called with:', isFocused);
+        console.log('🔍 SwapForm about to call setInputFocused with:', isFocused);
+        setInputFocused(isFocused);
+        console.log('🔍 SwapForm setInputFocused call completed');
+        console.log('🔍 ===== END SwapForm FOCUS CHANGE HANDLER =====');
+    }, [setInputFocused]);
 
     return (
         <div className='w-full p-[15px] flex flex-col'>
             <div className='flex flex-row items-center justify-between'>
                 <div className='flex flex-row w-full items-center gap-[5px]'>
-                    {!shouldBeCompact ? <Image
+                    {shouldBeCompact ? <Image
                         src="/logo_sign.svg"
                         alt="sign"
                         width="25"
@@ -122,9 +132,14 @@ export function SwapForm() {
                 </div>
             </div>
             <div className='flex flex-row items-center gap-[5px] my-[5px]'>
-                <div className='w-full text-[#1ABCFF] text-[33px]'>
-                    1
-                </div>
+                <CustomInput
+                    value={fromAmount}
+                    onChange={setFromAmount}
+                    className='w-full text-[#1ABCFF] text-[33px]'
+                    type='number'
+                    placeholder='0'
+                    onFocusChange={handleFocusChange}
+                />
                 <div className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px]'>
                     <Image
                         src="/usdt.svg"
@@ -304,7 +319,7 @@ export function SwapForm() {
                     $1
                 </div>
                 <div className='flex flex-row gap-[5px]'>
-                    {!shouldBeCompact ? 
+                    {shouldBeCompact ? 
                         (!walletAddress ? 
                             <CustomTonConnectButton />
                             : 

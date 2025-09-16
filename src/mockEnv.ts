@@ -1,6 +1,6 @@
 import { mockTelegramEnv, isTMA, emitEvent } from '@telegram-apps/sdk-react';
 
-let mockViewportExpanded = true;
+let mockViewportExpanded = false;
 
 // Function to update viewport state (call this after changing mockViewportExpanded)
 export function updateMockViewport() {
