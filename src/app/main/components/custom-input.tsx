@@ -11,6 +11,7 @@ interface CustomInputProps {
   maxLength?: number;
   type?: 'text' | 'number';
   onFocusChange?: (isFocused: boolean) => void;
+  unfocusTrigger?: boolean; // External trigger to unfocus the input
 }
 
 export function CustomInput({
@@ -21,9 +22,11 @@ export function CustomInput({
   style = {},
   maxLength,
   type = 'text',
-  onFocusChange
+  onFocusChange,
+  unfocusTrigger
 }: CustomInputProps) {
-  const [isFocused, setIsFocused] = useState(false);
+  const [internalIsFocused, setInternalIsFocused] = useState(false);
+  const isFocused = internalIsFocused;
   const [hasMounted, setHasMounted] = useState(false);
 
   // Debug when isFocused changes
@@ -42,6 +45,14 @@ export function CustomInput({
     console.log('🔍 CustomInput initial prevIsFocused.current:', prevIsFocused.current);
     setHasMounted(true);
   }, []);
+
+  // Handle external unfocus trigger
+  useEffect(() => {
+    if (unfocusTrigger && internalIsFocused) {
+      console.log('🔍 CustomInput received unfocus trigger, unfocusing input');
+      setInternalIsFocused(false);
+    }
+  }, [unfocusTrigger, internalIsFocused]);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [showCursor, setShowCursor] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
@@ -99,7 +110,7 @@ export function CustomInput({
         setCursorPosition(value.length);
         break;
       case 'Escape':
-        setIsFocused(false);
+        setInternalIsFocused(false);
         break;
       default:
         // Handle character input
@@ -146,6 +157,12 @@ export function CustomInput({
 
   // Notify parent component when focus state changes (only after mount and only when state actually changes)
   useEffect(() => {
+    console.log('🔍 ===== CustomInput FOCUS CHANGE EFFECT =====');
+    console.log('🔍 CustomInput hasMounted:', hasMounted);
+    console.log('🔍 CustomInput isFocused:', isFocused);
+    console.log('🔍 CustomInput prevIsFocused.current:', prevIsFocused.current);
+    console.log('🔍 CustomInput onFocusChange:', onFocusChange);
+    
     if (!hasMounted) {
       console.log('🔍 CustomInput not calling onFocusChange - component not mounted yet');
       return;
@@ -163,7 +180,7 @@ export function CustomInput({
     console.log('🔍 CustomInput onFocusChange callback:', onFocusChange);
     console.log('🔍 CustomInput onFocusChange callback type:', typeof onFocusChange);
     if (onFocusChange) {
-      onFocusChange(isFocused);
+      onFocusChange(Boolean(isFocused));
       console.log('🔍 CustomInput onFocusChange completed');
     } else {
       console.log('🔍 CustomInput onFocusChange is undefined, not calling');
@@ -172,6 +189,7 @@ export function CustomInput({
     
     // Update the previous state
     prevIsFocused.current = isFocused;
+    console.log('🔍 ===== END CustomInput FOCUS CHANGE EFFECT =====');
   }, [isFocused, onFocusChange, hasMounted]);
 
   // Update cursor position when value changes
@@ -183,11 +201,14 @@ export function CustomInput({
   const handleClick = (e: React.MouseEvent) => {
     console.log('🔍 ===== CustomInput CLICK HANDLER =====');
     console.log('🔍 CustomInput handleClick called');
+    console.log('🔍 CustomInput current internalIsFocused:', internalIsFocused);
+    console.log('🔍 CustomInput current unfocusTrigger:', unfocusTrigger);
+    console.log('🔍 CustomInput current isFocused:', isFocused);
     console.log('🔍 CustomInput handleClick stack trace:', new Error().stack);
     e.preventDefault();
     e.stopPropagation();
-    console.log('🔍 CustomInput setting isFocused to true');
-    setIsFocused(true);
+    console.log('🔍 CustomInput setting internalIsFocused to true');
+    setInternalIsFocused(true);
     setCursorPosition(value.length);
     console.log('🔍 CustomInput handleClick completed');
     console.log('🔍 ===== END CustomInput CLICK HANDLER =====');
@@ -214,7 +235,7 @@ export function CustomInput({
     // Ensure focus is maintained
     if (!isFocused) {
       console.log('🔍 CustomInput handleTextClick setting isFocused to true');
-      setIsFocused(true);
+      setInternalIsFocused(true);
     }
     console.log('🔍 CustomInput handleTextClick completed');
   };

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
@@ -16,7 +16,9 @@ export function SwapForm() {
     const { colors } = useTheme();
     const [fromAmount, setFromAmount] = useState<string>('1');
     const [toAmount, setToAmount] = useState<string>('1');
-    const { shouldBeCompact, setInputFocused } = useKeyboardDetection();
+    const { shouldBeCompact, setInputFocused, isInputFocused } = useKeyboardDetection();
+    const [unfocusTrigger, setUnfocusTrigger] = useState(false);
+    const [prevShouldBeCompact, setPrevShouldBeCompact] = useState(shouldBeCompact);
     const t = useTranslations('translations');
 
     const handleFocusChange = useCallback((isFocused: boolean) => {
@@ -27,6 +29,24 @@ export function SwapForm() {
         console.log('🔍 SwapForm setInputFocused call completed');
         console.log('🔍 ===== END SwapForm FOCUS CHANGE HANDLER =====');
     }, [setInputFocused]);
+
+    // Trigger unfocus when viewport becomes compact due to external factors
+    useEffect(() => {
+        // Only trigger unfocus if shouldBeCompact changed from false to true
+        // AND it's not due to input focus (which would make isInputFocused true)
+        const becameCompact = shouldBeCompact && !prevShouldBeCompact;
+        const isDueToExternalFactors = becameCompact && !isInputFocused;
+        
+        if (isDueToExternalFactors) {
+            console.log('🔍 SwapForm viewport became compact due to external factors, triggering unfocus');
+            setUnfocusTrigger(true);
+            // Reset the trigger after a short delay
+            setTimeout(() => setUnfocusTrigger(false), 100);
+        }
+        
+        // Update previous state
+        setPrevShouldBeCompact(shouldBeCompact);
+    }, [shouldBeCompact, isInputFocused, prevShouldBeCompact]);
 
     return (
         <div className='z-20 w-full p-[15px] flex flex-col'>
@@ -139,6 +159,7 @@ export function SwapForm() {
                     type='number'
                     placeholder='0'
                     onFocusChange={handleFocusChange}
+                    unfocusTrigger={unfocusTrigger}
                 />
                 <div className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px]'>
                     <Image

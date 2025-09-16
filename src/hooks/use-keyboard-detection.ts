@@ -258,6 +258,33 @@ export function useKeyboardDetection() {
     console.log('🔍 Final global state - isInputActive:', globalIsInputActive, 'isInputFocused:', globalInputFocused);
   }, [isInBrowser]);
 
+  // Handle viewport becoming compact - auto-close input focus
+  useEffect(() => {
+    // Only auto-close if viewport was previously expanded and now became compact
+    // This prevents interference with normal focus behavior
+    const viewportBecameCompact = !isViewportExpanded && !isKeyboardOpen;
+    
+    // Add a small delay to prevent immediate auto-close during normal focus operations
+    if (viewportBecameCompact && isInputFocused) {
+      console.log('🔍 ===== VIEWPORT BECAME COMPACT =====');
+      console.log('🔍 Viewport became compact while input is focused - scheduling auto-close');
+      console.log('🔍 Current state:', { isViewportExpanded, isKeyboardOpen, isInputFocused });
+      
+      // Use a timeout to allow normal focus operations to complete first
+      const timeoutId = setTimeout(() => {
+        // Double-check that viewport is still compact and input is still focused
+        if (!isViewportExpanded && !isKeyboardOpen && isInputFocused) {
+          console.log('🔍 Auto-closing input focus after viewport became compact');
+          setInputFocused(false);
+        }
+      }, 100);
+      
+      console.log('🔍 ===== END VIEWPORT BECAME COMPACT =====');
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isViewportExpanded, isKeyboardOpen, isInputFocused, setInputFocused]);
+
   // Track isInputActive state changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {

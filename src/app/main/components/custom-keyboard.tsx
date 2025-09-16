@@ -52,7 +52,7 @@ export function CustomKeyboard() {
         borderTop: `1px solid #1ABCFF`,
       }}
     >
-      <Image
+      {/* <Image
           src={isDark ? '/decor_dark.svg' : '/decor_light.svg'}
           alt="Decorative pattern"
           width={1012}
@@ -60,9 +60,11 @@ export function CustomKeyboard() {
           className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
           style={{ 
             minWidth: '1012px',
-            minHeight: '952px'
+            minHeight: '952px',
+            width: '100%',
+            height: '100%'
           }}
-      />
+      /> */}
       <div className='flex-1 grid grid-cols-3 gap-[15px] relative z-10'>
           {keys.flat().map((key, index) => (
             <button
