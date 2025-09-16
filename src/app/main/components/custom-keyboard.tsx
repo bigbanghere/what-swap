@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import React from 'react';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
-
+import Image from 'next/image';
 export function CustomKeyboard() {
   const t = useTranslations('translations');
   const { colors, isDark } = useTheme();
@@ -46,42 +46,41 @@ export function CustomKeyboard() {
 
   return (
     <div 
-      className='w-full bg-white border-t border-gray-200 p-4'
+      className='flex flex-1 p-[15px] relative'
       style={{ 
-        backgroundColor: colors.background,
-        borderTop: `1px solid ${colors.divider}`
+        backgroundColor: 'rgba(26, 188, 255, 0.22)',
+        borderTop: `1px solid #1ABCFF`,
       }}
     >
-      <div className='max-w-sm mx-auto'>
-        {/* Close button */}
-        <div className='flex justify-end mb-4'>
-          <button
-            onClick={handleClose}
-            className='px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800'
-            style={{ color: colors.text }}
-          >
-            Done
-          </button>
-        </div>
-        
-        {/* Keyboard grid */}
-        <div className='grid grid-cols-3 gap-3'>
+      <Image
+          src={isDark ? '/decor_dark.svg' : '/decor_light.svg'}
+          alt="Decorative pattern"
+          width={1012}
+          height={952}
+          className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
+          style={{ 
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center'
+          }}
+      />
+        <div className='flex-1 grid grid-cols-3 gap-[5px]'>
           {keys.flat().map((key, index) => (
             <button
               key={index}
               onClick={() => handleKeyPress(key)}
-              className='h-12 flex items-center justify-center text-lg font-medium rounded-lg border hover:bg-gray-50 active:bg-gray-100'
+              className='flex items-center justify-center text-lg font-medium rounded-lg border hover:bg-gray-50 active:bg-gray-100 z-10'
               style={{
-                backgroundColor: key === '⌫' ? colors.secondaryBackground : colors.background,
-                borderColor: colors.divider,
-                color: colors.text
+                backgroundColor: colors.background,
+                borderColor: "#1ABCFF",
+                color: "#1ABCFF",
               }}
             >
               {key}
             </button>
           ))}
         </div>
-      </div>
     </div>
   );
 }

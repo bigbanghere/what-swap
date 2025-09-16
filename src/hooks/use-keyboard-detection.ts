@@ -148,8 +148,7 @@ export function useKeyboardDetection() {
     };
   }, []);
 
-  // Update viewport expansion state - DO NOT include isInputActive in dependencies
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Update viewport expansion state
   useEffect(() => {
     console.log('🔍 Viewport expansion effect running - TRIGGERED BY:', {
       isInBrowser,
@@ -157,30 +156,33 @@ export function useKeyboardDetection() {
       isKeyboardOpen,
       telegramIsExpanded,
       currentIsViewportExpanded: isViewportExpanded,
-      currentIsInputActive: isInputActive
+      currentIsInputActive: isInputActive,
+      currentIsInputFocused: isInputFocused
     });
     
     // Only update viewport expansion if it's actually different
     if (isInBrowser) {
-      // In browser, use mock state unless keyboard is open
-      const newViewportExpanded = mockViewportExpanded && !isKeyboardOpen;
+      // In browser, use mock state unless keyboard is open, OR if input is focused (for custom keyboard)
+      const newViewportExpanded = (mockViewportExpanded && !isKeyboardOpen) || isInputFocused;
       if (newViewportExpanded !== isViewportExpanded) {
         console.log('🔍 Setting isViewportExpanded to:', newViewportExpanded, 'from:', isViewportExpanded);
+        console.log('🔍 Viewport expansion reason:', isInputFocused ? 'input focused' : 'normal logic');
         setIsViewportExpanded(newViewportExpanded);
       } else {
         console.log('🔍 Viewport expansion unchanged:', newViewportExpanded);
       }
     } else {
-      // In Telegram, use the actual Telegram SDK state
+      // In Telegram, use the actual Telegram SDK state (TMA viewport expansion is handled by setInputFocused)
       const newViewportExpanded = Boolean(telegramIsExpanded);
       if (newViewportExpanded !== isViewportExpanded) {
         console.log('🔍 Setting isViewportExpanded to:', newViewportExpanded, 'from:', isViewportExpanded);
+        console.log('🔍 TMA viewport expansion handled by setInputFocused, not this effect');
         setIsViewportExpanded(newViewportExpanded);
       } else {
         console.log('🔍 Viewport expansion unchanged:', newViewportExpanded);
       }
     }
-  }, [telegramIsExpanded, isInBrowser, isKeyboardOpen, mockViewportExpanded, isInputActive, isViewportExpanded]); // Include all dependencies
+  }, [telegramIsExpanded, isInBrowser, isKeyboardOpen, mockViewportExpanded, isInputActive, isViewportExpanded, isInputFocused]); // Include all dependencies
 
   // Functions to control input active state
   const setInputActive = useCallback((active: boolean) => {
@@ -214,6 +216,30 @@ export function useKeyboardDetection() {
     globalInputFocused = focused;
     console.log('🔍 ✅ Global inputFocused state updated to:', globalInputFocused);
     
+    // Handle TMA viewport expansion when input is focused
+    if (focused && !isInBrowser) {
+      console.log('🔍 Expanding TMA viewport for custom keyboard');
+      console.log('🔍 Available viewport methods:', Object.keys(viewport));
+      console.log('🔍 Current viewport state:', {
+        isExpanded: viewport.isExpanded,
+        height: viewport.height,
+        width: viewport.width
+      });
+      try {
+        viewport.expand();
+        console.log('🔍 ✅ TMA viewport expanded successfully');
+      } catch (error) {
+        console.error('🔍 ❌ Failed to expand TMA viewport:', error);
+      }
+    } else if (!focused && !isInBrowser) {
+      console.log('🔍 Input unfocused - TMA viewport will contract automatically');
+      console.log('🔍 Current viewport state:', {
+        isExpanded: viewport.isExpanded,
+        height: viewport.height,
+        width: viewport.width
+      });
+    }
+    
     // Notify all listeners
     console.log('🔍 Notifying', globalInputFocusedListeners.size, 'listeners about isInputFocused change');
     let listenerIndex = 0;
@@ -230,7 +256,7 @@ export function useKeyboardDetection() {
     
     console.log('🔍 ===== setInputFocused COMPLETED =====');
     console.log('🔍 Final global state - isInputActive:', globalIsInputActive, 'isInputFocused:', globalInputFocused);
-  }, []);
+  }, [isInBrowser]);
 
   // Track isInputActive state changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -262,6 +288,7 @@ export function useKeyboardDetection() {
     console.log('🔍   ', isInputFocused, '|| (', !isKeyboardOpen, '&&', !isViewportExpanded, ')');
     console.log('🔍   ', isInputFocused, '|| (', !isKeyboardOpen && !isViewportExpanded, ')');
     console.log('🔍   =', shouldBeCompactValue);
+    console.log('🔍 Viewport expansion for custom keyboard:', isInputFocused ? 'YES (input focused)' : 'NO');
     console.log('🔍 ===== END VIEWPORT STATE DEBUG =====');
   }, [isKeyboardOpen, isViewportExpanded, isInBrowser, mockViewportExpanded, isInputFocused, isInputActive]); // Include all dependencies
 
@@ -274,6 +301,7 @@ export function useKeyboardDetection() {
     setInputActive,
     setInputFocused,
     isInputFocused,
+    // shouldBeCompact should be true when input is focused (for custom keyboard) OR when viewport is not expanded
     shouldBeCompact: isInputFocused || (!isKeyboardOpen && !isViewportExpanded)
   };
 }

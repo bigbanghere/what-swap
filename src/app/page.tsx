@@ -38,7 +38,7 @@ export default function Home() {
   }
 
   return (
-    <div style={{ backgroundColor: colors.background, color: colors.text }} className="min-h-screen flex flex-col">
+    <div className="flex flex-col min-h-screen" style={{ backgroundColor: colors.background, color: colors.text }}>
       <Header />
       <Swap />
       <Footer />

@@ -13,7 +13,7 @@ export function Footer() {
   return (
     <footer 
       className={`flex-shrink-0 transition-all duration-300 flex justify-center ${
-        shouldBeCompact ? 'p-[20px] mb-[1px] border-b-[1px] border-[#1ABCFF]' : 'p-[15px]'
+        !shouldBeCompact ? 'p-[20px] mb-[1px] border-b-[1px] border-[#1ABCFF]' : 'p-[15px]'
       }`}
       style={{ 
         backgroundColor: colors.background,
@@ -28,7 +28,7 @@ export function Footer() {
       >
         <button
           className={`w-full rounded-[15px] font-semibold transition-all duration-200 shadow-lg ${
-              shouldBeCompact ? 'h-[50px]' : 'h-[40px]'
+              !shouldBeCompact ? 'h-[50px]' : 'h-[40px]'
           }`}
           style={{ 
             backgroundColor: '#1ABCFF',
