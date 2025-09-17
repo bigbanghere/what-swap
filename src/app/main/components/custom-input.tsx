@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 
 interface CustomInputProps {
   value: string;
@@ -11,10 +11,9 @@ interface CustomInputProps {
   maxLength?: number;
   type?: 'text' | 'number';
   onFocusChange?: (isFocused: boolean) => void;
-  unfocusTrigger?: boolean; // External trigger to unfocus the input
 }
 
-export function CustomInput({
+const CustomInput = memo(function CustomInput({
   value,
   onChange,
   placeholder = '',
@@ -22,65 +21,99 @@ export function CustomInput({
   style = {},
   maxLength,
   type = 'text',
-  onFocusChange,
-  unfocusTrigger
+  onFocusChange
 }: CustomInputProps) {
-  const [internalIsFocused, setInternalIsFocused] = useState(false);
-  const isFocused = internalIsFocused;
-  const [hasMounted, setHasMounted] = useState(false);
-
-  // Debug when isFocused changes
-  useEffect(() => {
-    console.log('🔍 ===== CustomInput isFocused STATE CHANGE =====');
-    console.log('🔍 CustomInput isFocused changed to:', isFocused);
-    console.log('🔍 CustomInput hasMounted:', hasMounted);
-    console.log('🔍 CustomInput isFocused stack trace:', new Error().stack);
-    console.log('🔍 ===== END CustomInput isFocused STATE CHANGE =====');
-  }, [isFocused, hasMounted]);
-
-  // Track when component has mounted
-  useEffect(() => {
-    console.log('🔍 CustomInput component mounted');
-    console.log('🔍 CustomInput initial isFocused state:', isFocused);
-    console.log('🔍 CustomInput initial prevIsFocused.current:', prevIsFocused.current);
-    setHasMounted(true);
-  }, []);
-
-  // Handle external unfocus trigger
-  useEffect(() => {
-    if (unfocusTrigger && internalIsFocused) {
-      console.log('🔍 CustomInput received unfocus trigger, unfocusing input');
-      setInternalIsFocused(false);
-    }
-  }, [unfocusTrigger, internalIsFocused]);
+  const [isFocused, setIsFocused] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [showCursor, setShowCursor] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLSpanElement>(null);
-
-  console.log('🔍 CustomInput render - isFocused:', isFocused, 'value:', value);
-
-  // Handle cursor blinking - DISABLED FOR DEBUGGING
+  const [hasMounted, setHasMounted] = useState(false);
+  const shouldBeFocusedRef = useRef(false);
+  
+  console.log('🔍 CustomInput render - isFocused:', isFocused, 'shouldBeFocusedRef:', shouldBeFocusedRef.current);
+  
+  // Track when component has mounted
   useEffect(() => {
-    if (isFocused) {
-      console.log('🔍 CustomInput setting cursor to visible (no blinking)');
-      setShowCursor(true);
-    } else {
-      console.log('🔍 CustomInput hiding cursor');
-      setShowCursor(false);
+    setHasMounted(true);
+    
+    // Cleanup on unmount
+    return () => {
+      shouldBeFocusedRef.current = false;
+    };
+  }, []);
+
+  // Restore focus if we should be focused but aren't (due to re-render)
+  useEffect(() => {
+    if (hasMounted && shouldBeFocusedRef.current && !isFocused) {
+      console.log('🔍 CustomInput restoring focus after re-render');
+      // Use a small delay to ensure the layout transition is complete
+      const timeoutId = setTimeout(() => {
+        console.log('🔍 CustomInput setting focus to true after timeout');
+        setIsFocused(true);
+      }, 0);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [hasMounted, isFocused]);
+
+  // Also check on every render if we should be focused
+  useEffect(() => {
+    if (hasMounted && shouldBeFocusedRef.current && !isFocused) {
+      console.log('🔍 CustomInput render effect - restoring focus');
+      setIsFocused(true);
+    }
+  }, [hasMounted, isFocused]);
+
+  // Track focus state changes
+  useEffect(() => {
+    // Focus state changed - no additional logging needed
+  }, [isFocused]);
+
+  // Ensure cursor is properly positioned when focused
+  useEffect(() => {
+    if (isFocused && cursorRef.current) {
+      // Cursor element is mounted and should be visible
     }
   }, [isFocused]);
 
-  // Ensure focus is maintained when input is active
-  // useEffect(() => {
-  //   if (isFocused && inputRef.current) {
-  //     inputRef.current.focus();
-  //   }
-  // }, [isFocused]);
+  // Custom input doesn't use browser focus - we manage focus state manually
+
+  // Handle click outside to unfocus - only unfocus when clicking truly outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (!isFocused) {
+        return;
+      }
+      
+      const target = event.target as Element;
+      
+      // Check if click was on our input or keyboard
+      const isInputClick = inputRef.current?.contains(target);
+      const isKeyboardClick = target?.closest('[data-custom-keyboard]') !== null;
+      
+      if (!isInputClick && !isKeyboardClick) {
+        shouldBeFocusedRef.current = false;
+        setIsFocused(false);
+      }
+    };
+
+    if (isFocused) {
+      // Add a small delay to prevent immediate unfocus when clicking the input itself
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside, true); // Use capture phase
+        document.addEventListener('touchstart', handleClickOutside, true);
+      }, 50); // Reduced delay
+
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside, true);
+        document.removeEventListener('touchstart', handleClickOutside, true);
+      };
+    }
+  }, [isFocused]);
 
   // Handle key press
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    console.log('🔍 CustomInput handleKeyDown called with key:', e.key, 'isFocused:', isFocused);
     if (!isFocused) return;
 
     switch (e.key) {
@@ -110,7 +143,8 @@ export function CustomInput({
         setCursorPosition(value.length);
         break;
       case 'Escape':
-        setInternalIsFocused(false);
+        shouldBeFocusedRef.current = false;
+        setIsFocused(false);
         break;
       default:
         // Handle character input
@@ -135,7 +169,6 @@ export function CustomInput({
   // Listen for synthetic keyboard events from CustomKeyboard
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      console.log('🔍 CustomInput global keydown event:', e.key, 'isFocused:', isFocused);
       if (isFocused) {
         // Convert to React event and call our handler
         const reactEvent = {
@@ -157,11 +190,7 @@ export function CustomInput({
 
   // Notify parent component when focus state changes (only after mount and only when state actually changes)
   useEffect(() => {
-    console.log('🔍 ===== CustomInput FOCUS CHANGE EFFECT =====');
-    console.log('🔍 CustomInput hasMounted:', hasMounted);
-    console.log('🔍 CustomInput isFocused:', isFocused);
-    console.log('🔍 CustomInput prevIsFocused.current:', prevIsFocused.current);
-    console.log('🔍 CustomInput onFocusChange:', onFocusChange);
+    console.log('🔍 CustomInput focus change effect - hasMounted:', hasMounted, 'isFocused:', isFocused, 'prevIsFocused:', prevIsFocused.current);
     
     if (!hasMounted) {
       console.log('🔍 CustomInput not calling onFocusChange - component not mounted yet');
@@ -174,22 +203,16 @@ export function CustomInput({
       return;
     }
     
-    console.log('🔍 ===== CustomInput FOCUS STATE CHANGE =====');
-    console.log('🔍 CustomInput isFocused changed from:', prevIsFocused.current, 'to:', isFocused);
     console.log('🔍 CustomInput calling onFocusChange with:', isFocused);
-    console.log('🔍 CustomInput onFocusChange callback:', onFocusChange);
-    console.log('🔍 CustomInput onFocusChange callback type:', typeof onFocusChange);
     if (onFocusChange) {
       onFocusChange(Boolean(isFocused));
-      console.log('🔍 CustomInput onFocusChange completed');
+      console.log('🔍 CustomInput onFocusChange called successfully');
     } else {
-      console.log('🔍 CustomInput onFocusChange is undefined, not calling');
+      console.log('🔍 CustomInput onFocusChange is undefined');
     }
-    console.log('🔍 ===== END CustomInput FOCUS STATE CHANGE =====');
     
     // Update the previous state
     prevIsFocused.current = isFocused;
-    console.log('🔍 ===== END CustomInput FOCUS CHANGE EFFECT =====');
   }, [isFocused, onFocusChange, hasMounted]);
 
   // Update cursor position when value changes
@@ -199,26 +222,17 @@ export function CustomInput({
 
   // Handle click to focus
   const handleClick = (e: React.MouseEvent) => {
-    console.log('🔍 ===== CustomInput CLICK HANDLER =====');
-    console.log('🔍 CustomInput handleClick called');
-    console.log('🔍 CustomInput current internalIsFocused:', internalIsFocused);
-    console.log('🔍 CustomInput current unfocusTrigger:', unfocusTrigger);
-    console.log('🔍 CustomInput current isFocused:', isFocused);
-    console.log('🔍 CustomInput handleClick stack trace:', new Error().stack);
+    console.log('🔍 CustomInput handleClick - setting focus to true');
     e.preventDefault();
     e.stopPropagation();
-    console.log('🔍 CustomInput setting internalIsFocused to true');
-    setInternalIsFocused(true);
+    shouldBeFocusedRef.current = true;
+    setIsFocused(true);
     setCursorPosition(value.length);
-    console.log('🔍 CustomInput handleClick completed');
-    console.log('🔍 ===== END CustomInput CLICK HANDLER =====');
+    console.log('🔍 CustomInput handleClick - focus set to true, cursor position:', value.length);
   };
-
-  // No blur handler needed - we handle focus through clicks only
 
   // Handle click to position cursor
   const handleTextClick = (e: React.MouseEvent) => {
-    console.log('🔍 CustomInput handleTextClick called, isFocused:', isFocused);
     e.preventDefault();
     e.stopPropagation();
     
@@ -234,10 +248,9 @@ export function CustomInput({
     
     // Ensure focus is maintained
     if (!isFocused) {
-      console.log('🔍 CustomInput handleTextClick setting isFocused to true');
-      setInternalIsFocused(true);
+      shouldBeFocusedRef.current = true;
+      setIsFocused(true);
     }
-    console.log('🔍 CustomInput handleTextClick completed');
   };
 
   // Split value at cursor position for rendering
@@ -245,63 +258,81 @@ export function CustomInput({
   const afterCursor = value.slice(cursorPosition);
 
   return (
-    <div
-      ref={inputRef}
-      className={`${className}`}
-      style={{
-        ...style,
-        cursor: 'text',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        MozUserSelect: 'none',
-        msUserSelect: 'none'
+    <>
+      <style jsx>{`
+        @keyframes blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0; }
+        }
+      `}</style>
+      <div
+        ref={inputRef}
+        data-custom-input
+        className={`${className}`}
+        style={{
+          ...style,
+          cursor: 'text',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          MozUserSelect: 'none',
+          msUserSelect: 'none',
+          overflow: 'visible',
+          outline: 'none',
+          position: 'relative'
+        }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isFocused) {
+          shouldBeFocusedRef.current = true;
+          setIsFocused(true);
+        }
       }}
-      onClick={handleClick}
+      onMouseUp={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isFocused) {
+          shouldBeFocusedRef.current = true;
+          setIsFocused(true);
+        }
+      }}
       onKeyDown={handleKeyDown}
     >
-      {value || placeholder ? (
-        <div 
-          onClick={handleTextClick} 
-          style={{ 
-            position: 'relative',
-            display: 'inline-block',
-            width: '100%'
-          }}
-        >
-          <span style={{ display: 'inline' }}>{beforeCursor}</span>
-          {isFocused && (
-            <span
-              ref={cursorRef}
-              style={{
-                display: 'inline-block',
-                width: '2px',
-                height: '32px',
-                backgroundColor: '#1ABCFF',
-                marginLeft: '1px',
-                verticalAlign: 'top'
-              }}
-            />
-          )}
-          <span style={{ display: 'inline' }}>{afterCursor}</span>
-        </div>
-      ) : (
-        <div style={{ color: '#9CA3AF' }}>
-          {placeholder}
-          {isFocused && (
-            <span
-              ref={cursorRef}
-              style={{
-                display: 'inline-block',
-                width: '2px',
-                height: '32px',
-                backgroundColor: '#1ABCFF',
-                marginLeft: '4px',
-                verticalAlign: 'top'
-              }}
-            />
-          )}
-        </div>
-      )}
-    </div>
+      <div 
+        onClick={handleTextClick} 
+        style={{ 
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          width: '100%',
+          height: '40px',
+          fontSize: '33px',
+          lineHeight: '1'
+        }}
+      >
+        <span style={{ fontSize: '33px', lineHeight: '1' }}>{beforeCursor}</span>
+        {isFocused && (
+          <span
+            ref={cursorRef}
+            style={{
+              display: 'inline-block',
+              width: '2px',
+              height: '33px',
+              backgroundColor: '#1ABCFF',
+              marginLeft: '2px',
+              animation: 'blink 1s infinite'
+            }}
+          />
+        )}
+        <span style={{ fontSize: '33px', lineHeight: '1' }}>{afterCursor}</span>
+      </div>
+      </div>
+    </>
   );
-}
+});
+
+export { CustomInput };

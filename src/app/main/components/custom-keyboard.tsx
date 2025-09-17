@@ -10,16 +10,16 @@ export function CustomKeyboard() {
   const { colors, isDark } = useTheme();
   const { setInputFocused } = useKeyboardDetection();
 
-  console.log('🔍 ===== CustomKeyboard RENDER =====');
-  console.log('🔍 CustomKeyboard component rendered');
-  console.log('🔍 ===== END CustomKeyboard RENDER =====');
-
   const handleKeyPress = (key: string) => {
-    console.log('🔍 CustomKeyboard key pressed:', key);
+    // Map special keys to their actual key values
+    let actualKey = key;
+    if (key === '⌫') {
+      actualKey = 'Backspace';
+    }
     
     // Create a synthetic keyboard event
     const event = new KeyboardEvent('keydown', {
-      key: key,
+      key: actualKey,
       bubbles: true,
       cancelable: true
     });
@@ -29,12 +29,7 @@ export function CustomKeyboard() {
   };
 
   const handleClose = () => {
-    console.log('🔍 ===== CustomKeyboard CLOSE =====');
-    console.log('🔍 CustomKeyboard close button pressed');
-    console.log('🔍 CustomKeyboard calling setInputFocused(false)');
     setInputFocused(false);
-    console.log('🔍 CustomKeyboard setInputFocused(false) completed');
-    console.log('🔍 ===== END CustomKeyboard CLOSE =====');
   };
 
   const keys = [
@@ -46,6 +41,7 @@ export function CustomKeyboard() {
 
   return (
     <div 
+      data-custom-keyboard
       className='flex flex-1 p-[15px] relative'
       style={{ 
         backgroundColor: 'rgba(26, 188, 255, 0.22)',

@@ -119,7 +119,7 @@ export function CustomTonConnectButton() {
          align="end">
         <div className="pl-[16px] space-y-[10px]">
             <div
-              className="mr-[16px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0"
+              className="flex flex-row items-center mr-[16px] !h-[20px] w-full justify-start gap-2 transition-colors focus:outline-none focus:ring-0 focus:border-0"
               onClick={handleCopyAddress}
               onBlur={(e) => e.currentTarget.blur()}
             >

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSignal, viewport } from '@telegram-apps/sdk-react';
 
 // Global state to prevent reset on hook re-initialization
@@ -9,12 +9,8 @@ const globalInputActiveListeners = new Set<(value: boolean) => void>();
 let globalInputFocused = false;
 const globalInputFocusedListeners = new Set<(value: boolean) => void>();
 
-// Console logging for global state changes
-console.log('🔍 Global state initialized - globalIsInputActive:', globalIsInputActive, 'globalInputFocused:', globalInputFocused);
-
 // Reset global state on module reload (for development)
 if (typeof window !== 'undefined' && (window as any).__GLOBAL_STATE_RESET) {
-  console.log('🔍 Resetting global state due to module reload');
   globalIsInputActive = false;
   globalInputFocused = false;
   globalInputActiveListeners.clear();
@@ -23,7 +19,6 @@ if (typeof window !== 'undefined' && (window as any).__GLOBAL_STATE_RESET) {
 }
 
 export function useKeyboardDetection() {
-  console.log('🔍 useKeyboardDetection hook initialized/re-rendered');
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [isViewportExpanded, setIsViewportExpanded] = useState(false);
   const [isInBrowser, setIsInBrowser] = useState(false);
@@ -37,51 +32,34 @@ export function useKeyboardDetection() {
   // Sync with global state
   useEffect(() => {
     const listener = (value: boolean) => {
-      console.log('🔍 Global isInputActive listener triggered with:', value);
       setIsInputActive(value);
     };
     
-    console.log('🔍 Adding isInputActive listener, total listeners:', globalInputActiveListeners.size);
     globalInputActiveListeners.add(listener);
-    console.log('🔍 isInputActive listeners after add:', globalInputActiveListeners.size);
-    
-    // Set initial value from global state
-    console.log('🔍 Setting initial isInputActive from global state:', globalIsInputActive);
     setIsInputActive(globalIsInputActive);
     
     return () => {
-      console.log('🔍 Removing isInputActive listener, total listeners before:', globalInputActiveListeners.size);
       globalInputActiveListeners.delete(listener);
-      console.log('🔍 isInputActive listeners after remove:', globalInputActiveListeners.size);
     };
   }, []);
 
   // Sync with global input focused state
   useEffect(() => {
     const listener = (value: boolean) => {
-      console.log('🔍 Global isInputFocused listener triggered with:', value);
       setIsInputFocused(value);
     };
     
-    console.log('🔍 Adding isInputFocused listener, total listeners:', globalInputFocusedListeners.size);
     globalInputFocusedListeners.add(listener);
-    console.log('🔍 isInputFocused listeners after add:', globalInputFocusedListeners.size);
-    
-    // Set initial value from global state
-    console.log('🔍 Setting initial isInputFocused from global state:', globalInputFocused);
     setIsInputFocused(globalInputFocused);
     
     return () => {
-      console.log('🔍 Removing isInputFocused listener, total listeners before:', globalInputFocusedListeners.size);
       globalInputFocusedListeners.delete(listener);
-      console.log('🔍 isInputFocused listeners after remove:', globalInputFocusedListeners.size);
     };
   }, []);
 
   // Force sync with global state on every render
   useEffect(() => {
     if (isInputFocused !== globalInputFocused) {
-      console.log('🔍 Force syncing isInputFocused with global state:', globalInputFocused);
       setIsInputFocused(globalInputFocused);
     }
   }, [isInputFocused]);
@@ -150,177 +128,121 @@ export function useKeyboardDetection() {
 
   // Update viewport expansion state
   useEffect(() => {
-    console.log('🔍 Viewport expansion effect running - TRIGGERED BY:', {
-      isInBrowser,
-      mockViewportExpanded,
-      isKeyboardOpen,
-      telegramIsExpanded,
-      currentIsViewportExpanded: isViewportExpanded,
-      currentIsInputActive: isInputActive,
-      currentIsInputFocused: isInputFocused
-    });
-    
     // Only update viewport expansion if it's actually different
     if (isInBrowser) {
       // In browser, use mock state unless keyboard is open, OR if input is focused (for custom keyboard)
       const newViewportExpanded = (mockViewportExpanded && !isKeyboardOpen) || isInputFocused;
       if (newViewportExpanded !== isViewportExpanded) {
-        console.log('🔍 Setting isViewportExpanded to:', newViewportExpanded, 'from:', isViewportExpanded);
-        console.log('🔍 Viewport expansion reason:', isInputFocused ? 'input focused' : 'normal logic');
         setIsViewportExpanded(newViewportExpanded);
-      } else {
-        console.log('🔍 Viewport expansion unchanged:', newViewportExpanded);
       }
     } else {
       // In Telegram, use the actual Telegram SDK state (TMA viewport expansion is handled by setInputFocused)
       const newViewportExpanded = Boolean(telegramIsExpanded);
       if (newViewportExpanded !== isViewportExpanded) {
-        console.log('🔍 Setting isViewportExpanded to:', newViewportExpanded, 'from:', isViewportExpanded);
-        console.log('🔍 TMA viewport expansion handled by setInputFocused, not this effect');
         setIsViewportExpanded(newViewportExpanded);
-      } else {
-        console.log('🔍 Viewport expansion unchanged:', newViewportExpanded);
       }
     }
   }, [telegramIsExpanded, isInBrowser, isKeyboardOpen, mockViewportExpanded, isInputActive, isViewportExpanded, isInputFocused]); // Include all dependencies
 
   // Functions to control input active state
   const setInputActive = useCallback((active: boolean) => {
-    console.log('🔍 ===== setInputActive CALLED =====');
-    console.log('🔍 Input active state change:', globalIsInputActive, '→', active);
-    console.log('🔍 setInputActive stack trace:', new Error().stack);
-    
     globalIsInputActive = active;
-    console.log('🔍 ✅ Global isInputActive state updated to:', globalIsInputActive);
     
     // Notify all listeners
-    console.log('🔍 Notifying', globalInputActiveListeners.size, 'listeners about isInputActive change');
-    let listenerIndex = 0;
     globalInputActiveListeners.forEach((listener) => {
-      console.log(`🔍 Notifying listener ${listenerIndex + 1} with:`, active);
       listener(active);
-      listenerIndex++;
     });
-    
-    console.log('🔍 ===== setInputActive COMPLETED =====');
-    console.log('🔍 Final global state - isInputActive:', globalIsInputActive, 'isInputFocused:', globalInputFocused);
   }, []);
 
   // Separate function for input focus that doesn't affect viewport
   const setInputFocused = useCallback((focused: boolean) => {
-    console.log('🔍 ===== setInputFocused CALLED =====');
-    console.log('🔍 Input focused state change:', globalInputFocused, '→', focused);
-    console.log('🔍 setInputFocused stack trace:', new Error().stack);
-    console.log('🔍 setInputFocused called from:', new Error().stack?.split('\n')[2]);
-    
+    console.log('🔍 setInputFocused called with:', focused, 'current globalInputFocused:', globalInputFocused);
     globalInputFocused = focused;
-    console.log('🔍 ✅ Global inputFocused state updated to:', globalInputFocused);
+    console.log('🔍 globalInputFocused updated to:', globalInputFocused);
     
     // Handle TMA viewport expansion when input is focused
     if (focused && !isInBrowser) {
-      console.log('🔍 Expanding TMA viewport for custom keyboard');
-      console.log('🔍 Available viewport methods:', Object.keys(viewport));
-      console.log('🔍 Current viewport state:', {
-        isExpanded: viewport.isExpanded,
-        height: viewport.height,
-        width: viewport.width
-      });
       try {
         viewport.expand();
-        console.log('🔍 ✅ TMA viewport expanded successfully');
       } catch (error) {
-        console.error('🔍 ❌ Failed to expand TMA viewport:', error);
+        console.error('Failed to expand TMA viewport:', error);
       }
-    } else if (!focused && !isInBrowser) {
-      console.log('🔍 Input unfocused - TMA viewport will contract automatically');
-      console.log('🔍 Current viewport state:', {
-        isExpanded: viewport.isExpanded,
-        height: viewport.height,
-        width: viewport.width
-      });
     }
     
     // Notify all listeners
-    console.log('🔍 Notifying', globalInputFocusedListeners.size, 'listeners about isInputFocused change');
-    let listenerIndex = 0;
+    console.log('🔍 Notifying', globalInputFocusedListeners.size, 'listeners about input focus change');
     globalInputFocusedListeners.forEach((listener) => {
-      console.log(`🔍 Notifying input focused listener ${listenerIndex + 1} with:`, focused);
       try {
         listener(focused);
-        console.log(`🔍 Listener ${listenerIndex + 1} executed successfully`);
       } catch (error) {
-        console.error(`🔍 Error in listener ${listenerIndex + 1}:`, error);
+        console.error('Error in input focused listener:', error);
       }
-      listenerIndex++;
     });
-    
-    console.log('🔍 ===== setInputFocused COMPLETED =====');
-    console.log('🔍 Final global state - isInputActive:', globalIsInputActive, 'isInputFocused:', globalInputFocused);
   }, [isInBrowser]);
 
   // Handle viewport becoming compact - auto-close input focus
   useEffect(() => {
     // Only auto-close if viewport was previously expanded and now became compact
+    // AND it's not due to input focus (which would make isInputFocused true)
     // This prevents interference with normal focus behavior
     const viewportBecameCompact = !isViewportExpanded && !isKeyboardOpen;
     
-    // Add a small delay to prevent immediate auto-close during normal focus operations
+    // Don't auto-close if the input is focused - this means the custom keyboard is open
+    // and we want to keep it open
     if (viewportBecameCompact && isInputFocused) {
-      console.log('🔍 ===== VIEWPORT BECAME COMPACT =====');
-      console.log('🔍 Viewport became compact while input is focused - scheduling auto-close');
-      console.log('🔍 Current state:', { isViewportExpanded, isKeyboardOpen, isInputFocused });
-      
-      // Use a timeout to allow normal focus operations to complete first
-      const timeoutId = setTimeout(() => {
-        // Double-check that viewport is still compact and input is still focused
-        if (!isViewportExpanded && !isKeyboardOpen && isInputFocused) {
-          console.log('🔍 Auto-closing input focus after viewport became compact');
-          setInputFocused(false);
-        }
-      }, 100);
-      
-      console.log('🔍 ===== END VIEWPORT BECAME COMPACT =====');
-      
-      return () => clearTimeout(timeoutId);
+      return;
+    }
+    
+    // Only auto-close if viewport became compact and input is NOT focused
+    // This handles cases where the viewport becomes compact due to external factors
+    if (viewportBecameCompact && !isInputFocused) {
+      // No action needed since input is not focused
     }
   }, [isViewportExpanded, isKeyboardOpen, isInputFocused, setInputFocused]);
 
   // Track isInputActive state changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    console.log('🔍 isInputActive state changed to:', isInputActive);
+    // isInputActive state changed
   }, [isInputActive]);
 
   // Track isInputFocused state changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    console.log('🔍 isInputFocused state changed to:', isInputFocused);
+    // isInputFocused state changed
   }, [isInputFocused]);
 
-  // Debug logging
+  // Debug logging (removed for production)
   useEffect(() => {
-    const shouldBeCompactValue = isInputFocused || (!isKeyboardOpen && !isViewportExpanded);
-    console.log('🔍 ===== VIEWPORT STATE DEBUG =====');
-    console.log('🔍 Current state values:');
-    console.log('🔍   isKeyboardOpen:', isKeyboardOpen);
-    console.log('🔍   isViewportExpanded:', isViewportExpanded);
-    console.log('🔍   isInBrowser:', isInBrowser);
-    console.log('🔍   mockViewportExpanded:', mockViewportExpanded);
-    console.log('🔍   isInputActive (local):', isInputActive);
-    console.log('🔍   isInputFocused (local):', isInputFocused);
-    console.log('🔍   globalIsInputActive:', globalIsInputActive);
-    console.log('🔍   globalInputFocused:', globalInputFocused);
-    console.log('🔍 shouldBeCompact calculation:');
-    console.log('🔍   isInputFocused || (!isKeyboardOpen && !isViewportExpanded)');
-    console.log('🔍   ', isInputFocused, '|| (', !isKeyboardOpen, '&&', !isViewportExpanded, ')');
-    console.log('🔍   ', isInputFocused, '|| (', !isKeyboardOpen && !isViewportExpanded, ')');
-    console.log('🔍   =', shouldBeCompactValue);
-    console.log('🔍 Viewport expansion for custom keyboard:', isInputFocused ? 'YES (input focused)' : 'NO');
-    console.log('🔍 ===== END VIEWPORT STATE DEBUG =====');
+    // Viewport state tracking - no logging needed
   }, [isKeyboardOpen, isViewportExpanded, isInBrowser, mockViewportExpanded, isInputFocused, isInputActive]); // Include all dependencies
 
+  // Memoize the return object to prevent unnecessary re-renders
+  const shouldBeCompact = useMemo(() => {
+    const result = isInputFocused || (!isKeyboardOpen && !isViewportExpanded);
+    console.log('🔍 shouldBeCompact calculation:', {
+      isInputFocused,
+      isKeyboardOpen,
+      isViewportExpanded,
+      result
+    });
+    return result;
+  }, [isInputFocused, isKeyboardOpen, isViewportExpanded]);
+
+  // Set isKeyboardOpen to true when input is focused (for custom keyboard)
+  // This handles the custom keyboard case where viewport height doesn't change
+  useEffect(() => {
+    if (isInputFocused) {
+      setIsKeyboardOpen(true);
+    } else {
+      setIsKeyboardOpen(false);
+    }
+  }, [isInputFocused]);
+
+  // Removed auto-focus mechanism to prevent excessive re-renders
+
   // Return object with both individual states and combined state
-  return {
+  return useMemo(() => ({
     isKeyboardOpen,
     isViewportExpanded,
     isInBrowser,
@@ -328,7 +250,6 @@ export function useKeyboardDetection() {
     setInputActive,
     setInputFocused,
     isInputFocused,
-    // shouldBeCompact should be true when input is focused (for custom keyboard) OR when viewport is not expanded
-    shouldBeCompact: isInputFocused || (!isKeyboardOpen && !isViewportExpanded)
-  };
+    shouldBeCompact
+  }), [isKeyboardOpen, isViewportExpanded, isInBrowser, isInputActive, setInputActive, setInputFocused, isInputFocused, shouldBeCompact]);
 }
