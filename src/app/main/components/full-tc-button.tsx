@@ -58,13 +58,6 @@ export function CustomTonConnectButton() {
           data-custom-keyboard
           className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px] cursor-pointer"
           onClick={(e) => {
-            console.log('🔍 Connect button clicked!', { 
-              target: e.target, 
-              currentTarget: e.currentTarget,
-              eventPhase: e.eventPhase,
-              bubbles: e.bubbles,
-              cancelable: e.cancelable
-            });
             e.stopPropagation();
             tonConnectUI.openModal();
           }}
@@ -90,13 +83,6 @@ export function CustomTonConnectButton() {
           position: 'relative'
         }}
         onClick={(e) => {
-          console.log('🔍 Connect button (compact) clicked!', { 
-            target: e.target, 
-            currentTarget: e.currentTarget,
-            eventPhase: e.eventPhase,
-            bubbles: e.bubbles,
-            cancelable: e.cancelable
-          });
           e.stopPropagation();
           tonConnectUI.openModal();
         }}
@@ -117,13 +103,6 @@ export function CustomTonConnectButton() {
             position: 'relative'
           }}
           onClick={(e) => {
-            console.log('🔍 Connect button (shouldBeCompact) clicked!', { 
-              target: e.target, 
-              currentTarget: e.currentTarget,
-              eventPhase: e.eventPhase,
-              bubbles: e.bubbles,
-              cancelable: e.cancelable
-            });
             e.stopPropagation();
             tonConnectUI.openModal();
           }}
