@@ -156,7 +156,7 @@ export function useKeyboardDetection() {
 
   // Separate function for input focus that doesn't affect viewport
   const setInputFocused = useCallback((focused: boolean) => {
-    console.log('🔍 setInputFocused called with:', focused, 'current globalInputFocused:', globalInputFocused);
+    console.log('🔍 setInputFocused called with:', focused, 'current globalInputFocused:', globalInputFocused, 'timestamp:', new Date().toISOString());
     globalInputFocused = focused;
     console.log('🔍 globalInputFocused updated to:', globalInputFocused);
     
@@ -224,7 +224,8 @@ export function useKeyboardDetection() {
       isInputFocused,
       isKeyboardOpen,
       isViewportExpanded,
-      result
+      result,
+      timestamp: new Date().toISOString()
     });
     return result;
   }, [isInputFocused, isKeyboardOpen, isViewportExpanded]);

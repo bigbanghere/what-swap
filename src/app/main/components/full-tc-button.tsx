@@ -54,11 +54,25 @@ export function CustomTonConnectButton() {
   if (!walletAddress) {
     if (!shouldBeCompact) {
       return (
-        <div className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
-          onClick={() => tonConnectUI.openModal()}
+        <div 
+          data-custom-keyboard
+          className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px] cursor-pointer"
+          onClick={(e) => {
+            console.log('🔍 Connect button clicked!', { 
+              target: e.target, 
+              currentTarget: e.currentTarget,
+              eventPhase: e.eventPhase,
+              bubbles: e.bubbles,
+              cancelable: e.cancelable
+            });
+            e.stopPropagation();
+            tonConnectUI.openModal();
+          }}
           style={{
             backgroundColor: "#1ABCFF",
             color: "#FFFFFF",
+            zIndex: 1001,
+            position: 'relative'
           }}
         >
           <IoWalletSharp />
@@ -68,11 +82,24 @@ export function CustomTonConnectButton() {
     }
     return (
       <div
-        className="flex flex-row items-center gap-[5px]"
+        data-custom-keyboard
+        className="flex flex-row items-center gap-[5px] cursor-pointer"
         style={{
           color: "#1ABCFF",
+          zIndex: 1001,
+          position: 'relative'
         }}
-        onClick={() => tonConnectUI.openModal()}
+        onClick={(e) => {
+          console.log('🔍 Connect button (compact) clicked!', { 
+            target: e.target, 
+            currentTarget: e.currentTarget,
+            eventPhase: e.eventPhase,
+            bubbles: e.bubbles,
+            cancelable: e.cancelable
+          });
+          e.stopPropagation();
+          tonConnectUI.openModal();
+        }}
       >
         <IoWalletSharp />
         {t('connect')}
@@ -83,7 +110,23 @@ export function CustomTonConnectButton() {
     if (shouldBeCompact) {
       return (
         <div
-          onClick={() => tonConnectUI.openModal()}
+          data-custom-keyboard
+          className="cursor-pointer"
+          style={{
+            zIndex: 1001,
+            position: 'relative'
+          }}
+          onClick={(e) => {
+            console.log('🔍 Connect button (shouldBeCompact) clicked!', { 
+              target: e.target, 
+              currentTarget: e.currentTarget,
+              eventPhase: e.eventPhase,
+              bubbles: e.bubbles,
+              cancelable: e.cancelable
+            });
+            e.stopPropagation();
+            tonConnectUI.openModal();
+          }}
         >
           <IoWalletSharp />
           {t('connect')}
@@ -95,10 +138,13 @@ export function CustomTonConnectButton() {
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div
+          data-custom-keyboard
           className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
           style={{
             backgroundColor: "#1ABCFF",
             color: "#FFFFFF",
+            zIndex: 1001,
+            position: 'relative'
           }}
         >
           <IoWalletSharp className="" />

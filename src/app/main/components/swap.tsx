@@ -17,7 +17,9 @@ export function Swap() {
 
     return (
         <div 
-            className="flex-1 flex flex-col items-center justify-center relative overflow-hidden"
+            className={`flex flex-col items-center justify-center relative overflow-hidden 
+                ${!shouldBeCompact ? 'flex-1' : ''}
+            `}
             style={{ 
                 backgroundColor: shouldBeCompact ? 'transparent' : 'rgba(26, 188, 255, 0.22)',
                 transition: 'background-color 0.2s ease'

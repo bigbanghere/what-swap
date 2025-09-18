@@ -12,13 +12,12 @@ import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 export default function Home() {
   const { colors } = useTheme();
   const { isAppReady, loadingReason, isLoading } = useAppReady();
-  const { isInputFocused } = useKeyboardDetection();
-
+  const { shouldBeCompact, isInputFocused } = useKeyboardDetection();
 
   if (isLoading) {
     return (
       <div 
-        className="min-h-screen flex flex-col items-center justify-center"
+        className={`min-h-screen flex flex-col items-center justify-center`}
         style={{ 
           backgroundColor: colors.background, 
           color: colors.text 
@@ -38,7 +37,12 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ backgroundColor: colors.background, color: colors.text }}>
+    <div 
+      className={`flex flex-col 
+        ${!isInputFocused && shouldBeCompact ? '' : 'min-h-screen'}
+      `}
+      style={{ backgroundColor: colors.background, color: colors.text }}
+    >
       <Header />
       <Swap />
       <Footer />

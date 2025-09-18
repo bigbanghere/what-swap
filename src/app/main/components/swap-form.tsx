@@ -20,14 +20,17 @@ export function SwapForm() {
     const t = useTranslations('translations');
 
     const handleFocusChange = useCallback((isFocused: boolean) => {
+        console.log('🔍 SwapForm handleFocusChange called with:', isFocused, 'timestamp:', new Date().toISOString());
         setInputFocused(isFocused);
         
         // Clear default value when focusing
         if (isFocused && fromAmount === '1') {
+            console.log('🔍 Clearing default value fromAmount from "1" to ""');
             setFromAmount('');
         }
         // Reset to default value when unfocusing and empty
         else if (!isFocused && fromAmount === '') {
+            console.log('🔍 Resetting default value fromAmount from "" to "1"');
             setFromAmount('1');
         }
     }, [setInputFocused, fromAmount]);
@@ -38,7 +41,9 @@ export function SwapForm() {
 
     return (
         <div 
-            className="w-full relative z-10 flex flex-col items-center justify-center mx-auto mb-[22px]"
+            className={`w-full relative z-10 flex flex-col items-center justify-center mx-auto 
+                ${shouldBeCompact ? '' : 'mb-[22px]'}
+            `}
             style={{
                 maxWidth: shouldBeCompact ? '100%' : '460px',
                 padding: shouldBeCompact ? '0' : '20px'
@@ -57,7 +62,7 @@ export function SwapForm() {
             {/* Main form container */}
             <div 
                 style={{ 
-                    border: '1px solid rgba(26, 188, 255, 1)', 
+                    border: shouldBeCompact ? '' : '1px solid rgba(26, 188, 255, 1)', 
                     borderRadius: '15px', 
                     backgroundColor: colors.background,
                 }}
@@ -167,7 +172,7 @@ export function SwapForm() {
                             </div>
                         </div>
                     </div>
-                    <div className='flex flex-row items-center gap-[5px] my-[5px]'>
+                    <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
                         <CustomInput
                             key="from-amount-input"
                             value={fromAmount}
@@ -319,7 +324,7 @@ export function SwapForm() {
                             </div>
                         </div>
                     </div>
-                    <div className='flex flex-row items-center gap-[5px] my-[5px]'>
+                    <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
                         <div className='w-full text-[#1ABCFF] text-[33px]'>
                             0.31
                         </div>
@@ -357,8 +362,11 @@ export function SwapForm() {
                         </div>
                         <div className='flex flex-row gap-[5px]'>
                             <div style={{ 
-                                display: !walletAddress ? 'block' : 'none',
-                                transition: 'display 0.2s ease'
+                                display: (!walletAddress && shouldBeCompact) ? 'block' : 'none',
+                                transition: 'display 0.2s ease',
+                                zIndex: 1002,
+                                position: 'relative',
+                                pointerEvents: 'auto'
                             }}>
                                 <CustomTonConnectButton />
                             </div>
