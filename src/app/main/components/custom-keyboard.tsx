@@ -17,6 +17,7 @@ export function CustomKeyboard() {
   
   // State for key press visual feedback
   const [pressedKeyIndex, setPressedKeyIndex] = useState<number | null>(null);
+  const [isInputNotAllowed, setIsInputNotAllowed] = useState<boolean>(false);
   const keyPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Function to trigger a backspace event
@@ -30,7 +31,91 @@ export function CustomKeyboard() {
   }, []);
 
   // Handle key press visual feedback
-  const handleKeyPressFeedback = useCallback((keyIndex: number) => {
+  const handleKeyPressFeedback = useCallback((keyIndex: number, key: string) => {
+    // Check if we can add more characters by looking for focused input
+    let canAdd = true;
+    
+    // Find the currently focused input element - try multiple approaches
+    let focusedInput = document.querySelector('[data-custom-input="true"]:focus');
+    
+    // If :focus doesn't work, try finding the active element
+    if (!focusedInput && document.activeElement) {
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement.getAttribute('data-custom-input') === 'true') {
+        focusedInput = activeElement;
+      }
+    }
+    
+    // If still not found, try finding any input with the data attribute
+    if (!focusedInput) {
+      const allInputs = document.querySelectorAll('[data-custom-input="true"]');
+      for (const input of allInputs) {
+        const element = input as HTMLElement;
+        if (element.style.cursor === 'text' || element.getAttribute('tabindex') !== null) {
+          focusedInput = element;
+          break;
+        }
+      }
+    }
+    
+    if (focusedInput) {
+      // Get the current value and cursor position
+      const currentValue = (focusedInput as HTMLElement).textContent || '';
+      const containerWidth = focusedInput.getBoundingClientRect().width;
+      
+      // Calculate what the new value would be
+      const testValue = currentValue + key;
+      
+      // Calculate optimal font size for the test value using the same method as CustomInput
+      const tempElement = document.createElement('div');
+      tempElement.style.fontSize = '33px';
+      tempElement.style.lineHeight = '1';
+      tempElement.style.visibility = 'hidden';
+      tempElement.style.position = 'absolute';
+      tempElement.style.whiteSpace = 'nowrap';
+      tempElement.style.fontFamily = 'inherit';
+      tempElement.style.fontWeight = 'inherit';
+      tempElement.style.fontStyle = 'inherit';
+      document.body.appendChild(tempElement);
+      
+      tempElement.textContent = testValue;
+      const textWidth = tempElement.getBoundingClientRect().width;
+      document.body.removeChild(tempElement);
+      
+      // Use the same calculation as CustomInput: 100% of container width minus 20px buffer
+      const availableWidth = containerWidth - 20;
+      
+      let optimalSize;
+      if (textWidth <= availableWidth) {
+        optimalSize = 33; // maxFontSize
+      } else {
+        const scaleFactor = availableWidth / textWidth;
+        const calculatedFontSize = Math.floor(33 * scaleFactor);
+        optimalSize = Math.max(calculatedFontSize, 14); // minFontSize
+      }
+      
+      // Check if adding this character would make font size drop below 14px
+      canAdd = optimalSize > 14;
+      
+      console.log('🔍 Direct validation:', { 
+        key, 
+        currentValue, 
+        testValue, 
+        containerWidth, 
+        availableWidth, 
+        textWidth, 
+        optimalSize, 
+        canAdd 
+      });
+    } else {
+      console.log('🔍 No focused input found, allowing input');
+    }
+    
+    console.log('🔍 Key pressed:', key, 'Can add more characters:', canAdd);
+    
+    // Set the input not allowed state for color determination
+    setIsInputNotAllowed(!canAdd);
+    
     // Clear any existing timeout
     if (keyPressTimeoutRef.current) {
       clearTimeout(keyPressTimeoutRef.current);
@@ -42,6 +127,7 @@ export function CustomKeyboard() {
     // Clear the visual feedback after 22ms
     keyPressTimeoutRef.current = setTimeout(() => {
       setPressedKeyIndex(null);
+      setIsInputNotAllowed(false);
     }, 22);
   }, []);
 
@@ -54,6 +140,7 @@ export function CustomKeyboard() {
     // Keep visual feedback active during hold
     const backspaceKeyIndex = 11; // Index of backspace key in the flat array
     setPressedKeyIndex(backspaceKeyIndex);
+    setIsInputNotAllowed(false); // Backspace is always allowed, so use blue color
     
     // Initial delay before starting continuous deletion
     backspaceTimeoutRef.current = setTimeout(() => {
@@ -71,7 +158,7 @@ export function CustomKeyboard() {
       triggerBackspace();
       // Show brief visual feedback for single tap
       const backspaceKeyIndex = 11; // Index of backspace key in the flat array
-      handleKeyPressFeedback(backspaceKeyIndex);
+      handleKeyPressFeedback(backspaceKeyIndex, '⌫');
     }
   }, [isBackspaceHeld, triggerBackspace, handleKeyPressFeedback]);
 
@@ -166,7 +253,7 @@ export function CustomKeyboard() {
                 key={index}
                 onClick={() => {
                   // Trigger visual feedback
-                  handleKeyPressFeedback(index);
+                  handleKeyPressFeedback(index, key);
                   
                   if (key === '⌫') {
                     handleBackspaceTap();
@@ -226,7 +313,9 @@ export function CustomKeyboard() {
                   <div 
                     className="absolute inset-0 rounded-[15px] pointer-events-none"
                     style={{
-                      backgroundColor: 'rgba(26, 188, 255, 0.11)',
+                      backgroundColor: isInputNotAllowed 
+                        ? 'rgba(255, 17, 17, 0.22)' // Red (#FF1111) with 11% opacity when input not allowed
+                        : 'rgba(26, 188, 255, 0.11)', // Blue (#1ABCFF) with 11% opacity when input allowed
                       transition: 'opacity 0.011s ease-in-out'
                     }}
                   />

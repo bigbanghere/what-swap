@@ -10,6 +10,7 @@ import { IoWalletSharp } from 'react-icons/io5';
 import { useTonAddress } from "@tonconnect/ui-react";
 import { CustomTonConnectButton } from "./full-tc-button";
 import { CustomInput } from "./custom-input";
+import { useValidation } from "@/contexts/validation-context";
 
 export function SwapForm() {
     const walletAddress = useTonAddress();
@@ -18,10 +19,38 @@ export function SwapForm() {
     const [toAmount, setToAmount] = useState<string>('1');
     const [isFromAmountFocused, setIsFromAmountFocused] = useState<boolean>(false);
     const [isToAmountFocused, setIsToAmountFocused] = useState<boolean>(false);
-    const fromAmountRef = useRef<{ blur: () => void; focus: () => void }>(null);
-    const toAmountRef = useRef<{ blur: () => void; focus: () => void }>(null);
+    const fromAmountRef = useRef<{ blur: () => void; focus: () => void; canAddMoreCharacters: (key: string) => boolean }>(null);
+    const toAmountRef = useRef<{ blur: () => void; focus: () => void; canAddMoreCharacters: (key: string) => boolean }>(null);
     const { shouldBeCompact, setInputFocused } = useKeyboardDetection();
     const t = useTranslations('translations');
+    const { setCanAddMoreCharacters } = useValidation();
+
+    // Create validation function for keyboard
+    const canAddMoreCharacters = useCallback((key: string) => {
+        console.log('🔍 canAddMoreCharacters called with key:', key, 'isFromAmountFocused:', isFromAmountFocused, 'isToAmountFocused:', isToAmountFocused);
+        // Check which input is currently focused and use its validation
+        if (isFromAmountFocused && fromAmountRef.current) {
+            const result = fromAmountRef.current.canAddMoreCharacters(key);
+            console.log('🔍 FROM input validation:', { key, result, isFromAmountFocused });
+            return result;
+        } else if (isToAmountFocused && toAmountRef.current) {
+            const result = toAmountRef.current.canAddMoreCharacters(key);
+            console.log('🔍 TO input validation:', { key, result, isToAmountFocused });
+            return result;
+        }
+        console.log('🔍 No input focused, allowing input:', { key });
+        return true; // Default to allowing input
+    }, [isFromAmountFocused, isToAmountFocused]);
+
+    // Register validation function with context
+    React.useEffect(() => {
+        console.log('🔧 SwapForm: Setting canAddMoreCharacters to context:', typeof canAddMoreCharacters);
+        if (typeof canAddMoreCharacters === 'function') {
+            setCanAddMoreCharacters(canAddMoreCharacters);
+        } else {
+            console.log('🚨 SwapForm: canAddMoreCharacters is not a function, not setting it');
+        }
+    }, [canAddMoreCharacters, setCanAddMoreCharacters]);
 
     const handleFocusChange = useCallback((isFocused: boolean) => {
         console.log('🟦 FROM input focus change:', isFocused);

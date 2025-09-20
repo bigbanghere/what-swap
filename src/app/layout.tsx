@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { Root } from '@/components/Root/Root';
 import { I18nProvider } from '@/core/i18n/provider';
 import { ThemeProvider } from '@/core/theme/provider';
+import { ValidationProvider } from '@/contexts/validation-context';
 
 import '@telegram-apps/telegram-ui/dist/styles.css';
 import 'normalize.css/normalize.css';
@@ -35,7 +36,9 @@ export default async function RootLayout({ children }: PropsWithChildren) {
       <body>
         <I18nProvider>
           <ThemeProvider>
-            <Root>{children}<Analytics /></Root>
+            <ValidationProvider>
+              <Root>{children}<Analytics /></Root>
+            </ValidationProvider>
           </ThemeProvider>
         </I18nProvider>
       </body>

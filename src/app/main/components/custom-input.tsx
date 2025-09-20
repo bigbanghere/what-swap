@@ -16,6 +16,7 @@ interface CustomInputProps {
 interface CustomInputRef {
   blur: () => void;
   focus: () => void;
+  canAddMoreCharacters: (key: string) => boolean;
 }
 
 const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function CustomInput({
@@ -89,8 +90,11 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   // Check if we can add more characters (font size would be at minimum)
   const canAddMoreCharacters = useCallback((text: string, containerWidth: number): boolean => {
     const optimalSize = calculateOptimalFontSize(text, containerWidth);
-    return optimalSize > 14;
+    const result = optimalSize > 14;
+    console.log('🔍 CustomInput canAddMoreCharacters:', { text, containerWidth, optimalSize, result });
+    return result;
   }, [calculateOptimalFontSize]);
+
   
   // Helper function to set focus with justFocused protection
   const setFocusWithProtection = useCallback((clickTarget?: Element) => {
@@ -128,8 +132,20 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     focus: () => {
       console.log('🟢 CustomInput focus() called - current isFocused:', isFocused);
       setFocusWithProtection();
+    },
+    canAddMoreCharacters: (key: string) => {
+      if (!inputRef.current) {
+        console.log('🔍 CustomInput canAddMoreCharacters: no inputRef, returning true');
+        return true;
+      }
+      const containerWidth = inputRef.current.getBoundingClientRect().width;
+      const testValue = value.slice(0, cursorPosition) + key + value.slice(cursorPosition);
+      console.log('🔍 CustomInput canAddMoreCharacters called:', { key, testValue, containerWidth, cursorPosition });
+      const result = canAddMoreCharacters(testValue, containerWidth);
+      console.log('🔍 CustomInput canAddMoreCharacters result:', result);
+      return result;
     }
-  }), [setFocusWithProtection, isFocused]);
+  }), [setFocusWithProtection, isFocused, value, cursorPosition, canAddMoreCharacters]);
 
   // Track when component has mounted
   useEffect(() => {
