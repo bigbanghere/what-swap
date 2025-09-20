@@ -30,6 +30,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
 }, ref) {
   const [isFocused, setIsFocused] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [currentFontSize, setCurrentFontSize] = useState(33);
   const inputRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLSpanElement>(null);
   const justFocusedRef = useRef(false);
@@ -45,6 +46,51 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   const touchStartTime = useRef<number>(0);
   const hasMovedDuringTouch = useRef<boolean>(false);
   const lastTouchEndTime = useRef<number>(0);
+  
+  // Calculate optimal font size based on text width
+  const calculateOptimalFontSize = useCallback((text: string, containerWidth: number): number => {
+    if (!text || text.length === 0) return 33;
+    
+    const minFontSize = 14;
+    const maxFontSize = 33;
+    
+    // Create a temporary element to measure text width
+    const tempElement = document.createElement('span');
+    tempElement.style.fontSize = `${maxFontSize}px`;
+    tempElement.style.lineHeight = '1';
+    tempElement.style.visibility = 'hidden';
+    tempElement.style.position = 'absolute';
+    tempElement.style.whiteSpace = 'nowrap';
+    tempElement.style.fontFamily = 'inherit';
+    tempElement.style.fontWeight = 'inherit';
+    tempElement.style.fontStyle = 'inherit';
+    document.body.appendChild(tempElement);
+    
+    tempElement.textContent = text;
+    const textWidth = tempElement.getBoundingClientRect().width;
+    document.body.removeChild(tempElement);
+    
+    // Use 100% of container width minus 37px buffer for currency selector and gap
+    const availableWidth = containerWidth - 20;
+    
+    // If text fits within the available width at max size, return max size
+    if (textWidth <= availableWidth) {
+      return maxFontSize;
+    }
+    
+    // Calculate the scale factor needed to fit the text within the available width
+    const scaleFactor = availableWidth / textWidth;
+    const calculatedFontSize = Math.floor(maxFontSize * scaleFactor);
+    
+    // Ensure we don't go below minimum font size
+    return Math.max(calculatedFontSize, minFontSize);
+  }, []);
+
+  // Check if we can add more characters (font size would be at minimum)
+  const canAddMoreCharacters = useCallback((text: string, containerWidth: number): boolean => {
+    const optimalSize = calculateOptimalFontSize(text, containerWidth);
+    return optimalSize > 14;
+  }, [calculateOptimalFontSize]);
   
   // Helper function to set focus with justFocused protection
   const setFocusWithProtection = useCallback((clickTarget?: Element) => {
@@ -205,13 +251,22 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
             }
           }
           
+          // Check if adding this character would make the font size too small
+          if (inputRef.current) {
+            const containerWidth = inputRef.current.getBoundingClientRect().width;
+            const testValue = value.slice(0, cursorPosition) + e.key + value.slice(cursorPosition);
+            if (!canAddMoreCharacters(testValue, containerWidth)) {
+              return; // Don't add the character if it would make font size too small
+            }
+          }
+          
           const newValue = value.slice(0, cursorPosition) + e.key + value.slice(cursorPosition);
           onChange(newValue);
           setCursorPosition(cursorPosition + 1);
         }
         break;
     }
-  }, [isFocused, cursorPosition, value, onChange, maxLength, type]);
+  }, [isFocused, cursorPosition, value, onChange, maxLength, type, canAddMoreCharacters]);
 
   // Listen for synthetic keyboard events from CustomKeyboard
   useEffect(() => {
@@ -259,6 +314,15 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     }
   }, [value, cursorPosition]);
 
+  // Update font size when value changes
+  useEffect(() => {
+    if (!inputRef.current || !hasMounted) return;
+    
+    const containerWidth = inputRef.current.getBoundingClientRect().width;
+    const optimalSize = calculateOptimalFontSize(value, containerWidth);
+    setCurrentFontSize(optimalSize);
+  }, [value, hasMounted, calculateOptimalFontSize]);
+
   // Calculate and update cursor left position
   useEffect(() => {
     if (!inputRef.current || !value || value.length === 0) {
@@ -273,7 +337,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     }
     
     const tempElement = document.createElement('span');
-    tempElement.style.fontSize = '33px';
+    tempElement.style.fontSize = `${currentFontSize}px`;
     tempElement.style.lineHeight = '1';
     tempElement.style.visibility = 'hidden';
     tempElement.style.position = 'absolute';
@@ -295,7 +359,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     }
     
     setCursorLeftPosition(finalPosition);
-  }, [cursorPosition, value]);
+  }, [cursorPosition, value, currentFontSize]);
 
   // Handle click to focus
   const handleClick = (e: React.MouseEvent) => {
@@ -365,7 +429,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
       const testText = value.slice(0, i);
       
       const tempElement = document.createElement('span');
-      tempElement.style.fontSize = '33px';
+      tempElement.style.fontSize = `${currentFontSize}px`;
       tempElement.style.lineHeight = '1';
       tempElement.style.visibility = 'hidden';
       tempElement.style.position = 'absolute';
@@ -388,7 +452,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     }
     
     return bestPosition;
-  }, [value]);
+  }, [value, currentFontSize]);
 
   // Handle right-click for paste menu
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -590,11 +654,11 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
             alignItems: 'center',
             width: '100%',
             height: '40px',
-            fontSize: '33px',
+            fontSize: `${currentFontSize}px`,
             lineHeight: '1'
           }}
         >
-          <span style={{ fontSize: '33px', lineHeight: '1' }}>{value}</span>
+          <span style={{ fontSize: `${currentFontSize}px`, lineHeight: '1' }}>{value}</span>
           {isFocused && (
             <span
               ref={cursorRef}
@@ -604,7 +668,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
                 top: '50%',
                 transform: 'translateY(-50%)',
                 width: '1px',
-                height: '33px',
+                height: `${currentFontSize}px`,
                 backgroundColor: '#1ABCFF',
                 animation: 'blink 1s infinite',
                 pointerEvents: 'none',

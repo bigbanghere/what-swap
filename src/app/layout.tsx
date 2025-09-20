@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import type { Metadata } from 'next';
 import { getLocale } from '@/core/i18n/locale';
+import { Analytics } from "@vercel/analytics/next"
 
 import { Root } from '@/components/Root/Root';
 import { I18nProvider } from '@/core/i18n/provider';
@@ -34,7 +35,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
       <body>
         <I18nProvider>
           <ThemeProvider>
-            <Root>{children}</Root>
+            <Root>{children}<Analytics /></Root>
           </ThemeProvider>
         </I18nProvider>
       </body>

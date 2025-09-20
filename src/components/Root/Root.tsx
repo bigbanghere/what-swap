@@ -57,6 +57,7 @@ export function Root(props: PropsWithChildren) {
   // the Server Side Rendering. That's why we are showing loader on the server
   // side.
   const didMount = useDidMount();
+  const { colors } = useTheme();
 
   return didMount ? (
     <ErrorBoundary fallback={ErrorPage}>
@@ -64,14 +65,12 @@ export function Root(props: PropsWithChildren) {
     </ErrorBoundary>
   ) : (
     <div className="root__loading">
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="flex flex-col items-center justify-center min-h-screen min-w-screen bg-gray-100 dark:bg-gray-900"
+        style={{ 
+          backgroundColor: colors.background,
+        }}
+      >
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mb-4"></div>
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
-          Loading Telegram Mini App...
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Initializing connection to Telegram
-        </p>
       </div>
     </div>
   );
