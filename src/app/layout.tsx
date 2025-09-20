@@ -19,9 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {
-  console.log('🔍 RootLayout called (server-side) - THIS SHOULD APPEAR ON EVERY PAGE LOAD');
   const locale = await getLocale();
-  console.log('🔍 RootLayout locale:', locale);
 
   return (
     <html lang={locale} suppressHydrationWarning>

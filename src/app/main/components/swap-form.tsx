@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image';
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
@@ -11,6 +11,7 @@ import { useTonAddress } from "@tonconnect/ui-react";
 import { CustomTonConnectButton } from "./full-tc-button";
 import { CustomInput } from "./custom-input";
 import { useValidation } from "@/contexts/validation-context";
+import Link from 'next/link';
 
 export function SwapForm() {
     const walletAddress = useTonAddress();
@@ -19,36 +20,42 @@ export function SwapForm() {
     const [toAmount, setToAmount] = useState<string>('1');
     const [isFromAmountFocused, setIsFromAmountFocused] = useState<boolean>(false);
     const [isToAmountFocused, setIsToAmountFocused] = useState<boolean>(false);
+    const [selectedFromToken, setSelectedFromToken] = useState<any>(null);
+    const [selectedToToken, setSelectedToToken] = useState<any>(null);
     const fromAmountRef = useRef<{ blur: () => void; focus: () => void; canAddMoreCharacters: (key: string) => boolean }>(null);
     const toAmountRef = useRef<{ blur: () => void; focus: () => void; canAddMoreCharacters: (key: string) => boolean }>(null);
     const { shouldBeCompact, setInputFocused } = useKeyboardDetection();
     const t = useTranslations('translations');
     const { setCanAddMoreCharacters } = useValidation();
 
+    // Load selected tokens from localStorage on component mount
+    useEffect(() => {
+        const fromToken = localStorage.getItem('selectedFromToken');
+        const toToken = localStorage.getItem('selectedToToken');
+        
+        if (fromToken) {
+            setSelectedFromToken(JSON.parse(fromToken));
+        }
+        if (toToken) {
+            setSelectedToToken(JSON.parse(toToken));
+        }
+    }, []);
+
     // Create validation function for keyboard
     const canAddMoreCharacters = useCallback((key: string) => {
-        console.log('🔍 canAddMoreCharacters called with key:', key, 'isFromAmountFocused:', isFromAmountFocused, 'isToAmountFocused:', isToAmountFocused);
         // Check which input is currently focused and use its validation
         if (isFromAmountFocused && fromAmountRef.current) {
-            const result = fromAmountRef.current.canAddMoreCharacters(key);
-            console.log('🔍 FROM input validation:', { key, result, isFromAmountFocused });
-            return result;
+            return fromAmountRef.current.canAddMoreCharacters(key);
         } else if (isToAmountFocused && toAmountRef.current) {
-            const result = toAmountRef.current.canAddMoreCharacters(key);
-            console.log('🔍 TO input validation:', { key, result, isToAmountFocused });
-            return result;
+            return toAmountRef.current.canAddMoreCharacters(key);
         }
-        console.log('🔍 No input focused, allowing input:', { key });
         return true; // Default to allowing input
     }, [isFromAmountFocused, isToAmountFocused]);
 
     // Register validation function with context
     React.useEffect(() => {
-        console.log('🔧 SwapForm: Setting canAddMoreCharacters to context:', typeof canAddMoreCharacters);
         if (typeof canAddMoreCharacters === 'function') {
             setCanAddMoreCharacters(canAddMoreCharacters);
-        } else {
-            console.log('🚨 SwapForm: canAddMoreCharacters is not a function, not setting it');
         }
     }, [canAddMoreCharacters, setCanAddMoreCharacters]);
 
@@ -177,12 +184,13 @@ export function SwapForm() {
                             {t('max')}
                         </div> : null}
                         <div className='w-full flex justify-end gap-[5px]'>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            <Link 
+                                href="/tokens?type=from"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/ston.svg"
-                                    alt="arrow"
+                                    src={selectedFromToken?.image_url || "/ston.svg"}
+                                    alt={selectedFromToken?.symbol || "STON"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -195,13 +203,14 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            </Link>
+                            <Link 
+                                href="/tokens?type=from"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/not.svg"
-                                    alt="arrow"
+                                    src={selectedFromToken?.image_url || "/not.svg"}
+                                    alt={selectedFromToken?.symbol || "NOT"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -214,13 +223,14 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            </Link>
+                            <Link 
+                                href="/tokens?type=from"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/ces.svg"
-                                    alt="arrow"
+                                    src={selectedFromToken?.image_url || "/ces.svg"}
+                                    alt={selectedFromToken?.symbol || "CES"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -233,13 +243,14 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            </Link>
+                            <Link 
+                                href="/tokens?type=from"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/duck.svg"
-                                    alt="arrow"
+                                    src={selectedFromToken?.image_url || "/duck.svg"}
+                                    alt={selectedFromToken?.symbol || "DUCK"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -252,7 +263,7 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
+                            </Link>
                         </div>
                     </div>
                     <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
@@ -330,12 +341,13 @@ export function SwapForm() {
                     <div className='flex flex-row items-center justify-between'>
                         {t('get')}
                         <div className='w-full flex justify-end gap-[5px]'>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            <Link 
+                                href="/tokens?type=to"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/ston.svg"
-                                    alt="arrow"
+                                    src={selectedToToken?.image_url || "/ston.svg"}
+                                    alt={selectedToToken?.symbol || "STON"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -348,13 +360,14 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            </Link>
+                            <Link 
+                                href="/tokens?type=to"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/not.svg"
-                                    alt="arrow"
+                                    src={selectedToToken?.image_url || "/not.svg"}
+                                    alt={selectedToToken?.symbol || "NOT"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -367,13 +380,14 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            </Link>
+                            <Link 
+                                href="/tokens?type=to"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/ces.svg"
-                                    alt="arrow"
+                                    src={selectedToToken?.image_url || "/ces.svg"}
+                                    alt={selectedToToken?.symbol || "CES"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -386,13 +400,14 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
-                            <div 
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
+                            </Link>
+                            <Link 
+                                href="/tokens?type=to"
+                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                             >
                                 <Image
-                                    src="/duck.svg"
-                                    alt="arrow"
+                                    src={selectedToToken?.image_url || "/duck.svg"}
+                                    alt={selectedToToken?.symbol || "DUCK"}
                                     width="15"
                                     height="15"
                                     style={{
@@ -405,7 +420,7 @@ export function SwapForm() {
                                         display: 'block',
                                     }}
                                 />
-                            </div>
+                            </Link>
                         </div>
                     </div>
                     <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>

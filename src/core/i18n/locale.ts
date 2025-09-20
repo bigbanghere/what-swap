@@ -11,13 +11,9 @@ import type { Locale } from './types';
 const COOKIE_NAME = 'NEXT_LOCALE';
 
 const getLocale = async () => {
-  console.log('🔍 getLocale called (server-side) - THIS SHOULD APPEAR ON EVERY PAGE LOAD');
-  
   try {
     const cookieStore = await cookies();
     const locale = cookieStore.get(COOKIE_NAME)?.value;
-    console.log('🔍 Server-side cookie value:', locale);
-    console.log('🔍 Cookie name:', COOKIE_NAME);
     
     // For web browsers, detect system language from Accept-Language header
     const headers = await import('next/headers');
@@ -32,39 +28,28 @@ const getLocale = async () => {
                              referer.includes('telegram.org') ||
                              userAgent.includes('Telegram');
     
-    console.log('🔍 Server-side context:', {
-      userAgent: userAgent.substring(0, 100) + '...',
-      referer,
-      acceptLanguage: acceptLanguage.substring(0, 50) + '...',
-      isTelegramRequest
-    });
+    // Reduced logging for performance
     
     // If we have a cookie from client-side detection, use it (prioritize this)
     if (locale) {
-      console.log('🔍 Using cookie locale from client-side detection:', locale);
       return locale;
     }
     
     // If it's not a Telegram request, detect system language from Accept-Language header
     if (!isTelegramRequest && acceptLanguage) {
-      console.log('🌐 Web browser detected, checking Accept-Language header');
       // Parse Accept-Language header to detect Russian
       const languages = acceptLanguage.split(',').map(lang => lang.split(';')[0].trim());
       const hasRussian = languages.some(lang => lang.startsWith('ru'));
       
       if (hasRussian) {
-        console.log('🇷🇺 Russian detected in Accept-Language, setting Russian locale');
         cookieStore.set(COOKIE_NAME, 'ru');
         return 'ru';
       } else {
-        console.log('🇺🇸 No Russian in Accept-Language, using English');
         cookieStore.set(COOKIE_NAME, defaultLocale);
         return defaultLocale;
       }
     }
     
-    
-    console.log('🔍 No cookie found, setting default locale:', defaultLocale);
     cookieStore.set(COOKIE_NAME, defaultLocale);
     return defaultLocale;
   } catch (error) {

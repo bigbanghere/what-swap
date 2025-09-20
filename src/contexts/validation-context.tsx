@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 interface ValidationContextType {
   canAddMoreCharacters: (key: string) => boolean;
@@ -11,36 +11,35 @@ const ValidationContext = createContext<ValidationContextType | undefined>(undef
 
 export function ValidationProvider({ children }: { children: React.ReactNode }) {
   const [canAddMoreCharacters, setCanAddMoreCharacters] = useState<(key: string) => boolean>(() => (key: string) => true);
+  const functionRef = useRef<(key: string) => boolean>((key: string) => true);
 
-  // Wrapper for setCanAddMoreCharacters to add debugging
+  // Update ref when function changes
+  React.useEffect(() => {
+    functionRef.current = canAddMoreCharacters;
+  }, [canAddMoreCharacters]);
+
+  // Wrapper for setCanAddMoreCharacters
   const setCanAddMoreCharactersWithDebug = React.useCallback((fn: (key: string) => boolean) => {
-    console.log('🔧 setCanAddMoreCharacters called with:', typeof fn, fn);
     if (typeof fn !== 'function') {
-      console.log('🚨 ERROR: setCanAddMoreCharacters received non-function:', fn);
+      console.warn('🚨 ValidationProvider: setCanAddMoreCharacters received non-function:', typeof fn);
       return;
     }
     setCanAddMoreCharacters(fn);
   }, []);
 
-  // Add debugging to track when the function changes
-  React.useEffect(() => {
-    console.log('🔧 ValidationProvider: canAddMoreCharacters changed to:', typeof canAddMoreCharacters);
-    if (typeof canAddMoreCharacters !== 'function') {
-      console.log('🚨 ERROR: canAddMoreCharacters is not a function! Value:', canAddMoreCharacters);
-    }
-  }, [canAddMoreCharacters]);
-
-  // Wrapper function to ensure we always have a function
+  // Safe wrapper function that always works
   const safeCanAddMoreCharacters = React.useCallback((key: string) => {
-    console.log('🔍 safeCanAddMoreCharacters called with key:', key, 'canAddMoreCharacters type:', typeof canAddMoreCharacters);
-    if (typeof canAddMoreCharacters === 'function') {
-      const result = canAddMoreCharacters(key);
-      console.log('🔍 Validation result:', result);
-      return result;
+    try {
+      const currentFn = functionRef.current;
+      if (typeof currentFn === 'function') {
+        return currentFn(key);
+      }
+      return true; // Default to allowing input
+    } catch (error) {
+      console.warn('⚠️ ValidationProvider: Error in canAddMoreCharacters:', error);
+      return true;
     }
-    console.log('⚠️ canAddMoreCharacters is not a function, defaulting to true');
-    return true;
-  }, [canAddMoreCharacters]);
+  }, []);
 
   return (
     <ValidationContext.Provider value={{ canAddMoreCharacters: safeCanAddMoreCharacters, setCanAddMoreCharacters: setCanAddMoreCharactersWithDebug }}>
