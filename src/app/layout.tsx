@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react';
 import type { Metadata } from 'next';
-import { getLocale } from 'next-intl/server';
+import { getLocale } from '@/core/i18n/locale';
 
 import { Root } from '@/components/Root/Root';
 import { I18nProvider } from '@/core/i18n/provider';
@@ -17,7 +17,9 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {
+  console.log('🔍 RootLayout called (server-side) - THIS SHOULD APPEAR ON EVERY PAGE LOAD');
   const locale = await getLocale();
+  console.log('🔍 RootLayout locale:', locale);
 
   return (
     <html lang={locale} suppressHydrationWarning>

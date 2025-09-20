@@ -49,7 +49,6 @@ export async function init(options: {
             try {
               tp ||= retrieveLaunchParams().tgWebAppThemeParams;
             } catch (error) {
-              console.log('⚠️ Could not retrieve launch params for theme, using fallback');
               // Use fallback theme params
               tp = {
                 accent_text_color: '#6ab2f2',

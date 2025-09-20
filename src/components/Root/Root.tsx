@@ -13,8 +13,9 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorPage } from '@/components/ErrorPage';
 import { useDidMount } from '@/hooks/useDidMount';
 import { useSafeLaunchParams } from '@/hooks/use-safe-launch-params';
-import { setLocale, detectLocale } from '@/core/i18n/locale';
 import { useTheme } from '@/core/theme';
+import { useTelegramReady } from '@/hooks/use-telegram-ready';
+import { useLocaleReady } from '@/hooks/use-locale-ready';
 
 import './styles.css';
 import '@/core/theme/styles.css';
@@ -22,27 +23,20 @@ import '@/core/theme/styles.css';
 function RootInner({ children }: PropsWithChildren) {
   const { launchParams: lp } = useSafeLaunchParams();
   const { isDark } = useTheme();
-  const initDataUser = useSignal(initData.user);
+  const { isReady, isInTelegram, initDataUser, error, debugInfo } = useTelegramReady();
+  const { isLocaleReady, detectedLocale } = useLocaleReady();
+  
 
-  // Set the user locale based on Telegram user language or system language
+  // Log locale detection for debugging
   useEffect(() => {
-    if (initDataUser?.language_code) {
-      // Check if user has already set a locale preference
-      const hasUserLocale = 
-        document.cookie.includes('CUSTOM_LOCALE=') ||
-        document.cookie.includes('NEXT_LOCALE=') ||
-        document.cookie.includes('locale=') ||
-        localStorage.getItem('CUSTOM_LOCALE');
-      
-      if (!hasUserLocale) {
-        console.log('🔍 Setting initial locale from Telegram:', initDataUser.language_code);
-        const detectedLocale = detectLocale(initDataUser.language_code);
-        setLocale(detectedLocale).catch(console.error);
-      } else {
-        console.log('🔍 User has already set locale preference, keeping it');
-      }
+    if (isLocaleReady && detectedLocale) {
+      console.log('🔍 Locale detection complete:', {
+        detectedLocale,
+        isInTelegram,
+        currentCookies: document.cookie
+      });
     }
-  }, [initDataUser]);
+  }, [isLocaleReady, detectedLocale, isInTelegram]);
 
   return (
     <TonConnectUIProvider manifestUrl="https://whatever-zeta-two.vercel.app/tonconnect-manifest.json">
@@ -69,6 +63,16 @@ export function Root(props: PropsWithChildren) {
       <RootInner {...props} />
     </ErrorBoundary>
   ) : (
-    <div className="root__loading">Loading</div>
+    <div className="root__loading">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mb-4"></div>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+          Loading Telegram Mini App...
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Initializing connection to Telegram
+        </p>
+      </div>
+    </div>
   );
 }

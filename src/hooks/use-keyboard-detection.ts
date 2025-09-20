@@ -156,9 +156,7 @@ export function useKeyboardDetection() {
 
   // Separate function for input focus that doesn't affect viewport
   const setInputFocused = useCallback((focused: boolean) => {
-    console.log('🔍 setInputFocused called with:', focused, 'current globalInputFocused:', globalInputFocused, 'timestamp:', new Date().toISOString());
     globalInputFocused = focused;
-    console.log('🔍 globalInputFocused updated to:', globalInputFocused);
     
     // Handle TMA viewport expansion when input is focused
     if (focused && !isInBrowser) {
@@ -170,7 +168,6 @@ export function useKeyboardDetection() {
     }
     
     // Notify all listeners
-    console.log('🔍 Notifying', globalInputFocusedListeners.size, 'listeners about input focus change');
     globalInputFocusedListeners.forEach((listener) => {
       try {
         listener(focused);
@@ -220,13 +217,6 @@ export function useKeyboardDetection() {
   // Memoize the return object to prevent unnecessary re-renders
   const shouldBeCompact = useMemo(() => {
     const result = isInputFocused || (!isKeyboardOpen && !isViewportExpanded);
-    console.log('🔍 shouldBeCompact calculation:', {
-      isInputFocused,
-      isKeyboardOpen,
-      isViewportExpanded,
-      result,
-      timestamp: new Date().toISOString()
-    });
     return result;
   }, [isInputFocused, isKeyboardOpen, isViewportExpanded]);
 

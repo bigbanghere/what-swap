@@ -15,7 +15,6 @@ export function useSafeLaunchParams() {
     // For now, just use fallback values and mark as loaded
     // In a real Telegram Mini App, the launch params would be available
     // but for browser development, we use fallback values
-    console.log('⚠️ Using fallback launch params for browser development');
     setIsLoaded(true);
   }, []);
 

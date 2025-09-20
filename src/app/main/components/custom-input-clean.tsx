@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, memo, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 
 interface CustomInputProps {
   value: string;
@@ -13,12 +13,7 @@ interface CustomInputProps {
   onFocusChange?: (isFocused: boolean) => void;
 }
 
-interface CustomInputRef {
-  blur: () => void;
-  focus: () => void;
-}
-
-const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function CustomInput({
+const CustomInput = memo(function CustomInput({
   value,
   onChange,
   placeholder = '',
@@ -27,7 +22,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   maxLength,
   type = 'text',
   onFocusChange
-}, ref) {
+}: CustomInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
   const inputRef = useRef<HTMLDivElement>(null);
@@ -49,11 +44,9 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   // Helper function to set focus with justFocused protection
   const setFocusWithProtection = useCallback((clickTarget?: Element) => {
     const wasUnfocused = !isFocused;
-    console.log('🟢 setFocusWithProtection called - wasUnfocused:', wasUnfocused, 'current isFocused:', isFocused);
     
     shouldBeFocusedRef.current = true;
     setIsFocused(true);
-    console.log('🟢 setFocusWithProtection - set isFocused to true');
     
     if (wasUnfocused) {
       if (justFocusedTimeoutRef.current) {
@@ -70,20 +63,6 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
       }, 500);
     }
   }, [isFocused]);
-
-  // Expose blur and focus methods through ref
-  useImperativeHandle(ref, () => ({
-    blur: () => {
-      console.log('🔴 CustomInput blur() called - current isFocused:', isFocused);
-      shouldBeFocusedRef.current = false;
-      setIsFocused(false);
-      console.log('🔴 CustomInput blur() - set isFocused to false');
-    },
-    focus: () => {
-      console.log('🟢 CustomInput focus() called - current isFocused:', isFocused);
-      setFocusWithProtection();
-    }
-  }), [setFocusWithProtection, isFocused]);
 
   // Track when component has mounted
   useEffect(() => {
@@ -244,7 +223,6 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
       return;
     }
     
-    console.log('🟣 CustomInput focus state changed:', isFocused, 'calling onFocusChange');
     if (onFocusChange) {
       onFocusChange(Boolean(isFocused));
     }
@@ -616,6 +594,11 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
       </div>
     </>
   );
-}));
+});
 
 export { CustomInput };
+
+
+
+
+

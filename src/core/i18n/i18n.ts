@@ -5,8 +5,13 @@ import { getLocale } from './locale';
 import type { Locale } from './types';
 
 const i18nRequestConfig = getRequestConfig(async () => {
+  console.log('🔍 i18nRequestConfig called (server-side) - THIS SHOULD APPEAR ON EVERY PAGE LOAD');
+  
   try {
     const locale = (await getLocale()) as Locale;
+    console.log('🔍 Server-side detected locale:', locale);
+    console.log('🔍 Default locale:', defaultLocale);
+    console.log('🔍 Available locales:', locales);
     
     if (!locale || typeof locale !== 'string') {
       console.log('⚠️ Invalid locale, using default:', locale);
@@ -16,12 +21,22 @@ const i18nRequestConfig = getRequestConfig(async () => {
       };
     }
 
-    return {
+    const finalLocale = locale === defaultLocale || !locales.includes(locale) ? defaultLocale : locale;
+    console.log('🔍 Final server-side locale:', finalLocale);
+    console.log('🔍 Locale comparison:', {
       locale,
+      defaultLocale,
+      isDefault: locale === defaultLocale,
+      isInLocales: locales.includes(locale),
+      finalLocale
+    });
+    
+    return {
+      locale: finalLocale,
       messages:
-        locale === defaultLocale || !locales.includes(locale)
+        finalLocale === defaultLocale || !locales.includes(finalLocale)
           ? (await import(`@public/locales/${defaultLocale}.json`)).default
-          : (await import(`@public/locales/${locale}.json`)).default,
+          : (await import(`@public/locales/${finalLocale}.json`)).default,
     };
   } catch (error) {
     console.log('⚠️ Error in i18n config, using default:', error);

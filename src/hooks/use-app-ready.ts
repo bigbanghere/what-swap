@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSignal, miniApp, viewport } from '@telegram-apps/sdk-react';
 import { useKeyboardDetection } from './use-keyboard-detection';
+import { useLocaleReady } from './use-locale-ready';
 
 interface AppReadyState {
   isAppReady: boolean;
@@ -20,6 +21,9 @@ export function useAppReady(): AppReadyState {
   
   // Get keyboard detection
   const { isKeyboardOpen, isViewportExpanded, isInBrowser } = useKeyboardDetection();
+  
+  // Get locale detection
+  const { isLocaleReady, loadingReason: localeLoadingReason } = useLocaleReady();
 
   useEffect(() => {
     // Check if we're in a browser (not Telegram)
@@ -35,7 +39,7 @@ export function useAppReady(): AppReadyState {
       return;
     }
 
-    // If in Telegram, wait for theme and viewport to be ready
+    // If in Telegram, wait for theme, viewport, and locale to be ready
     setLoadingReason('Loading Telegram Mini App...');
     
     // Check if theme is ready (not undefined/null)
@@ -47,7 +51,10 @@ export function useAppReady(): AppReadyState {
     // Check if keyboard detection is stable
     const keyboardStable = !isKeyboardOpen; // Don't wait for keyboard to close
     
-    if (themeReady && viewportReady && keyboardStable) {
+    // Check if locale is ready
+    const localeReady = isLocaleReady;
+    
+    if (themeReady && viewportReady && keyboardStable && localeReady) {
       // Add a small delay to ensure everything is properly applied
       setTimeout(() => {
         setIsAppReady(true);
@@ -55,7 +62,9 @@ export function useAppReady(): AppReadyState {
       }, 100);
     } else {
       // Update loading reason based on what's not ready
-      if (!themeReady) {
+      if (!localeReady) {
+        setLoadingReason(localeLoadingReason || 'Detecting language...');
+      } else if (!themeReady) {
         setLoadingReason('Detecting theme...');
       } else if (!viewportReady) {
         setLoadingReason('Detecting viewport...');
@@ -63,13 +72,12 @@ export function useAppReady(): AppReadyState {
         setLoadingReason('Detecting keyboard state...');
       }
     }
-  }, [telegramIsDark, telegramIsExpanded, isKeyboardOpen, isViewportExpanded, isInBrowser]);
+  }, [telegramIsDark, telegramIsExpanded, isKeyboardOpen, isViewportExpanded, isInBrowser, isLocaleReady, localeLoadingReason]);
 
   // Fallback timeout - if we're still loading after 3 seconds, show the app anyway
   useEffect(() => {
     if (!isAppReady) {
       const timeout = setTimeout(() => {
-        console.log('⚠️ App ready timeout - showing app anyway');
         setIsAppReady(true);
         setLoadingReason('');
       }, 3000);

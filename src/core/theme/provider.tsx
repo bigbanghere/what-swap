@@ -34,7 +34,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Update theme based on Telegram's theme when using 'system'
   useEffect(() => {
     if (theme === 'system') {
-      setIsDark(telegramIsDark);
+      // Detect if we're on mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isInTelegram = window.location.search.includes('tgWebAppPlatform') || 
+                          window.location.hash.includes('tgWebAppPlatform') ||
+                          !!(window as any).Telegram?.WebApp;
+      
+      let detectedDark: boolean | undefined = undefined;
+      
+      // Mobile-specific theme detection
+      if (isMobile && isInTelegram) {
+        // For mobile Telegram, use media query detection as primary method
+        // Mobile Telegram apps often don't provide reliable theme info through SDK
+        const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        detectedDark = mediaQueryDark;
+      } else if (isInTelegram) {
+        // Desktop Telegram - use SDK value as primary method
+        detectedDark = telegramIsDark;
+        
+        // Fallback to media query if SDK value is undefined
+        if (detectedDark === undefined) {
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          detectedDark = mediaQueryDark;
+        }
+      } else {
+        // Not in Telegram - use media query
+        const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        detectedDark = mediaQueryDark;
+      }
+      
+      // Ensure we have a boolean value
+      const finalDark = !!detectedDark;
+      setIsDark(finalDark);
     } else {
       setIsDark(theme === 'dark');
     }

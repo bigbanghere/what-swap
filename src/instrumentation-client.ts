@@ -6,18 +6,15 @@ import { init } from './core/init';
 import { mockEnv } from './mockEnv';
 
 mockEnv().then(() => {
-  console.log('🎭 Mock environment ready, retrieving launch params...');
   // Add a small delay to ensure mock is fully applied
   setTimeout(() => {
     try {
       const launchParams = retrieveLaunchParams();
-      console.log('📱 Retrieved launch params:', launchParams);
       const { tgWebAppPlatform: platform } = launchParams;
       const debug =
         (launchParams.tgWebAppStartParam || '').includes('debug') ||
         process.env.NODE_ENV === 'development';
 
-      console.log('⚙️ Initializing app with:', { platform, debug });
       // Configure all application dependencies.
       init({
         debug,
@@ -25,7 +22,6 @@ mockEnv().then(() => {
         mockForMacOS: platform === 'macos',
       });
     } catch (e) {
-      console.log('⚠️ Error retrieving launch params, using fallback initialization:', e);
       // Fallback initialization for browser environment
       init({
         debug: process.env.NODE_ENV === 'development',
@@ -35,7 +31,6 @@ mockEnv().then(() => {
     }
   }, 100);
 }).catch((error) => {
-  console.log('⚠️ Error during mock environment setup, using fallback initialization:', error);
   // Fallback initialization if mockEnv fails
   init({
     debug: process.env.NODE_ENV === 'development',

@@ -40,43 +40,50 @@ export function CustomKeyboard() {
   ];
 
   return (
-    <div 
-      data-custom-keyboard
-      className='flex flex-1 p-[15px] relative'
+    <div className='flex flex-1 justify-center'
       style={{ 
         backgroundColor: 'rgba(26, 188, 255, 0.22)',
         borderTop: `1px solid #1ABCFF`,
       }}
     >
-      {/* <Image
-          src={isDark ? '/decor_dark.svg' : '/decor_light.svg'}
-          alt="Decorative pattern"
-          width={1012}
-          height={952}
-          className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
-          style={{ 
-            minWidth: '1012px',
-            minHeight: '952px',
-            width: '100%',
-            height: '100%'
-          }}
-      /> */}
-      <div className='flex-1 grid grid-cols-3 gap-[15px] relative z-10'>
-          {keys.flat().map((key, index) => (
-            <button
-              key={index}
-              onClick={() => handleKeyPress(key)}
-              className='flex items-center justify-center text-lg font-medium rounded-lg border hover:bg-gray-50 active:bg-gray-100 z-10'
-              style={{
-                backgroundColor: colors.background,
-                borderColor: "#1ABCFF",
-                color: "#1ABCFF",
-              }}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
+      <div 
+        data-custom-keyboard
+        className='flex flex-1 p-[15px] relative'
+        style={{ 
+          maxWidth: "460px",
+          maxHeight: "460px",
+        }}
+      >
+        {/* <Image
+            src={isDark ? '/decor_dark.svg' : '/decor_light.svg'}
+            alt="Decorative pattern"
+            width={1012}
+            height={952}
+            className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
+            style={{ 
+              minWidth: '1012px',
+              minHeight: '952px',
+              width: '100%',
+              height: '100%'
+            }}
+        /> */}
+        <div className='flex-1 grid grid-cols-3 gap-[15px] relative z-10'>
+            {keys.flat().map((key, index) => (
+              <button
+                key={index}
+                onClick={() => handleKeyPress(key)}
+                className='flex items-center justify-center text-[22px] font-medium rounded-lg border hover:bg-gray-50 active:bg-gray-100 z-10'
+                style={{
+                  backgroundColor: colors.background,
+                  borderColor: "#1ABCFF",
+                  color: "#1ABCFF",
+                }}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+      </div>
     </div>
   );
 }

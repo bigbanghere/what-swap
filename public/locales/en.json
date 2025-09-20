@@ -4,6 +4,8 @@
     "get": "Get",
     "connect": "Connect",
     "disconnect": "Disconnect",
-    "copy_address": "Copy address"
+    "copy_address": "Copy address",
+    "send": "Send",
+    "max": "MAX"
   }
 }

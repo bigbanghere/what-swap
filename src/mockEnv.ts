@@ -25,14 +25,12 @@ if (typeof window !== 'undefined') {
   (window as any).setExpanded = (expanded: boolean) => {
     mockViewportExpanded = expanded;
     updateMockViewport();
-    console.log('🔄 Mock viewport set to:', expanded ? 'EXPANDED' : 'COMPACT');
   };
 }
 
 // It is important, to mock the environment only for development purposes. When building the
 // application, the code inside will be tree-shaken, so you will not see it in your final bundle.
 export async function mockEnv(): Promise<void> {
-  console.log('🔧 Initializing mock environment...');
   
   if (process.env.NODE_ENV !== 'development') {
     return;
@@ -40,10 +38,8 @@ export async function mockEnv(): Promise<void> {
 
   try {
     const isTma = await isTMA('complete');
-    console.log('🔍 TMA check result:', isTma);
     
     if (!isTma) {
-      console.log('🎭 Setting up mock environment...'); 
       const themeParams = {
         accent_text_color: '#6ab2f2',
         bg_color: '#17212b',
@@ -117,12 +113,9 @@ export async function mockEnv(): Promise<void> {
       console.info(
         '⚠️ As long as the current environment was not considered as the Telegram-based one, it was mocked. Take a note, that you should not do it in production and current behavior is only specific to the development process. Environment mocking is also applied only in development mode. So, after building the application, you will not see this behavior and related warning, leading to crashing the application outside Telegram.',
       );
-      console.log('✅ Mock environment setup complete');
     }
   } catch (error) {
-    console.log('⚠️ Error during TMA check, assuming browser environment:', error);
     // If we can't determine if we're in TMA, assume we're in browser and set up mock
-    console.log('🎭 Setting up mock environment for browser...'); 
     const themeParams = {
       accent_text_color: '#6ab2f2',
       bg_color: '#17212b',
@@ -177,6 +170,5 @@ export async function mockEnv(): Promise<void> {
       ]),
     });
 
-    console.log('✅ Mock environment setup complete for browser');
   }
 }

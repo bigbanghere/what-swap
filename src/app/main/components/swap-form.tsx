@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
@@ -16,27 +16,79 @@ export function SwapForm() {
     const { colors } = useTheme();
     const [fromAmount, setFromAmount] = useState<string>('1');
     const [toAmount, setToAmount] = useState<string>('1');
+    const [isFromAmountFocused, setIsFromAmountFocused] = useState<boolean>(false);
+    const [isToAmountFocused, setIsToAmountFocused] = useState<boolean>(false);
+    const fromAmountRef = useRef<{ blur: () => void; focus: () => void }>(null);
+    const toAmountRef = useRef<{ blur: () => void; focus: () => void }>(null);
     const { shouldBeCompact, setInputFocused } = useKeyboardDetection();
     const t = useTranslations('translations');
 
     const handleFocusChange = useCallback((isFocused: boolean) => {
-        console.log('🔍 SwapForm handleFocusChange called with:', isFocused, 'timestamp:', new Date().toISOString());
-        setInputFocused(isFocused);
+        console.log('🟦 FROM input focus change:', isFocused);
+        console.log('🟦 Current toAmount focused state:', isToAmountFocused);
+        console.log('🟦 toAmountRef.current:', toAmountRef.current);
+        
+        setIsFromAmountFocused(isFocused);
+        // Unfocus the other input when this one is focused
+        if (isFocused) {
+            console.log('🟦 FROM input focused - attempting to blur TO input');
+            setIsToAmountFocused(false);
+            // Blur the other input in the DOM
+            if (toAmountRef.current) {
+                console.log('🟦 Calling toAmountRef.current.blur()');
+                toAmountRef.current.blur();
+            } else {
+                console.log('🟦 toAmountRef.current is null!');
+            }
+        }
+        setInputFocused(isFocused || isToAmountFocused);
         
         // Clear default value when focusing
         if (isFocused && fromAmount === '1') {
-            console.log('🔍 Clearing default value fromAmount from "1" to ""');
             setFromAmount('');
         }
         // Reset to default value when unfocusing and empty
         else if (!isFocused && fromAmount === '') {
-            console.log('🔍 Resetting default value fromAmount from "" to "1"');
             setFromAmount('1');
         }
-    }, [setInputFocused, fromAmount]);
+    }, [setInputFocused, fromAmount, isToAmountFocused]);
 
     const handleFromAmountChange = useCallback((value: string) => {
         setFromAmount(value);
+    }, []);
+
+    const handleToAmountFocusChange = useCallback((isFocused: boolean) => {
+        console.log('🟨 TO input focus change:', isFocused);
+        console.log('🟨 Current fromAmount focused state:', isFromAmountFocused);
+        console.log('🟨 fromAmountRef.current:', fromAmountRef.current);
+        
+        setIsToAmountFocused(isFocused);
+        // Unfocus the other input when this one is focused
+        if (isFocused) {
+            console.log('🟨 TO input focused - attempting to blur FROM input');
+            setIsFromAmountFocused(false);
+            // Blur the other input in the DOM
+            if (fromAmountRef.current) {
+                console.log('🟨 Calling fromAmountRef.current.blur()');
+                fromAmountRef.current.blur();
+            } else {
+                console.log('🟨 fromAmountRef.current is null!');
+            }
+        }
+        setInputFocused(isFocused || isFromAmountFocused);
+        
+        // Clear default value when focusing
+        if (isFocused && toAmount === '1') {
+            setToAmount('');
+        }
+        // Reset to default value when unfocusing and empty
+        else if (!isFocused && toAmount === '') {
+            setToAmount('1');
+        }
+    }, [setInputFocused, toAmount, isFromAmountFocused]);
+
+    const handleToAmountChange = useCallback((value: string) => {
+        setToAmount(value);
     }, []);
 
     return (
@@ -45,7 +97,7 @@ export function SwapForm() {
                 ${shouldBeCompact ? '' : 'mb-[22px]'}
             `}
             style={{
-                maxWidth: shouldBeCompact ? '100%' : '460px',
+                maxWidth: '460px',
                 padding: shouldBeCompact ? '0' : '20px'
             }}
         >
@@ -71,27 +123,29 @@ export function SwapForm() {
                 <div className='z-20 w-full p-[15px] flex flex-col'>
                     <div className='flex flex-row items-center justify-between'>
                         <div className='flex flex-row w-full items-center gap-[5px]'>
-                            <div style={{ width: shouldBeCompact ? '25px' : '0px', height: '20px', overflow: 'hidden', transition: 'width 0.2s ease' }}>
-                                <Image
-                                    src="/logo_sign.svg"
-                                    alt="sign"
-                                    width="25"
-                                    height="20"
-                                    style={{
-                                        width: '25px !important',
-                                        height: '20px !important',
-                                        minWidth: '25px',
-                                        minHeight: '20px',
-                                        maxWidth: '25px',
-                                        maxHeight: '20px',
-                                        display: 'block',
-                                    }}
-                                />
-                            </div>
-                            Send
+                            {shouldBeCompact && (
+                                <div style={{ width: '25px', height: '20px', overflow: 'hidden', transition: 'width 0.2s ease' }}>
+                                    <Image
+                                        src="/logo_sign.svg"
+                                        alt="sign"
+                                        width="25"
+                                        height="20"
+                                        style={{
+                                            width: '25px !important',
+                                            height: '20px !important',
+                                            minWidth: '25px',
+                                            minHeight: '20px',
+                                            maxWidth: '25px',
+                                            maxHeight: '20px',
+                                            display: 'block',
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {t('send')}
                         </div>
                         {walletAddress ? <div className='text-[#1ABCFF]'>
-                            MAX
+                            {t('max')}
                         </div> : null}
                         <div className='w-full flex justify-end gap-[5px]'>
                             <div 
@@ -175,6 +229,7 @@ export function SwapForm() {
                     <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
                         <CustomInput
                             key="from-amount-input"
+                            ref={fromAmountRef}
                             value={fromAmount}
                             onChange={handleFromAmountChange}
                             className='w-full text-[#1ABCFF] text-[33px]'
@@ -244,7 +299,7 @@ export function SwapForm() {
                         <div className='h-[1px] w-full bg-[#1ABCFF]'></div>
                     </div>
                     <div className='flex flex-row items-center justify-between'>
-                        Get
+                        {t('get')}
                         <div className='w-full flex justify-end gap-[5px]'>
                             <div 
                                 className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF]'
@@ -325,9 +380,16 @@ export function SwapForm() {
                         </div>
                     </div>
                     <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
-                        <div className='w-full text-[#1ABCFF] text-[33px]'>
-                            0.31
-                        </div>
+                        <CustomInput
+                            key="to-amount-input"
+                            ref={toAmountRef}
+                            value={toAmount}
+                            onChange={handleToAmountChange}
+                            className='w-full text-[#1ABCFF] text-[33px]'
+                            type='number'
+                            placeholder='0'
+                            onFocusChange={handleToAmountFocusChange}
+                        />
                         <div className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px]'>
                             <Image
                                 src="/usdt.svg"
