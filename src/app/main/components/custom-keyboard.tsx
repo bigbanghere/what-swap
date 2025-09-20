@@ -63,50 +63,60 @@ export function CustomKeyboard() {
       const currentValue = (focusedInput as HTMLElement).textContent || '';
       const containerWidth = focusedInput.getBoundingClientRect().width;
       
-      // Calculate what the new value would be
-      const testValue = currentValue + key;
-      
-      // Calculate optimal font size for the test value using the same method as CustomInput
-      const tempElement = document.createElement('div');
-      tempElement.style.fontSize = '33px';
-      tempElement.style.lineHeight = '1';
-      tempElement.style.visibility = 'hidden';
-      tempElement.style.position = 'absolute';
-      tempElement.style.whiteSpace = 'nowrap';
-      tempElement.style.fontFamily = 'inherit';
-      tempElement.style.fontWeight = 'inherit';
-      tempElement.style.fontStyle = 'inherit';
-      document.body.appendChild(tempElement);
-      
-      tempElement.textContent = testValue;
-      const textWidth = tempElement.getBoundingClientRect().width;
-      document.body.removeChild(tempElement);
-      
-      // Use the same calculation as CustomInput: 100% of container width minus 20px buffer
-      const availableWidth = containerWidth - 20;
-      
-      let optimalSize;
-      if (textWidth <= availableWidth) {
-        optimalSize = 33; // maxFontSize
+      if (key === 'backspace' || key === '⌫') {
+        // For backspace: red if nothing to erase, blue if something to erase
+        canAdd = currentValue.length > 0;
+        console.log('🔍 Backspace validation:', { 
+          key, 
+          currentValue, 
+          canAdd
+        });
       } else {
-        const scaleFactor = availableWidth / textWidth;
-        const calculatedFontSize = Math.floor(33 * scaleFactor);
-        optimalSize = Math.max(calculatedFontSize, 14); // minFontSize
+        // For number keys: check if we can add more characters
+        const testValue = currentValue + key;
+        
+        // Calculate optimal font size for the test value using the same method as CustomInput
+        const tempElement = document.createElement('div');
+        tempElement.style.fontSize = '33px';
+        tempElement.style.lineHeight = '1';
+        tempElement.style.visibility = 'hidden';
+        tempElement.style.position = 'absolute';
+        tempElement.style.whiteSpace = 'nowrap';
+        tempElement.style.fontFamily = 'inherit';
+        tempElement.style.fontWeight = 'inherit';
+        tempElement.style.fontStyle = 'inherit';
+        document.body.appendChild(tempElement);
+        
+        tempElement.textContent = testValue;
+        const textWidth = tempElement.getBoundingClientRect().width;
+        document.body.removeChild(tempElement);
+        
+        // Use the same calculation as CustomInput: 100% of container width minus 20px buffer
+        const availableWidth = containerWidth - 20;
+        
+        let optimalSize;
+        if (textWidth <= availableWidth) {
+          optimalSize = 33; // maxFontSize
+        } else {
+          const scaleFactor = availableWidth / textWidth;
+          const calculatedFontSize = Math.floor(33 * scaleFactor);
+          optimalSize = Math.max(calculatedFontSize, 14); // minFontSize
+        }
+        
+        // Check if adding this character would make font size drop below 14px
+        canAdd = optimalSize > 14;
+        
+        console.log('🔍 Number key validation:', { 
+          key, 
+          currentValue, 
+          testValue, 
+          containerWidth, 
+          availableWidth, 
+          textWidth, 
+          optimalSize, 
+          canAdd 
+        });
       }
-      
-      // Check if adding this character would make font size drop below 14px
-      canAdd = optimalSize > 14;
-      
-      console.log('🔍 Direct validation:', { 
-        key, 
-        currentValue, 
-        testValue, 
-        containerWidth, 
-        availableWidth, 
-        textWidth, 
-        optimalSize, 
-        canAdd 
-      });
     } else {
       console.log('🔍 No focused input found, allowing input');
     }
