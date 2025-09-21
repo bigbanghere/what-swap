@@ -69,6 +69,8 @@ class SwapCoffeeApiClient {
       });
     }
 
+    console.log(`🔗 Final API URL: ${url.toString()}`);
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -95,7 +97,7 @@ class SwapCoffeeApiClient {
       verification,
       label_id,
       page = 1,
-      size = 100,
+      size = 100, // Changed back to 100 for proper API pagination
     } = params;
 
     const queryParams: Record<string, any> = {
@@ -119,7 +121,7 @@ class SwapCoffeeApiClient {
   }
 
   async getJettonsPaginated(params: JettonsParams = {}): Promise<JettonsResponse> {
-    const { page = 1, size = 100 } = params;
+    const { page = 1, size = 100 } = params; // Changed back to 100 for proper API pagination
     
     console.log(`🌐 API Request: Fetching page ${page} with size ${size}`, params);
     
@@ -134,6 +136,16 @@ class SwapCoffeeApiClient {
       size,
       hasMore: jettons.length === size, // If we got exactly the requested size, there might be more
     };
+  }
+
+  async getJettonByAddress(address: string): Promise<Jetton> {
+    console.log(`🌐 API Request: Fetching jetton by address ${address}`);
+    
+    const jetton = await this.request<Jetton>(`/jettons/${address}`);
+    
+    console.log(`✅ API Response: Received jetton data for ${jetton.symbol} (${jetton.name})`);
+    
+    return jetton;
   }
 }
 

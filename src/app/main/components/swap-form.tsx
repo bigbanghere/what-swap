@@ -12,8 +12,11 @@ import { CustomTonConnectButton } from "./full-tc-button";
 import { CustomInput } from "./custom-input";
 import { useValidation } from "@/contexts/validation-context";
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useDefaultTokens } from '@/hooks/use-default-tokens';
 
 export function SwapForm() {
+    const router = useRouter();
     const walletAddress = useTonAddress();
     const { colors } = useTheme();
     const [fromAmount, setFromAmount] = useState<string>('1');
@@ -27,19 +30,339 @@ export function SwapForm() {
     const { shouldBeCompact, setInputFocused } = useKeyboardDetection();
     const t = useTranslations('translations');
     const { setCanAddMoreCharacters } = useValidation();
+    const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
 
-    // Load selected tokens from localStorage on component mount
+    // Only reset to default tokens on actual page refresh, not on navigation
     useEffect(() => {
-        const fromToken = localStorage.getItem('selectedFromToken');
-        const toToken = localStorage.getItem('selectedToToken');
         
-        if (fromToken) {
-            setSelectedFromToken(JSON.parse(fromToken));
+        // Simplified logic: Check if we're in the middle of token selection process
+        const isTokenSelectionProcess = () => {
+            // Check if we're coming from the tokens page (navigation)
+            const fromTokensPage = sessionStorage.getItem('fromTokensPage');
+            if (fromTokensPage === 'true') {
+                console.log('🔄 SwapForm: Detected navigation from tokens page - token selection process');
+                return true;
+            }
+            
+            // Check if we're in the middle of asset selection process
+            const inAssetSelection = sessionStorage.getItem('inAssetSelection');
+            if (inAssetSelection === 'true') {
+                console.log('🔄 SwapForm: Detected asset selection process - token selection process');
+                return true;
+            }
+            
+            // Check if we're coming from the tokens page via referrer
+            if (document.referrer && document.referrer.includes('/tokens')) {
+                console.log('🔄 SwapForm: Detected navigation from tokens page via referrer - token selection process');
+                return true;
+            }
+            
+            
+            // If none of the above, this is a page refresh or regular navigation
+            console.log('🔄 SwapForm: No token selection process detected - page refresh or regular navigation');
+            return false;
+        };
+        
+        // Check if this is a page reload and clear the processed flag if so
+        const isPageReload = () => {
+            // First check for actual page reload indicators (prioritize these)
+            
+            // Check if this is a hard refresh (F5, Ctrl+R, etc.)
+            if (performance.navigation && performance.navigation.type === 1) {
+                console.log('🔄 SwapForm: Performance navigation type 1 - page reload detected');
+                return true;
+            }
+            
+            // Check if the page was loaded via reload
+            const navigationEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+            if (navigationEntries.length > 0 && navigationEntries[0].type === 'reload') {
+                console.log('🔄 SwapForm: Navigation type reload - page reload detected');
+                return true;
+            }
+            
+            // Check if there's no referrer (direct page load or refresh)
+            if (!document.referrer) {
+                console.log('🔄 SwapForm: No referrer - page reload detected');
+                return true;
+            }
+            
+            // Only then check for navigation indicators (these are secondary)
+            
+            // Check if we're coming from the tokens page (navigation)
+            const fromTokensPage = sessionStorage.getItem('fromTokensPage');
+            if (fromTokensPage === 'true') {
+                console.log('🔄 SwapForm: Coming from tokens page - not a page reload');
+                return false;
+            }
+            
+            // Check if we're in the middle of asset selection process
+            const inAssetSelection = sessionStorage.getItem('inAssetSelection');
+            if (inAssetSelection === 'true') {
+                console.log('🔄 SwapForm: In asset selection process - not a page reload');
+                return false;
+            }
+            
+            // Check if we're coming from the tokens page via referrer
+            if (document.referrer && document.referrer.includes('/tokens')) {
+                console.log('🔄 SwapForm: Coming from tokens page via referrer - not a page reload');
+                return false;
+            }
+            
+            return false;
+        };
+        
+        // If this is a page reload, clear the processed flag so we can process normally
+        if (isPageReload()) {
+            console.log('🔄 SwapForm: Page reload detected - clearing processed flag');
+            sessionStorage.removeItem('swapFormProcessed');
+            sessionStorage.removeItem('tokenSelectionProcessed');
+            console.log('🧹 SwapForm: Cleared token selection processed flag on page reload');
+            // Don't return here, continue with normal processing
         }
-        if (toToken) {
-            setSelectedToToken(JSON.parse(toToken));
+        
+        // Check if we've already processed a token selection in this session
+        const hasProcessedTokenSelection = sessionStorage.getItem('tokenSelectionProcessed');
+        if (hasProcessedTokenSelection && !isPageReload()) {
+            console.log('🔄 SwapForm: Token selection already processed in this session - skipping main processing');
+            
+            // Still try to load existing tokens from localStorage on navigation
+            try {
+                const storedFromToken = localStorage.getItem('selectedFromToken');
+                const storedToToken = localStorage.getItem('selectedToToken');
+                
+                if (storedFromToken) {
+                    const parsedToken = JSON.parse(storedFromToken);
+                    if (parsedToken && parsedToken.symbol && parsedToken.address) {
+                        setSelectedFromToken(parsedToken);
+                        console.log('✅ SwapForm: Loaded selectedFromToken from localStorage (skipped processing):', parsedToken.symbol);
+                    }
+                } else {
+                    console.log('🔄 SwapForm: No from token in localStorage (skipped processing)');
+                }
+                
+                if (storedToToken) {
+                    const parsedToken = JSON.parse(storedToToken);
+                    if (parsedToken && parsedToken.symbol && parsedToken.address) {
+                        setSelectedToToken(parsedToken);
+                        console.log('✅ SwapForm: Loaded selectedToToken from localStorage (skipped processing):', parsedToken.symbol);
+                    }
+                } else {
+                    console.log('🔄 SwapForm: No to token in localStorage (skipped processing)');
+                }
+            } catch (error) {
+                console.error('❌ SwapForm: Error loading tokens from localStorage (skipped processing):', error);
+            }
+            
+            return;
         }
-    }, []);
+        
+        // Check if we're coming from the tokens page but haven't processed yet
+        const fromTokensPage = sessionStorage.getItem('fromTokensPage');
+        if (fromTokensPage === 'true' && !hasProcessedTokenSelection) {
+            console.log('🔄 SwapForm: Coming from tokens page - not a page reload (second mount)');
+            // Don't clear the flag yet, let the first mount handle it
+        }
+        
+        const isTokenSelection = isTokenSelectionProcess();
+        
+        // Debug information
+        console.log('🔄 SwapForm: Token selection detection debug:', {
+            fromTokensPage: sessionStorage.getItem('fromTokensPage'),
+            inAssetSelection: sessionStorage.getItem('inAssetSelection'),
+            referrer: document.referrer,
+            localStorageFromToken: localStorage.getItem('selectedFromToken') ? 'exists' : 'null',
+            localStorageToToken: localStorage.getItem('selectedToToken') ? 'exists' : 'null',
+            isTokenSelection,
+            allSessionStorage: Object.fromEntries(
+                Array.from({ length: sessionStorage.length }, (_, i) => {
+                    const key = sessionStorage.key(i);
+                    return [key, sessionStorage.getItem(key || '')];
+                })
+            )
+        });
+        
+        if (isTokenSelection) {
+            console.log('🔄 SwapForm: Token selection process detected - preserving selected tokens');
+            
+            // Mark that we've processed a token selection in this session
+            sessionStorage.setItem('tokenSelectionProcessed', 'true');
+            console.log('🎯 SwapForm: Marked token selection as processed');
+            
+            // Don't clear the fromTokensPage flag yet - let the second mount also see it
+            // We'll clear it after a delay to ensure both mounts can process it
+            if (sessionStorage.getItem('fromTokensPage') === 'true') {
+                console.log('🧹 SwapForm: Keeping fromTokensPage flag for second mount');
+                // Clear the flag after a delay to ensure both mounts can process it
+                setTimeout(() => {
+                    sessionStorage.removeItem('fromTokensPage');
+                    console.log('🧹 SwapForm: Cleared fromTokensPage flag after delay');
+                }, 100);
+            }
+            
+            // Try to load existing tokens from localStorage
+            try {
+                const storedFromToken = localStorage.getItem('selectedFromToken');
+                const storedToToken = localStorage.getItem('selectedToToken');
+                
+                if (storedFromToken) {
+                    const parsedToken = JSON.parse(storedFromToken);
+                    if (parsedToken && parsedToken.symbol && parsedToken.address) {
+                        setSelectedFromToken(parsedToken);
+                        console.log('✅ SwapForm: Loaded selectedFromToken from localStorage:', parsedToken.symbol);
+                    }
+                } else {
+                    console.log('🔄 SwapForm: No from token in localStorage');
+                }
+                
+                if (storedToToken) {
+                    const parsedToken = JSON.parse(storedToToken);
+                    if (parsedToken && parsedToken.symbol && parsedToken.address) {
+                        setSelectedToToken(parsedToken);
+                        console.log('✅ SwapForm: Loaded selectedToToken from localStorage:', parsedToken.symbol);
+                    }
+                } else {
+                    console.log('🔄 SwapForm: No to token in localStorage');
+                }
+            } catch (error) {
+                console.error('❌ SwapForm: Error loading tokens from localStorage:', error);
+            }
+        } else {
+            console.log('🔄 SwapForm: No token selection process - resetting to default tokens');
+            
+            // Clear any existing tokens from localStorage on page refresh
+            localStorage.removeItem('selectedFromToken');
+            localStorage.removeItem('selectedToToken');
+            console.log('🧹 SwapForm: Cleared localStorage tokens on page refresh');
+            
+            // Clear session flags on page refresh
+            sessionStorage.removeItem('inAssetSelection');
+            sessionStorage.removeItem('fromTokensPage');
+            sessionStorage.removeItem('swapFormProcessed'); // Clear the processed flag so it can be processed again
+            console.log('🧹 SwapForm: Cleared session flags on page refresh');
+        }
+
+        // Listen for storage changes (when tokens are selected from tokens page)
+        const handleStorageChange = (e: StorageEvent) => {
+            console.log('🔄 SwapForm: Storage change detected', e.key, e.newValue);
+            if (e.key === 'selectedFromToken' && e.newValue) {
+                try {
+                    const parsedToken = JSON.parse(e.newValue);
+                    // Only update if the token has required properties
+                    if (parsedToken && parsedToken.symbol && parsedToken.address) {
+                        setSelectedFromToken(parsedToken);
+                        console.log('✅ SwapForm: Updated selectedFromToken from storage:', parsedToken.symbol);
+                    }
+                } catch (error) {
+                    console.error('❌ SwapForm: Error parsing from token from storage:', error);
+                }
+            }
+            if (e.key === 'selectedToToken' && e.newValue) {
+                try {
+                    const parsedToken = JSON.parse(e.newValue);
+                    // Only update if the token has required properties
+                    if (parsedToken && parsedToken.symbol && parsedToken.address) {
+                        setSelectedToToken(parsedToken);
+                        console.log('✅ SwapForm: Updated selectedToToken from storage:', parsedToken.symbol);
+                    }
+                } catch (error) {
+                    console.error('❌ SwapForm: Error parsing to token from storage:', error);
+                }
+            }
+        };
+
+        // Listen for custom events (for same-tab updates)
+        const handleTokenSelect = (e: CustomEvent) => {
+            console.log('🔄 SwapForm: Custom token selection event received', e);
+            console.log('🔄 SwapForm: Event detail:', e.detail);
+            console.log('🔄 SwapForm: Event detail type:', e.detail?.type);
+            console.log('🔄 SwapForm: Event detail token:', e.detail?.token);
+            
+            // Only process real tokens (with address), not test tokens
+            if (e.detail?.token?.address && e.detail?.token?.symbol) {
+                if (e.detail?.type === 'from' && e.detail?.token) {
+                    console.log('✅ SwapForm: Updating selectedFromToken from custom event');
+                    console.log('✅ SwapForm: New token:', e.detail.token.symbol, e.detail.token.name);
+                    setSelectedFromToken(e.detail.token);
+                    console.log('✅ SwapForm: Updated selectedFromToken from custom event');
+                }
+                if (e.detail?.type === 'to' && e.detail?.token) {
+                    console.log('✅ SwapForm: Updating selectedToToken from custom event');
+                    console.log('✅ SwapForm: New token:', e.detail.token.symbol, e.detail.token.name);
+                    setSelectedToToken(e.detail.token);
+                    console.log('✅ SwapForm: Updated selectedToToken from custom event');
+                }
+            } else {
+                console.log('⚠️ SwapForm: Ignoring invalid event (missing address or symbol)');
+            }
+        };
+
+        // Set up event listeners immediately
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('tokenSelected', handleTokenSelect as EventListener);
+
+        console.log('🔧 SwapForm: Event listeners added');
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('tokenSelected', handleTokenSelect as EventListener);
+        };
+    }, []); // Empty dependency array - only run on mount
+
+    // Debug: Log when selectedFromToken or selectedToToken changes
+    useEffect(() => {
+        console.log('🔄 SwapForm: selectedFromToken changed:', selectedFromToken);
+    }, [selectedFromToken]);
+
+    useEffect(() => {
+        console.log('🔄 SwapForm: selectedToToken changed:', selectedToToken);
+    }, [selectedToToken]);
+
+    // Ensure default tokens are set if no valid tokens are loaded
+    // This runs when default tokens are loaded from API or when token state changes
+    useEffect(() => {
+        // Don't set defaults if we're still loading the default tokens from API
+        if (defaultTokensLoading) {
+            console.log('🔄 SwapForm: Waiting for default tokens to load from API...');
+            return;
+        }
+
+        // Check if we need to set defaults - only if no tokens are loaded from localStorage
+        const fromTokenInStorage = localStorage.getItem('selectedFromToken');
+        const toTokenInStorage = localStorage.getItem('selectedToToken');
+        
+        // Only set defaults if there are no tokens in localStorage AND no valid tokens in state
+        const needsFromDefault = !fromTokenInStorage && (!selectedFromToken || !selectedFromToken.symbol || !selectedFromToken.address);
+        const needsToDefault = !toTokenInStorage && (!selectedToToken || !selectedToToken.symbol || !selectedToToken.address);
+
+        console.log('🔄 SwapForm: Default token check:', {
+            fromTokenInStorage: !!fromTokenInStorage,
+            toTokenInStorage: !!toTokenInStorage,
+            selectedFromToken: selectedFromToken?.symbol || 'null',
+            selectedToToken: selectedToToken?.symbol || 'null',
+            needsFromDefault,
+            needsToDefault
+        });
+
+        // Only set defaults if we actually need them and don't have valid tokens
+        if (needsFromDefault && defaultUsdt && (!selectedFromToken || !selectedFromToken.symbol)) {
+            console.log('🔄 SwapForm: Setting default from token (USDT) from API - no token in localStorage');
+            setSelectedFromToken({
+                symbol: defaultUsdt.symbol,
+                name: defaultUsdt.name,
+                image_url: defaultUsdt.image_url,
+                address: defaultUsdt.address
+            });
+        }
+        if (needsToDefault && defaultTon && (!selectedToToken || !selectedToToken.symbol)) {
+            console.log('🔄 SwapForm: Setting default to token (TON) from API - no token in localStorage');
+            setSelectedToToken({
+                symbol: defaultTon.symbol,
+                name: defaultTon.name,
+                image_url: defaultTon.image_url,
+                address: defaultTon.address
+            });
+        }
+    }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading]); // Include dependencies but logic prevents infinite loops
 
     // Create validation function for keyboard
     const canAddMoreCharacters = useCallback((key: string) => {
@@ -277,12 +600,37 @@ export function SwapForm() {
                             placeholder='0'
                             onFocusChange={handleFocusChange}
                         />
-                        <div className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px]'>
+                        <div 
+                            key={`from-token-${selectedFromToken?.address || 'default'}`}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('🎯 SwapForm: Token selection clicked!');
+                try {
+                    router.push('/tokens-fast?type=from');
+                    console.log('✅ SwapForm: Navigation to fast tokens page initiated');
+                } catch (error) {
+                    console.error('❌ SwapForm: Navigation error:', error);
+                    window.location.href = '/tokens-fast?type=from';
+                }
+                            }}
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] hover:bg-blue-50 transition-colors cursor-pointer select-none'
+                            style={{ 
+                                userSelect: 'none',
+                                WebkitUserSelect: 'none',
+                                MozUserSelect: 'none',
+                                msUserSelect: 'none',
+                                position: 'relative',
+                                zIndex: 10,
+                                pointerEvents: 'auto'
+                            }}
+                        >
                             <Image
-                                src="/usdt.svg"
-                                alt="sign"
+                                src={selectedFromToken?.image_url || defaultUsdt?.image_url || "/usdt.svg"}
+                                alt={selectedFromToken?.symbol || defaultUsdt?.symbol || "USDT"}
                                 width="20"
                                 height="20"
+                                priority
                                 style={{
                                     width: '20px !important',
                                     height: '20px !important',
@@ -291,10 +639,11 @@ export function SwapForm() {
                                     maxWidth: '20px',
                                     maxHeight: '20px',
                                     display: 'block',
+                                    borderRadius: '50%',
                                 }}
                             />
                             <span className='text-[#1ABCFF]'>
-                                USDT
+                                {selectedFromToken?.symbol || defaultUsdt?.symbol || "USDT"}
                             </span>
                             <MdKeyboardArrowRight 
                                 style={{
@@ -434,12 +783,37 @@ export function SwapForm() {
                             placeholder='0'
                             onFocusChange={handleToAmountFocusChange}
                         />
-                        <div className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px]'>
+                        <div 
+                            key={`to-token-${selectedToToken?.address || 'default'}`}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('🎯 SwapForm: To token selection clicked');
+                                try {
+                                    router.push('/tokens-fast?type=to');
+                                    console.log('✅ SwapForm: Navigation to tokens page initiated');
+                                } catch (error) {
+                                    console.error('❌ SwapForm: Navigation failed, using fallback', error);
+                                    window.location.href = '/tokens-fast?type=to';
+                                }
+                            }}
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] hover:bg-blue-50 transition-colors cursor-pointer select-none'
+                            style={{ 
+                                userSelect: 'none',
+                                WebkitUserSelect: 'none',
+                                MozUserSelect: 'none',
+                                msUserSelect: 'none',
+                                position: 'relative',
+                                zIndex: 10,
+                                pointerEvents: 'auto'
+                            }}
+                        >
                             <Image
-                                src="/usdt.svg"
-                                alt="sign"
+                                src={selectedToToken?.image_url || defaultTon?.image_url || "/ton.svg"}
+                                alt={selectedToToken?.symbol || defaultTon?.symbol || "TON"}
                                 width="20"
                                 height="20"
+                                priority
                                 style={{
                                     width: '20px !important',
                                     height: '20px !important',
@@ -448,10 +822,11 @@ export function SwapForm() {
                                     maxWidth: '20px',
                                     maxHeight: '20px',
                                     display: 'block',
+                                    borderRadius: '50%',
                                 }}
                             />
                             <span className='text-[#1ABCFF]'>
-                                USDT
+                                {selectedToToken?.symbol || defaultTon?.symbol || "TON"}
                             </span>
                             <MdKeyboardArrowRight 
                                 style={{

@@ -32,21 +32,23 @@ const TokenItem = memo(({
   >
     {/* Token Icon */}
     <div className="relative">
-      <img
-        src={token.image_url}
-        alt={token.symbol}
-        className="w-[30px] h-[30px] rounded-full"
-        loading="lazy"
-        onError={(e) => {
-          console.warn('Image failed to load (this should be rare after filtering):', token.image_url);
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          const fallback = target.nextElementSibling as HTMLElement;
-          if (fallback) fallback.style.display = 'flex';
-        }}
-      />
+      {token.image_url ? (
+        <img
+          src={token.image_url}
+          alt={token.symbol}
+          className="w-[30px] h-[30px] rounded-full"
+          loading="lazy"
+          onError={(e) => {
+            console.warn('Image failed to load:', token.image_url);
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const fallback = target.nextElementSibling as HTMLElement;
+            if (fallback) fallback.style.display = 'flex';
+          }}
+        />
+      ) : null}
       <div 
-        className="w-10 h-10 rounded-full items-center justify-center text-[14px] hidden"
+        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[12px] font-medium ${token.image_url ? 'hidden' : 'flex'}`}
         style={{ 
           backgroundColor: colors.inputBackground || '#f3f4f6',
           color: colors.text,
@@ -102,19 +104,30 @@ const TokenItem = memo(({
 TokenItem.displayName = 'TokenItem';
 
 export default function TokensPage() {
+  console.log('🎯 TokensPage: Component rendering');
   const router = useRouter();
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [tokenType, setTokenType] = useState<'from' | 'to'>('from');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
+  
+  console.log('🎯 TokensPage: State initialized', { tokenType, searchQuery, isInitialLoad });
 
   // Get token type from URL query params
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const type = urlParams.get('type') as 'from' | 'to';
-    if (type) {
-      setTokenType(type);
+    console.log('🎯 TokensPage: Getting token type from URL');
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const type = urlParams.get('type') as 'from' | 'to';
+      console.log('🎯 TokensPage: URL params', { type, search: window.location.search });
+      if (type) {
+        setTokenType(type);
+        console.log('✅ TokensPage: Token type set to', type);
+      }
+    } catch (error) {
+      console.error('❌ TokensPage: Error getting token type:', error);
     }
   }, []);
   
@@ -132,20 +145,36 @@ export default function TokensPage() {
     verification: ['WHITELISTED', 'COMMUNITY'],
   }), []);
 
+  console.log('🎯 TokensPage: About to call useTokensQuery');
   const {
-    tokens,
-    isLoading,
-    isLoadingMore,
-    error,
-    hasMore,
-    loadMore,
-    search: searchTokens,
+    tokens = [],
+    isLoading = false,
+    isLoadingMore = false,
+    error = null,
+    hasMore = false,
+    loadMore = () => {},
+    search: searchTokens = () => {},
   } = useTokensQuery(tokensQueryOptions);
+  
+  console.log('🎯 TokensPage: useTokensQuery result', { 
+    tokensCount: tokens.length, 
+    isLoading, 
+    error,
+    hasMore 
+  });
 
   // Handle debounced search
   useEffect(() => {
     searchTokens(debouncedSearch);
   }, [debouncedSearch, searchTokens]);
+
+  // Set initial load to false once we have data or error
+  useEffect(() => {
+    if (tokens.length > 0 || error) {
+      console.log('✅ TokensPage: Data loaded, hiding initial loading screen');
+      setIsInitialLoad(false);
+    }
+  }, [tokens.length, error]);
 
   // Handle search input change
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,21 +183,39 @@ export default function TokensPage() {
 
   // Handle token selection
   const handleTokenSelect = useCallback((token: Jetton) => {
-    // Store selected token in localStorage for the swap form to pick up
-    const tokenData = {
-      address: token.address,
-      symbol: token.symbol,
-      name: token.name,
-      decimals: token.decimals,
-      image_url: token.image_url,
-      verification: token.verification,
-    };
-    
-    const storageKey = tokenType === 'from' ? 'selectedFromToken' : 'selectedToToken';
-    localStorage.setItem(storageKey, JSON.stringify(tokenData));
-    
-    // Navigate back to the previous page
-    router.back();
+    try {
+      console.log('🎯 TokensPage: Token selected', { token, tokenType });
+      
+      // Store selected token in localStorage for the swap form to pick up
+      const tokenData = {
+        address: token.address,
+        symbol: token.symbol,
+        name: token.name,
+        decimals: token.decimals,
+        image_url: token.image_url,
+        verification: token.verification,
+      };
+      
+      const storageKey = tokenType === 'from' ? 'selectedFromToken' : 'selectedToToken';
+      localStorage.setItem(storageKey, JSON.stringify(tokenData));
+      console.log('💾 TokensPage: Saved to localStorage', { storageKey, tokenData });
+      
+      // Dispatch custom event for immediate update in swap form
+      const customEvent = new CustomEvent('tokenSelected', {
+        detail: {
+          type: tokenType,
+          token: tokenData
+        }
+      });
+      window.dispatchEvent(customEvent);
+      console.log('📡 TokensPage: Dispatched custom event', customEvent.detail);
+      
+      // Navigate back to the previous page
+      router.push('/');
+    } catch (error) {
+      console.error('❌ TokensPage: Error selecting token:', error);
+      router.push('/');
+    }
   }, [router, tokenType]);
 
   // Format token balance (placeholder - would need actual balance data)
@@ -202,21 +249,84 @@ export default function TokensPage() {
     if (!listRef.current || isLoadingMore || !hasMore) return;
 
     const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 200; // Increased trigger distance
 
     if (isNearBottom) {
+      console.log('🔄 TokensPage: Triggering load more via scroll');
       loadMore();
     }
   }, [loadMore, isLoadingMore, hasMore]);
 
+  console.log('🎯 TokensPage: About to render');
+  
+  // Show loading screen immediately for fast navigation
+  if (isInitialLoad && (isLoading || tokens.length === 0)) {
+    console.log('⏳ TokensPage: Showing initial loading screen');
+    return (
+      <Page back={true}>
+        <div 
+          className="min-h-screen flex flex-col items-center justify-center"
+          style={{ backgroundColor: colors.background }}
+        >
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-8"></div>
+            <h1 className="text-2xl font-bold mb-4" style={{ color: colors.text }}>
+              Loading Tokens...
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              {tokenType === 'from' ? 'Select token to send' : 'Select token to receive'}
+            </p>
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
+  // Simple fallback if there's an error
+  if (error) {
+    console.log('❌ TokensPage: Error detected, showing fallback');
+    return (
+      <Page back={true}>
+        <div 
+          className="min-h-screen flex flex-col items-center justify-center"
+          style={{ backgroundColor: colors.background }}
+        >
+          <h1 className="text-2xl font-bold mb-4" style={{ color: colors.text }}>
+            Select Token
+          </h1>
+          <p className="text-sm mb-4" style={{ color: colors.text }}>
+            Token type: {tokenType}
+          </p>
+          <p className="text-red-500 mb-4">Error loading tokens: {error}</p>
+          <button 
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Go Back
+          </button>
+        </div>
+      </Page>
+    );
+  }
+  
   return (
     <Page back={true}>
       <div 
         className="min-h-screen flex flex-col"
         style={{ backgroundColor: colors.background }}
       >
+        {/* Header */}
+        <div className="p-4 flex-shrink-0">
+          <h1 className="text-2xl font-bold mb-2" style={{ color: colors.text }}>
+            Select Token
+          </h1>
+          <p className="text-sm" style={{ color: colors.text }}>
+            Token type: {tokenType}
+          </p>
+        </div>
 
-      <div className="p-[15px] flex-shrink-0">
+        {/* Search Bar */}
+        <div className="p-[15px] flex-shrink-0">
         <div 
           className="relative flex items-center rounded-[15px] p-[15px]"
           style={{ border: '1px solid #1ABCFF' }}
@@ -320,17 +430,58 @@ export default function TokensPage() {
           ))
         )}
 
-        {/* Load More Indicator */}
-        {isLoadingMore && (
-          <div className="flex justify-center py-4">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-              <span 
-                className="text-sm"
-                style={{ color: colors.secondary || '#6b7280' }}
+        {/* Load More Button / Indicator */}
+        {hasMore && !isLoadingMore && (
+          <div className="flex flex-col items-center py-4 gap-2">
+            <div className="flex items-center gap-2 text-sm" style={{ color: colors.secondary || '#6b7280' }}>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span>Scroll down or tap to load more</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={loadMore}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+                style={{ 
+                  backgroundColor: colors.primary || '#3b82f6',
+                  color: 'white'
+                }}
               >
-                Loading more tokens...
-              </span>
+                Load More
+              </button>
+              <button
+                onClick={() => {
+                  console.log('🚀 Loading all tokens...');
+                  // This would need to be implemented in the hook
+                  loadMore();
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+                style={{ 
+                  backgroundColor: colors.secondary || '#6b7280',
+                  color: 'white'
+                }}
+              >
+                Load All
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading More Indicator */}
+        {isLoadingMore && (
+          <div className="flex justify-center py-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                <span 
+                  className="text-sm font-medium"
+                  style={{ color: colors.text }}
+                >
+                  Loading more tokens...
+                </span>
+              </div>
+              <div className="w-32 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full animate-pulse"></div>
+              </div>
             </div>
           </div>
         )}

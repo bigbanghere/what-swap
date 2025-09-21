@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
-const withNextIntl = createNextIntlPlugin('./src/core/i18n/i18n.ts');
+const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
 const nextConfig: NextConfig = {
   images: {
@@ -24,11 +24,17 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'cache.tonapi.io',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // Disable tracing to avoid permission issues
   experimental: {
-    instrumentationHook: false,
+    // clientInstrumentationHook: false, // This option is not valid in Next.js 15
   },
   // Disable source maps in development to avoid file generation issues
   productionBrowserSourceMaps: false,

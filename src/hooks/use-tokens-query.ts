@@ -38,38 +38,7 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
   const hasInitiallyLoaded = useRef(false);
   const fetchTokensRef = useRef<((page: number, search: string, append?: boolean) => Promise<void>) | undefined>();
 
-  // Function to validate if a token has a valid image URL
-  const isValidTokenImage = useCallback((token: Jetton): boolean => {
-    if (!token.image_url || token.image_url.trim() === '') {
-      console.log('❌ Token rejected - no image_url:', token.symbol);
-      return false;
-    }
-    
-    // Check if it's a valid URL format
-    try {
-      new URL(token.image_url);
-      return true;
-    } catch (error) {
-      console.log('❌ Token rejected - invalid URL:', token.symbol, token.image_url, error);
-      return false;
-    }
-  }, []);
-
-  // Function to filter out tokens without valid images
-  const filterValidTokens = useCallback((tokens: Jetton[]): Jetton[] => {
-    // Temporarily disable filtering to debug
-    console.log(`🔍 DEBUG: Received ${tokens.length} tokens, checking validity...`);
-    
-    const validTokens = tokens.filter(isValidTokenImage);
-    const invalidCount = tokens.length - validTokens.length;
-    
-    if (invalidCount > 0) {
-      console.log(`🚫 Filtered out ${invalidCount} tokens without valid images`);
-    }
-    
-    console.log(`✅ Returning ${validTokens.length} valid tokens`);
-    return validTokens;
-  }, [isValidTokenImage]);
+  // No filtering - show all tokens including those without images
 
   const fetchTokens = useCallback(async (page: number, search: string, append = false) => {
     try {
@@ -83,7 +52,7 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
       const params: JettonsParams = {
         page,
         size: initialPageSize,
-        verification,
+        verification: ['WHITELISTED'],
         ...(label_id && { label_id }),
         ...(search && { search }),
       };
@@ -93,19 +62,18 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
       console.log(`📊 Fetched ${response.data.length} tokens (page ${page}, size ${initialPageSize})`);
       console.log(`📈 Total tokens so far: ${append ? 'appending to existing' : 'replacing all'}`);
       
-      // Filter out tokens without valid images
-      const validTokens = filterValidTokens(response.data);
-      console.log(`✅ After filtering: ${validTokens.length} valid tokens (removed ${response.data.length - validTokens.length} invalid)`);
+      // No filtering - use all tokens as received
+      console.log(`✅ Using all ${response.data.length} tokens (no filtering)`);
       
       if (append) {
         setTokens(prev => {
-          const newTokens = [...prev, ...validTokens];
+          const newTokens = [...prev, ...response.data];
           console.log(`📊 Total tokens after append: ${newTokens.length}`);
           return newTokens;
         });
       } else {
-        setTokens(validTokens);
-        console.log(`📊 Total tokens after replace: ${validTokens.length}`);
+        setTokens(response.data);
+        console.log(`📊 Total tokens after replace: ${response.data.length}`);
       }
       
       setHasMore(response.hasMore);
@@ -118,7 +86,7 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [initialPageSize, verification, label_id, filterValidTokens]);
+  }, [initialPageSize, verification, label_id]);
 
   // Update ref whenever fetchTokens changes
   useEffect(() => {
@@ -145,10 +113,9 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
           ...(label_id && { label_id }),
         });
         
-        // Filter out tokens without valid images
-        const validTokens = filterValidTokens(response.data);
-        allTokens = [...allTokens, ...validTokens];
-        console.log(`✅ Page ${currentPage}: Got ${response.data.length} tokens, ${validTokens.length} valid (Total so far: ${allTokens.length})`);
+        // No filtering - use all tokens
+        allTokens = [...allTokens, ...response.data];
+        console.log(`✅ Page ${currentPage}: Got ${response.data.length} tokens (Total so far: ${allTokens.length})`);
         
         hasMorePages = response.hasMore;
         currentPage++;
@@ -164,11 +131,11 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
       }
     }
     
-    console.log(`🎉 Finished fetching all pages. Total valid tokens: ${allTokens.length}`);
+    console.log(`🎉 Finished fetching all pages. Total tokens: ${allTokens.length}`);
     setTokens(allTokens);
     setHasMore(false); // No more pages to load
     setCurrentPage(currentPage - 1);
-  }, [initialPageSize, verification, label_id, filterValidTokens]);
+  }, [initialPageSize, verification, label_id]);
 
   const loadMore = useCallback(() => {
     if (!isLoadingMore && hasMore) {
@@ -199,13 +166,14 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
     fetchTokens(1, currentSearch, false);
   }, [fetchTokens, currentSearch]);
 
-  // Initial load - fetch all pages automatically
+  // Initial load - fetch only first page for fast loading
   useEffect(() => {
     if (!hasInitiallyLoaded.current && fetchTokensRef.current) {
       hasInitiallyLoaded.current = true;
-      fetchAllPages();
+      console.log('🚀 Initial load: Fetching first page only for fast loading');
+      fetchTokens(1, '', false);
     }
-  }, [fetchAllPages]); // Include fetchAllPages dependency
+  }, [fetchTokens]);
 
   // Handle search query changes
   useEffect(() => {
@@ -216,14 +184,14 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
       setHasMore(true);
       
       if (searchQuery.trim() === '') {
-        // If search is empty, fetch all pages
-        fetchAllPages();
+        // If search is empty, fetch only first page for fast loading
+        fetchTokens(1, '', false);
       } else {
         // If searching, fetch only first page for search results
         fetchTokens(1, searchQuery, false);
       }
     }
-  }, [searchQuery, currentSearch, fetchTokens, fetchAllPages]);
+  }, [searchQuery, currentSearch, fetchTokens]);
 
   return {
     tokens,

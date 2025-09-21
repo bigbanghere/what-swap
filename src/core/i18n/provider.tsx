@@ -1,15 +1,29 @@
+'use client';
+
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
-import React from 'react';
 
 import { timeZone } from './config';
 
-const I18nProvider: React.FC<React.PropsWithChildren> = async ({
+const I18nProvider = ({
   children,
+}: {
+  children: any;
 }) => {
-  const messages = await getMessages();
+  // Use static messages for now to avoid server/client issues
+  const messages = {
+    translations: {
+      swap_tokens: "Swap tokens",
+      get: "Get",
+      connect: "Connect",
+      disconnect: "Disconnect",
+      copy_address: "Copy address",
+      send: "Send",
+      max: "MAX"
+    }
+  };
+
   return (
-    <NextIntlClientProvider messages={messages} timeZone={timeZone}>
+    <NextIntlClientProvider locale="en" messages={messages} timeZone={timeZone}>
       {children}
     </NextIntlClientProvider>
   );

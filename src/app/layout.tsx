@@ -1,12 +1,13 @@
 import type { PropsWithChildren } from 'react';
 import type { Metadata } from 'next';
-import { getLocale } from '@/core/i18n/locale';
 import { Analytics } from "@vercel/analytics/next"
 
 import { Root } from '@/components/Root/Root';
 import { I18nProvider } from '@/core/i18n/provider';
 import { ThemeProvider } from '@/core/theme/provider';
 import { ValidationProvider } from '@/contexts/validation-context';
+import { QueryProvider } from '@/providers/query-provider';
+import { TokenCacheInitializer } from '@/components/TokenCacheInitializer';
 
 import '@telegram-apps/telegram-ui/dist/styles.css';
 import 'normalize.css/normalize.css';
@@ -18,11 +19,9 @@ export const metadata: Metadata = {
   description: 'Your application description goes here',
 };
 
-export default async function RootLayout({ children }: PropsWithChildren) {
-  const locale = await getLocale();
-
+export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -34,9 +33,12 @@ export default async function RootLayout({ children }: PropsWithChildren) {
       <body>
         <I18nProvider>
           <ThemeProvider>
-            <ValidationProvider>
-              <Root>{children}<Analytics /></Root>
-            </ValidationProvider>
+            <QueryProvider>
+              <ValidationProvider>
+                <TokenCacheInitializer />
+                <Root>{children}<Analytics /></Root>
+              </ValidationProvider>
+            </QueryProvider>
           </ThemeProvider>
         </I18nProvider>
       </body>

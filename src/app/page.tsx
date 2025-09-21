@@ -7,6 +7,7 @@ import { Footer } from './main/components/footer';
 import { useTheme } from '@/core/theme';
 import { CustomKeyboard } from './main/components/custom-keyboard';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
+import { BackgroundLoadingIndicator } from '@/components/BackgroundLoadingIndicator';
 
 export default function Home() {
   const { colors } = useTheme();
@@ -23,7 +24,7 @@ export default function Home() {
       <Swap />
       <Footer />
       {isInputFocused ? <CustomKeyboard /> : null}
-      
+      <BackgroundLoadingIndicator />
     </div>
   );
 }

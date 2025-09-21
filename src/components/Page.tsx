@@ -11,20 +11,35 @@ export function Page({ children, back = true }: PropsWithChildren<{
    */
   back?: boolean
 }>) {
+  console.log('🎯 Page: Component rendering', { back });
   const router = useRouter();
 
   useEffect(() => {
-    if (back) {
-      backButton.show();
-    } else {
-      backButton.hide();
+    console.log('🎯 Page: Setting up backButton', { back });
+    try {
+      if (back) {
+        console.log('🎯 Page: Showing backButton');
+        backButton.show();
+      } else {
+        console.log('🎯 Page: Hiding backButton');
+        backButton.hide();
+      }
+    } catch (error) {
+      console.error('❌ Page: Error with backButton:', error);
     }
   }, [back]);
 
   useEffect(() => {
-    return backButton.onClick(() => {
-      router.back();
-    });
+    console.log('🎯 Page: Setting up backButton onClick');
+    try {
+      return backButton.onClick(() => {
+        console.log('🎯 Page: Back button clicked, navigating to /');
+        // Always navigate to main page instead of using browser history
+        router.push('/');
+      });
+    } catch (error) {
+      console.error('❌ Page: Error setting up backButton onClick:', error);
+    }
   }, [router]);
 
   return <>{children}</>;
