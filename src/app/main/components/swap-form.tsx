@@ -346,25 +346,70 @@ export function SwapForm() {
         });
 
         // Only set defaults if we actually need them and don't have valid tokens
-        if (needsFromDefault && defaultUsdt && (!selectedFromToken || !selectedFromToken.symbol)) {
-            console.log('🔄 SwapForm: Setting default from token (USDT) from API - no token in localStorage');
+        if (needsFromDefault && defaultTon && (!selectedFromToken || !selectedFromToken.symbol)) {
+            console.log('🔄 SwapForm: Setting default from token (TON) from API - no token in localStorage');
             setSelectedFromToken({
-                symbol: defaultUsdt.symbol,
-                name: defaultUsdt.name,
-                image_url: defaultUsdt.image_url,
-                address: defaultUsdt.address
-            });
-        }
-        if (needsToDefault && defaultTon && (!selectedToToken || !selectedToToken.symbol)) {
-            console.log('🔄 SwapForm: Setting default to token (TON) from API - no token in localStorage');
-            setSelectedToToken({
                 symbol: defaultTon.symbol,
                 name: defaultTon.name,
                 image_url: defaultTon.image_url,
                 address: defaultTon.address
             });
         }
+        if (needsToDefault && defaultUsdt && (!selectedToToken || !selectedToToken.symbol)) {
+            console.log('🔄 SwapForm: Setting default to token (USDT) from API - no token in localStorage');
+            setSelectedToToken({
+                symbol: defaultUsdt.symbol,
+                name: defaultUsdt.name,
+                image_url: defaultUsdt.image_url,
+                address: defaultUsdt.address
+            });
+        }
     }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading]); // Include dependencies but logic prevents infinite loops
+
+    // Function to get prioritized tokens for shortcuts (exclude TON and USDT)
+    const getPrioritizedTokens = useCallback((excludeToken: any) => {
+        if (!allTokens || allTokens.length === 0) {
+            return [];
+        }
+
+        // Find TON and USDT tokens from the cache to exclude them
+        const tonToken = allTokens.find(token => 
+            token.symbol === 'TON' && token.verification === 'WHITELISTED'
+        );
+        const usdtToken = allTokens.find(token => 
+            token.symbol === 'USDT' && token.verification === 'WHITELISTED'
+        );
+
+        // Filter out the excluded token, TON, and USDT
+        const filteredTokens = allTokens.filter(token => 
+            token.address !== excludeToken?.address &&
+            token.address !== tonToken?.address &&
+            token.address !== usdtToken?.address
+        );
+
+        // Sort by verification status and market cap
+        const sortedTokens = filteredTokens
+            .sort((a, b) => {
+                // Prioritize WHITELISTED tokens
+                if (a.verification === 'WHITELISTED' && b.verification !== 'WHITELISTED') return -1;
+                if (b.verification === 'WHITELISTED' && a.verification !== 'WHITELISTED') return 1;
+                
+                // Then sort by market cap (higher first)
+                const aMarketCap = a.market_cap || 0;
+                const bMarketCap = b.market_cap || 0;
+                return bMarketCap - aMarketCap;
+            })
+            .slice(0, 4);
+
+        return sortedTokens.map(token => ({
+            symbol: token.symbol,
+            image_url: token.image_url,
+            address: token.address,
+            name: token.name,
+            decimals: token.decimals,
+            verification: token.verification
+        }));
+    }, [allTokens]);
 
     // Function to get top 4 tokens excluding the fromToken
     const getTop4TokensExcludingFrom = useCallback(() => {
@@ -378,13 +423,11 @@ export function SwapForm() {
             ];
         }
 
-        // Filter out the fromToken and get top 4 tokens
-        const filteredTokens = allTokens.filter(token => 
-            token.address !== selectedFromToken?.address
-        );
-
-        // If we have less than 4 tokens after filtering, pad with fallback tokens
-        if (filteredTokens.length < 4) {
+        // Use prioritized tokens (USDT and TON get priority)
+        const prioritizedTokens = getPrioritizedTokens(selectedFromToken);
+        
+        // If we have less than 4 tokens, pad with fallback tokens
+        if (prioritizedTokens.length < 4) {
             const fallbackTokens = [
                 { symbol: "STON", image_url: "/ston.svg", address: "fallback-ston", name: "STON", decimals: 9, verification: "COMMUNITY" as const },
                 { symbol: "NOT", image_url: "/not.svg", address: "fallback-not", name: "NOT", decimals: 9, verification: "COMMUNITY" as const },
@@ -392,7 +435,7 @@ export function SwapForm() {
                 { symbol: "DUCK", image_url: "/duck.svg", address: "fallback-duck", name: "DUCK", decimals: 9, verification: "COMMUNITY" as const }
             ];
             
-            const result = [...filteredTokens];
+            const result = [...prioritizedTokens];
             let fallbackIndex = 0;
             
             while (result.length < 4 && fallbackIndex < fallbackTokens.length) {
@@ -407,26 +450,8 @@ export function SwapForm() {
             return result.slice(0, 4);
         }
 
-        // Sort by market cap (if available) or by verification status, then take top 4
-        const sortedTokens = filteredTokens
-            .sort((a, b) => {
-                // Prioritize WHITELISTED tokens
-                if (a.verification === 'WHITELISTED' && b.verification !== 'WHITELISTED') return -1;
-                if (b.verification === 'WHITELISTED' && a.verification !== 'WHITELISTED') return 1;
-                
-                // Then sort by market cap (higher first)
-                const aMarketCap = a.market_cap || 0;
-                const bMarketCap = b.market_cap || 0;
-                return bMarketCap - aMarketCap;
-            })
-            .slice(0, 4);
-
-        return sortedTokens.map(token => ({
-            symbol: token.symbol,
-            image_url: token.image_url,
-            address: token.address
-        }));
-    }, [allTokens, selectedFromToken]);
+        return prioritizedTokens;
+    }, [allTokens, selectedFromToken, getPrioritizedTokens]);
 
     // Function to get top 4 tokens excluding the toToken
     const getTop4TokensExcludingTo = useCallback(() => {
@@ -440,13 +465,11 @@ export function SwapForm() {
             ];
         }
 
-        // Filter out the toToken and get top 4 tokens
-        const filteredTokens = allTokens.filter(token => 
-            token.address !== selectedToToken?.address
-        );
-
-        // If we have less than 4 tokens after filtering, pad with fallback tokens
-        if (filteredTokens.length < 4) {
+        // Use prioritized tokens (USDT and TON get priority)
+        const prioritizedTokens = getPrioritizedTokens(selectedToToken);
+        
+        // If we have less than 4 tokens, pad with fallback tokens
+        if (prioritizedTokens.length < 4) {
             const fallbackTokens = [
                 { symbol: "STON", image_url: "/ston.svg", address: "fallback-ston", name: "STON", decimals: 9, verification: "COMMUNITY" as const },
                 { symbol: "NOT", image_url: "/not.svg", address: "fallback-not", name: "NOT", decimals: 9, verification: "COMMUNITY" as const },
@@ -454,7 +477,7 @@ export function SwapForm() {
                 { symbol: "DUCK", image_url: "/duck.svg", address: "fallback-duck", name: "DUCK", decimals: 9, verification: "COMMUNITY" as const }
             ];
             
-            const result = [...filteredTokens];
+            const result = [...prioritizedTokens];
             let fallbackIndex = 0;
             
             while (result.length < 4 && fallbackIndex < fallbackTokens.length) {
@@ -469,26 +492,8 @@ export function SwapForm() {
             return result.slice(0, 4);
         }
 
-        // Sort by market cap (if available) or by verification status, then take top 4
-        const sortedTokens = filteredTokens
-            .sort((a, b) => {
-                // Prioritize WHITELISTED tokens
-                if (a.verification === 'WHITELISTED' && b.verification !== 'WHITELISTED') return -1;
-                if (b.verification === 'WHITELISTED' && a.verification !== 'WHITELISTED') return 1;
-                
-                // Then sort by market cap (higher first)
-                const aMarketCap = a.market_cap || 0;
-                const bMarketCap = b.market_cap || 0;
-                return bMarketCap - aMarketCap;
-            })
-            .slice(0, 4);
-
-        return sortedTokens.map(token => ({
-            symbol: token.symbol,
-            image_url: token.image_url,
-            address: token.address
-        }));
-    }, [allTokens, selectedToToken]);
+        return prioritizedTokens;
+    }, [allTokens, selectedToToken, getPrioritizedTokens]);
 
     // Create validation function for keyboard
     const canAddMoreCharacters = useCallback((key: string) => {
@@ -669,6 +674,7 @@ export function SwapForm() {
                                             maxWidth: '15px',
                                             maxHeight: '15px',
                                             display: 'block',
+                                            borderRadius: '50%',
                                         }}
                                     />
                                 </div>
@@ -812,6 +818,7 @@ export function SwapForm() {
                                             maxWidth: '15px',
                                             maxHeight: '15px',
                                             display: 'block',
+                                            borderRadius: '50%',
                                         }}
                                     />
                                 </div>
