@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { swapCoffeeApiClient, Jetton, JettonsParams } from '@/lib/swap-coffee-api';
+import { TOTAL_TOKENS } from '@/constants/tokens';
 
 interface UseTokensQueryOptions {
   initialPageSize?: number;
@@ -18,6 +19,10 @@ interface UseTokensQueryReturn {
   search: (query: string) => void;
   clearSearch: () => void;
   refetch: () => void;
+  totalLoaded: number;
+  totalExpected: number;
+  isFetchingAll: boolean;
+  fetchAllPages: () => void;
 }
 
 export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQueryReturn {
@@ -31,12 +36,17 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
   const [tokens, setTokens] = useState<Jetton[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isFetchingAll, setIsFetchingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentSearch, setCurrentSearch] = useState(searchQuery);
+  const [totalLoaded, setTotalLoaded] = useState(0);
   const hasInitiallyLoaded = useRef(false);
   const fetchTokensRef = useRef<((page: number, search: string, append?: boolean) => Promise<void>) | undefined>();
+  
+  // Force re-render by using a counter
+  const [updateCounter, setUpdateCounter] = useState(0);
 
   // No filtering - show all tokens including those without images
 
@@ -86,55 +96,76 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [initialPageSize, verification, label_id]);
+  }, [initialPageSize, label_id]);
 
   // Update ref whenever fetchTokens changes
   useEffect(() => {
     fetchTokensRef.current = fetchTokens;
   }, [fetchTokens]);
 
-  // Function to fetch all available pages
+  // Function to fetch all available pages with progress tracking
   const fetchAllPages = useCallback(async () => {
-    if (!fetchTokensRef.current) return;
-    
-    let currentPage = 1;
-    let allTokens: Jetton[] = [];
-    let hasMorePages = true;
-    
-    console.log('🚀 Starting to fetch all token pages...');
-    
-    while (hasMorePages) {
-      try {
-        console.log(`📄 Fetching page ${currentPage}...`);
-        const response = await swapCoffeeApiClient.getJettonsPaginated({
-          page: currentPage,
-          size: initialPageSize,
-          verification,
-          ...(label_id && { label_id }),
-        });
-        
-        // No filtering - use all tokens
-        allTokens = [...allTokens, ...response.data];
-        console.log(`✅ Page ${currentPage}: Got ${response.data.length} tokens (Total so far: ${allTokens.length})`);
-        
-        hasMorePages = response.hasMore;
-        currentPage++;
-        
-        // Safety check to prevent infinite loops
-        if (currentPage > 50) {
-          console.warn('⚠️ Stopped fetching after 50 pages to prevent infinite loop');
+    try {
+      console.log('🚀 Starting fetchAllPages - setting isFetchingAll to true');
+      setIsFetchingAll(true);
+      setError(null);
+      
+      let currentPage = 1;
+      let allTokens: Jetton[] = [];
+      let hasMorePages = true;
+      
+      console.log('🚀 Starting to fetch ALL token pages...');
+      
+      while (hasMorePages) {
+        try {
+          console.log(`📄 Fetching page ${currentPage}...`);
+          const response = await swapCoffeeApiClient.getJettonsPaginated({
+            page: currentPage,
+            size: initialPageSize,
+            verification,
+            ...(label_id && { label_id }),
+          });
+          
+          // No filtering - use all tokens
+          allTokens = [...allTokens, ...response.data];
+          console.log(`✅ Page ${currentPage}: Got ${response.data.length} tokens (Total so far: ${allTokens.length}/${TOTAL_TOKENS})`);
+          
+          // Update tokens and total immediately for progressive display
+          console.log(`🔄 Setting tokens state: ${allTokens.length} tokens`);
+          setTokens([...allTokens]);
+          setTotalLoaded(allTokens.length);
+          setUpdateCounter(prev => prev + 1); // Force re-render
+          console.log(`📊 State updated - tokens: ${allTokens.length}, totalLoaded: ${allTokens.length}`);
+          
+          hasMorePages = response.hasMore;
+          currentPage++;
+          
+          // Safety check to prevent infinite loops
+          if (currentPage > 100) {
+            console.warn('⚠️ Stopped fetching after 100 pages to prevent infinite loop');
+            break;
+          }
+          
+          // Small delay to prevent overwhelming the API
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (err) {
+          console.error(`❌ Error fetching page ${currentPage}:`, err);
           break;
         }
-      } catch (err) {
-        console.error(`❌ Error fetching page ${currentPage}:`, err);
-        break;
       }
+      
+      console.log(`🎉 Finished fetching all pages. Total tokens: ${allTokens.length}/${TOTAL_TOKENS}`);
+      setTokens(allTokens);
+      setHasMore(false); // No more pages to load
+      setCurrentPage(currentPage - 1);
+      setTotalLoaded(allTokens.length);
+    } catch (err) {
+      console.error('❌ Error in fetchAllPages:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch all tokens');
+    } finally {
+      console.log('🏁 Finished fetchAllPages - setting isFetchingAll to false');
+      setIsFetchingAll(false);
     }
-    
-    console.log(`🎉 Finished fetching all pages. Total tokens: ${allTokens.length}`);
-    setTokens(allTokens);
-    setHasMore(false); // No more pages to load
-    setCurrentPage(currentPage - 1);
   }, [initialPageSize, verification, label_id]);
 
   const loadMore = useCallback(() => {
@@ -166,36 +197,34 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
     fetchTokens(1, currentSearch, false);
   }, [fetchTokens, currentSearch]);
 
-  // Initial load - fetch only first page for fast loading
+  // Initial load - fetch ALL pages for complete token list
   useEffect(() => {
-    if (!hasInitiallyLoaded.current && fetchTokensRef.current) {
+    if (!hasInitiallyLoaded.current) {
       hasInitiallyLoaded.current = true;
-      console.log('🚀 Initial load: Fetching first page only for fast loading');
-      fetchTokens(1, '', false);
+      console.log('🚀 Initial load: Fetching ALL tokens for complete list');
+      fetchAllPages();
     }
-  }, [fetchTokens]);
+  }, [fetchAllPages]);
 
   // Handle search query changes
   useEffect(() => {
     if (searchQuery !== currentSearch) {
       setCurrentSearch(searchQuery);
-      setCurrentPage(1);
-      setTokens([]);
-      setHasMore(true);
       
       if (searchQuery.trim() === '') {
-        // If search is empty, fetch only first page for fast loading
-        fetchTokens(1, '', false);
+        // If search is empty, don't clear tokens - just show all loaded tokens
+        console.log('🔍 Search cleared - showing all loaded tokens');
       } else {
-        // If searching, fetch only first page for search results
-        fetchTokens(1, searchQuery, false);
+        // If searching, filter the existing tokens instead of fetching new ones
+        console.log('🔍 Searching in loaded tokens:', searchQuery);
+        // The filtering will be handled in the component
       }
     }
-  }, [searchQuery, currentSearch, fetchTokens]);
+  }, [searchQuery, currentSearch]);
 
   return {
     tokens,
-    isLoading,
+    isLoading: isLoading || isFetchingAll,
     isLoadingMore,
     error,
     hasMore,
@@ -203,5 +232,9 @@ export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQu
     search,
     clearSearch,
     refetch,
+    totalLoaded,
+    totalExpected: TOTAL_TOKENS,
+    isFetchingAll,
+    fetchAllPages,
   };
 }

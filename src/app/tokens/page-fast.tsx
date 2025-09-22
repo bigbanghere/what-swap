@@ -105,7 +105,10 @@ const TokenItem = React.memo(({
         </div>
         <div 
           className="truncate"
-          style={{ opacity: 0.66 }}
+          style={{ 
+            color: colors.text,
+            opacity: 0.66
+          }}
         >
           {token.name}
         </div>
@@ -121,7 +124,10 @@ const TokenItem = React.memo(({
         </div>
         <div 
           className=""
-          style={{ opacity: 0.66 }}
+          style={{ 
+            color: colors.text,
+            opacity: 0.66
+          }}
         >
           {formatUSDValue()}
         </div>
@@ -173,115 +179,36 @@ export default function TokensPageFast() {
     };
   }, []);
 
-  // Use the cached tokens with progressive loading
-  const { data: tokens = [], isLoading, error, isFetching, isCacheFresh, hasMore } = useTokensCache(debouncedSearch);
+  // Use the cached tokens
+  const { allTokens: allTokens = [], data: filteredTokens = [], isLoading, error, isFetching, isCacheFresh, hasMore } = useTokensCache(debouncedSearch);
   
-  // State for progressive loading
-  const [displayedTokens, setDisplayedTokens] = useState<any[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Debug logging
+  console.log('🔍 TokensPageFast: Cache state', {
+    allTokensLength: allTokens.length,
+    filteredTokensLength: filteredTokens.length,
+    isLoading,
+    error,
+    isFetching,
+    isCacheFresh,
+    hasMore,
+    debouncedSearch
+  });
   
-  // Add a timeout fallback for loading state
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  // No timeout needed - cache handles loading all tokens
   
-  // Progressive loading: Show first 100 tokens immediately, then load more as needed
-  useEffect(() => {
-    if (tokens.length > 0) {
-      const initialTokens = tokens.slice(0, 100); // Show first 100 tokens immediately
-      setDisplayedTokens(initialTokens);
-      setCurrentPage(1);
-      console.log(`🚀 Tokens page: Showing first ${initialTokens.length} tokens immediately`);
-    }
-  }, [tokens.length > 0 ? tokens[0]?.address : null]); // Only trigger when tokens change
+  // All tokens are displayed immediately - no state management needed
   
-  useEffect(() => {
-    if (isLoading) {
-      const timeout = setTimeout(() => {
-        setLoadingTimeout(true);
-        console.warn('⚠️ Tokens page: Loading timeout reached');
-      }, 10000); // 10 second timeout
-      
-      return () => clearTimeout(timeout);
-    } else {
-      setLoadingTimeout(false);
-    }
-  }, [isLoading]);
+  // No timeout needed since we're loading all tokens in the background
+  // The cache will handle loading all 1791 tokens which takes time
 
-  // Load more tokens when scrolling near bottom
-  const loadMoreTokens = useCallback(() => {
-    console.log('🔄 Tokens page: loadMoreTokens called', {
-      isLoadingMore,
-      displayedTokensLength: displayedTokens.length,
-      totalTokensLength: tokens.length,
-      currentPage
-    });
-    
-    if (isLoadingMore || displayedTokens.length >= tokens.length) {
-      console.log('⚠️ Tokens page: Skipping loadMoreTokens', {
-        isLoadingMore,
-        displayedTokensLength: displayedTokens.length,
-        totalTokensLength: tokens.length
-      });
-      return;
-    }
-    
-    setIsLoadingMore(true);
-    const nextPage = currentPage + 1;
-    const startIndex = nextPage * 100;
-    const endIndex = startIndex + 100;
-    
-    console.log('📥 Tokens page: Loading more tokens', {
-      nextPage,
-      startIndex,
-      endIndex,
-      totalTokens: tokens.length
-    });
-    
-    // Get next batch of tokens
-    const nextBatch = tokens.slice(startIndex, endIndex);
-    
-    if (nextBatch.length > 0) {
-      setDisplayedTokens((prev: any[]) => {
-        const newTokens = [...prev, ...nextBatch];
-        console.log(`📥 Tokens page: Loaded page ${nextPage}, showing ${newTokens.length} tokens`);
-        return newTokens;
-      });
-      setCurrentPage(nextPage);
-    } else {
-      console.log('⚠️ Tokens page: No more tokens to load');
-    }
-    
-    setIsLoadingMore(false);
-  }, [currentPage, tokens, isLoadingMore, displayedTokens.length]);
+  // All tokens are displayed immediately - no progressive loading needed
 
-  // Handle scroll to detect when user is near bottom
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const isNear = scrollTop + clientHeight >= scrollHeight - 100; // 100px from bottom
-    setIsNearBottom(isNear);
-    
-    console.log('🔄 Tokens page: Scroll detected', {
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-      isNear,
-      displayedTokens: displayedTokens.length,
-      totalTokens: tokens.length,
-      isLoadingMore
-    });
-    
-    // Load more tokens when near bottom
-    if (isNear && !isLoadingMore && displayedTokens.length < tokens.length) {
-      console.log('📥 Tokens page: Loading more tokens...');
-      loadMoreTokens();
-    }
-  }, [isNearBottom, isLoadingMore, displayedTokens.length, tokens.length, loadMoreTokens]);
+  // No scroll handling needed - all tokens are displayed immediately
 
-  // Use displayed tokens for rendering (progressive loading)
-  const filteredTokens = displayedTokens;
+  // Use filtered tokens for rendering (search is handled by the cache hook)
   
-  // Calculate hasMore based on local tokens, not API response
-  const localHasMore = displayedTokens.length < tokens.length;
+  // All tokens are loaded, so no more loading needed
+  const localHasMore = false;
 
   const handleTokenSelect = useCallback((token: any) => {
     console.log('🎯 Token selected:', token);
@@ -333,22 +260,6 @@ export default function TokensPageFast() {
         className="min-h-screen"
         style={{ backgroundColor: colors.background }}
       >
-        {/* Debug Panel - only show in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="fixed top-4 left-4 z-50 bg-black bg-opacity-80 text-white text-xs p-2 rounded max-w-xs">
-            <div className="font-bold mb-1">Debug Info:</div>
-            <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
-            <div>Timeout: {loadingTimeout ? 'Yes' : 'No'}</div>
-            <div>Error: {error ? 'Yes' : 'No'}</div>
-            <div>Tokens: {tokens.length}</div>
-            <div>Cache Fresh: {isCacheFresh ? 'Yes' : 'No'}</div>
-            <div>API Has More: {hasMore ? 'Yes' : 'No'}</div>
-            <div>Local Has More: {localHasMore ? 'Yes' : 'No'}</div>
-            <div>Displayed: {displayedTokens.length} / {tokens.length}</div>
-            <div>Search: &quot;{debouncedSearch}&quot;</div>
-            <div>Type: {tokenType}</div>
-          </div>
-        )}
         {/* Search Bar */}
         <div className="px-[20px] pt-[20px] pb-[10px]">
           <div 
@@ -379,30 +290,12 @@ export default function TokensPageFast() {
         {/* Tokens List */}
         <div 
           className="flex-1 overflow-y-auto"
-          onScroll={handleScroll}
         >
-          {isLoading && !loadingTimeout && tokens.length === 0 ? (
+          {isLoading && filteredTokens.length === 0 ? (
             // Loading skeletons - show 6 skeletons only when no tokens are loaded yet
             Array.from({ length: 6 }).map((_, index) => (
               <TokenSkeleton key={index} colors={colors} />
             ))
-          ) : loadingTimeout ? (
-            // Timeout fallback - show error with retry option
-            <div 
-              className="text-center py-8"
-              style={{ color: colors.text }}
-            >
-              <div className="text-yellow-500 mb-2">Loading is taking longer than expected</div>
-              <div className="text-sm mb-4" style={{ color: colors.secondaryText }}>
-                The tokens are still loading in the background. You can wait or try refreshing the page.
-              </div>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                Refresh Page
-              </button>
-            </div>
           ) : error ? (
             // Error state
             <div 
@@ -414,7 +307,7 @@ export default function TokensPageFast() {
                 {error instanceof Error ? error.message : 'Unknown error'}
               </div>
             </div>
-          ) : tokens.length === 0 ? (
+          ) : filteredTokens.length === 0 ? (
             // No results
             <div 
               className="text-center py-8"
@@ -442,21 +335,18 @@ export default function TokensPageFast() {
               })}
               
               {/* Show loading indicator at bottom when more tokens are being loaded */}
-        {(isLoadingMore || (isLoading && displayedTokens.length > 0)) && (
+        {(isLoading && filteredTokens.length > 0) && (
           <div className="flex items-center justify-center py-4">
             <div className="flex flex-col items-center gap-3">
               <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               <div className="text-sm" style={{ color: colors.secondaryText || '#6b7280' }}>
-                {isLoadingMore
-                  ? `Loading more tokens... (${displayedTokens.length} of ${tokens.length} shown)`
-                  : `Loading tokens... (${displayedTokens.length} of ${tokens.length} shown)`
-                }
+                {`Loading tokens... (${allTokens.length} of ${TOTAL_TOKENS})`}
               </div>
-              {tokens.length > 0 && (
+              {allTokens.length > 0 && (
                 <div className="w-32 h-1 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-500 transition-all duration-300"
-                    style={{ width: `${Math.min((displayedTokens.length / tokens.length) * 100, 100)}%` }}
+                    style={{ width: `${Math.min((allTokens.length / TOTAL_TOKENS) * 100, 100)}%` }}
                   />
                 </div>
               )}

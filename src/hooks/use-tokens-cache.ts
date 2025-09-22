@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { swapCoffeeApiClient } from '@/lib/swap-coffee-api';
+import { TOTAL_TOKENS } from '@/constants/tokens';
 
 export interface Jetton {
   address: string;
@@ -33,6 +34,8 @@ interface TokensCacheState {
   hasMore: boolean;
   currentPage: number;
   lastFetchTime: number;
+  totalLoaded: number;
+  totalExpected: number;
 }
 
 // Global cache state
@@ -44,6 +47,8 @@ let cacheState: TokensCacheState = {
   hasMore: true,
   currentPage: 1,
   lastFetchTime: 0,
+  totalLoaded: 0,
+  totalExpected: TOTAL_TOKENS,
 };
 
 // Cache listeners for components that need to react to cache updates
@@ -140,7 +145,7 @@ const loadAllTokens = async () => {
   let allTokens: Jetton[] = [];
   let consecutiveEmptyPages = 0;
   const maxEmptyPages = 3; // Safety check to prevent infinite loops
-  const maxPages = 10; // Maximum number of pages to load initially (1000 tokens)
+  const maxPages = Math.ceil(TOTAL_TOKENS / 100); // Calculate pages needed for all tokens
   const startTime = Date.now();
   const maxLoadTime = 30000; // 30 seconds timeout
   
@@ -162,7 +167,7 @@ const loadAllTokens = async () => {
       } else {
         consecutiveEmptyPages = 0; // Reset counter
         allTokens = [...allTokens, ...data];
-        console.log(`✅ Cache: Page ${page}: Got ${data.length} tokens (Total: ${allTokens.length})`);
+        console.log(`✅ Cache: Page ${page}: Got ${data.length} tokens (Total: ${allTokens.length}/${TOTAL_TOKENS})`);
       }
       
       hasMore = pageHasMore && data.length > 0; // Only continue if we got data and API says there's more
@@ -173,6 +178,7 @@ const loadAllTokens = async () => {
       cacheState.currentPage = page;
       cacheState.hasMore = hasMore;
       cacheState.lastFetchTime = Date.now();
+      cacheState.totalLoaded = allTokens.length;
       
       // Notify listeners of progress
       cacheListeners.forEach(listener => listener());
@@ -243,6 +249,9 @@ export const useTokensCache = (searchQuery: string = '') => {
 
     cacheListeners.add(updateState);
     updateState(); // Initial update
+
+    // Start background loading if not already started
+    startBackgroundLoading();
 
     return () => {
       cacheListeners.delete(updateState);

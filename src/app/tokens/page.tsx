@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef, memo, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/core/theme';
-import { useTokensQuery } from '@/hooks/use-tokens-query';
+import { useTokensCache } from '@/hooks/use-tokens-cache';
 import { IoSearchOutline, IoArrowBack, IoOpenOutline } from 'react-icons/io5';
 import { Jetton } from '@/lib/swap-coffee-api';
 import Image from 'next/image';
@@ -140,41 +140,65 @@ export default function TokensPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
   
-  const tokensQueryOptions = useMemo(() => ({
-    initialPageSize: 100, // Use maximum page size allowed by Swap Coffee API
-    verification: ['WHITELISTED', 'COMMUNITY'],
-  }), []);
-
-  console.log('🎯 TokensPage: About to call useTokensQuery');
+  console.log('🎯 TokensPage: About to call useTokensCache');
   const {
-    tokens = [],
+    allTokens: tokens = [],
     isLoading = false,
-    isLoadingMore = false,
+    isFetching = false,
     error = null,
     hasMore = false,
-    loadMore = () => {},
-    search: searchTokens = () => {},
-  } = useTokensQuery(tokensQueryOptions);
+    totalLoaded = 0,
+    totalExpected = 1791,
+  } = useTokensCache();
   
   console.log('🎯 TokensPage: useTokensQuery result', { 
     tokensCount: tokens.length, 
     isLoading, 
     error,
-    hasMore 
+    hasMore,
+    totalLoaded,
+    totalExpected,
+    isFetchingAll
   });
 
-  // Handle debounced search
-  useEffect(() => {
-    searchTokens(debouncedSearch);
-  }, [debouncedSearch, searchTokens]);
+  // Debug the loading indicator values
+  console.log('📊 Loading indicator values:', {
+    totalLoaded,
+    totalExpected,
+    percentage: totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0,
+    isFetchingAll,
+    tokensLength: tokens.length
+  });
+
+  // Filter tokens based on search query
+  const filteredTokens = useMemo(() => {
+    console.log(`🔍 Filtering tokens: ${tokens.length} total, search: "${debouncedSearch}"`);
+    if (!debouncedSearch.trim()) {
+      return tokens;
+    }
+    
+    const searchLower = debouncedSearch.toLowerCase();
+    const filtered = tokens.filter(token => 
+      token.symbol.toLowerCase().includes(searchLower) ||
+      token.name.toLowerCase().includes(searchLower) ||
+      token.address.toLowerCase().includes(searchLower)
+    );
+    console.log(`🔍 Filtered result: ${filtered.length} tokens`);
+    return filtered;
+  }, [tokens, debouncedSearch]);
 
   // Set initial load to false once we have data or error
   useEffect(() => {
     if (tokens.length > 0 || error) {
-      console.log('✅ TokensPage: Data loaded, hiding initial loading screen');
+      console.log('✅ TokensPage: Data loaded, hiding initial loading screen', { tokensLength: tokens.length, error });
       setIsInitialLoad(false);
     }
   }, [tokens.length, error]);
+
+  // Debug effect to track tokens changes
+  useEffect(() => {
+    console.log('🔄 Tokens array changed:', { length: tokens.length, isFetchingAll, totalLoaded });
+  }, [tokens.length, isFetchingAll, totalLoaded]);
 
   // Handle search input change
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -410,15 +434,15 @@ export default function TokensPage() {
               Retry
             </button>
           </div>
-        ) : tokens.length === 0 ? (
+        ) : filteredTokens.length === 0 ? (
           <div 
             className="text-center py-8"
             style={{ color: colors.secondary || '#6b7280' }}
           >
-            No tokens found
+            {debouncedSearch.trim() ? 'No tokens found matching your search' : 'No tokens found'}
           </div>
         ) : (
-          tokens.map((token, index) => (
+          filteredTokens.map((token, index) => (
             <TokenItem
               key={`${token.address}-${index}`}
               token={token}
@@ -430,44 +454,36 @@ export default function TokensPage() {
           ))
         )}
 
-        {/* Load More Button / Indicator */}
-        {hasMore && !isLoadingMore && (
-          <div className="flex flex-col items-center py-4 gap-2">
-            <div className="flex items-center gap-2 text-sm" style={{ color: colors.secondary || '#6b7280' }}>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span>Scroll down or tap to load more</span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={loadMore}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
-                style={{ 
-                  backgroundColor: colors.primary || '#3b82f6',
-                  color: 'white'
-                }}
-              >
-                Load More
-              </button>
-              <button
-                onClick={() => {
-                  console.log('🚀 Loading all tokens...');
-                  // This would need to be implemented in the hook
-                  loadMore();
-                }}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
-                style={{ 
-                  backgroundColor: colors.secondary || '#6b7280',
-                  color: 'white'
-                }}
-              >
-                Load All
-              </button>
+        {/* Cache is loading all tokens automatically */}
+
+        {/* Loading All Tokens Indicator */}
+        {(isFetching || (tokens.length > 0 && tokens.length < totalExpected)) && (
+          <div className="flex justify-center py-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                <span 
+                  className="text-sm font-medium"
+                  style={{ color: colors.text }}
+                >
+                  Loading tokens... {totalLoaded} of {totalExpected}
+                </span>
+              </div>
+              <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                  style={{ width: `${(totalLoaded / totalExpected) * 100}%` }}
+                ></div>
+              </div>
+              <div className="text-xs" style={{ color: colors.secondary || '#6b7280' }}>
+                {Math.round((totalLoaded / totalExpected) * 100)}% complete
+              </div>
             </div>
           </div>
         )}
 
         {/* Loading More Indicator */}
-        {isLoadingMore && (
+        {isLoadingMore && !isFetching && (
           <div className="flex justify-center py-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex items-center gap-2">
@@ -487,7 +503,7 @@ export default function TokensPage() {
         )}
 
         {/* End of List Indicator */}
-        {!hasMore && tokens.length > 0 && !isLoadingMore && (
+        {!hasMore && tokens.length > 0 && !isLoadingMore && !isFetching && (
           <div 
             className="text-center py-4 text-xs"
             style={{ color: colors.secondary || '#6b7280' }}
