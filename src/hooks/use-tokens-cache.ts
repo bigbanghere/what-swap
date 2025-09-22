@@ -131,9 +131,9 @@ const startBackgroundLoading = () => {
   }
 };
 
-// Load tokens progressively (first 3 pages)
+// Load tokens progressively (first 5 pages only for performance)
 const loadAllTokens = async () => {
-  console.log('🚀 Cache: Starting progressive loading of tokens...');
+  console.log('🚀 Cache: Starting progressive loading of tokens (limited to first 5 pages)...');
   
   // Set initial loading state
   cacheState.isLoading = true;
@@ -143,34 +143,24 @@ const loadAllTokens = async () => {
   let page = 1;
   let hasMore = true;
   let allTokens: Jetton[] = [];
-  let consecutiveEmptyPages = 0;
-  const maxEmptyPages = 3; // Safety check to prevent infinite loops
-  const maxPages = Math.ceil(TOTAL_TOKENS / 100); // Calculate pages needed for all tokens
+  const maxPages = 5; // Limit to first 5 pages for performance (500 tokens)
   const startTime = Date.now();
-  const maxLoadTime = 30000; // 30 seconds timeout
   
-  while (hasMore && consecutiveEmptyPages < maxEmptyPages && page <= maxPages) {
-    // Check timeout
-    if (Date.now() - startTime > maxLoadTime) {
-      console.warn(`⚠️ Cache: Loading timeout after ${maxLoadTime}ms`);
-      break;
-    }
-    
+  while (hasMore && page <= maxPages) {
     try {
       console.log(`📥 Cache: Loading page ${page}...`);
       const { data, hasMore: pageHasMore } = await fetchTokensPage(page);
       
       // Check if we got data
       if (data.length === 0) {
-        consecutiveEmptyPages++;
-        console.log(`⚠️ Cache: Empty page ${page} (${consecutiveEmptyPages}/${maxEmptyPages})`);
+        console.log(`⚠️ Cache: Empty page ${page}, stopping`);
+        break;
       } else {
-        consecutiveEmptyPages = 0; // Reset counter
         allTokens = [...allTokens, ...data];
-        console.log(`✅ Cache: Page ${page}: Got ${data.length} tokens (Total: ${allTokens.length}/${TOTAL_TOKENS})`);
+        console.log(`✅ Cache: Page ${page}: Got ${data.length} tokens (Total: ${allTokens.length})`);
       }
       
-      hasMore = pageHasMore && data.length > 0; // Only continue if we got data and API says there's more
+      hasMore = pageHasMore && data.length > 0;
       page++;
       
       // Update cache state with current progress
@@ -184,7 +174,7 @@ const loadAllTokens = async () => {
       cacheListeners.forEach(listener => listener());
       
       // Small delay to prevent overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 50));
       
     } catch (err) {
       console.error(`❌ Cache: Failed to load page ${page}:`, err);
@@ -196,19 +186,7 @@ const loadAllTokens = async () => {
   // Final state update
   cacheState.isLoading = false;
   cacheState.isFetching = false;
-  cacheState.hasMore = false; // We've loaded everything we can
-  
-  if (consecutiveEmptyPages >= maxEmptyPages) {
-    console.warn(`⚠️ Cache: Stopped loading after ${consecutiveEmptyPages} consecutive empty pages`);
-  }
-  
-  if (page > maxPages) {
-    console.warn(`⚠️ Cache: Stopped loading after reaching maximum page limit (${maxPages})`);
-  }
-  
-  if (Date.now() - startTime > maxLoadTime) {
-    console.warn(`⚠️ Cache: Loading stopped due to timeout (${maxLoadTime}ms)`);
-  }
+  cacheState.hasMore = hasMore; // Keep hasMore true if there are more pages
   
   console.log(`✅ Cache: Loaded ${allTokens.length} tokens in ${Date.now() - startTime}ms!`);
   

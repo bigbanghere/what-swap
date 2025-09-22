@@ -14,6 +14,7 @@ import { useValidation } from "@/contexts/validation-context";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDefaultTokens } from '@/hooks/use-default-tokens';
+import { useTokensCache } from '@/hooks/use-tokens-cache';
 
 export function SwapForm() {
     const router = useRouter();
@@ -31,6 +32,7 @@ export function SwapForm() {
     const t = useTranslations('translations');
     const { setCanAddMoreCharacters } = useValidation();
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
+    const { allTokens } = useTokensCache();
 
     // Only reset to default tokens on actual page refresh, not on navigation
     useEffect(() => {
@@ -364,6 +366,130 @@ export function SwapForm() {
         }
     }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading]); // Include dependencies but logic prevents infinite loops
 
+    // Function to get top 4 tokens excluding the fromToken
+    const getTop4TokensExcludingFrom = useCallback(() => {
+        if (!allTokens || allTokens.length === 0) {
+            // Fallback to hardcoded tokens if no tokens are loaded
+            return [
+                { symbol: "STON", image_url: "/ston.svg" },
+                { symbol: "NOT", image_url: "/not.svg" },
+                { symbol: "CES", image_url: "/ces.svg" },
+                { symbol: "DUCK", image_url: "/duck.svg" }
+            ];
+        }
+
+        // Filter out the fromToken and get top 4 tokens
+        const filteredTokens = allTokens.filter(token => 
+            token.address !== selectedFromToken?.address
+        );
+
+        // If we have less than 4 tokens after filtering, pad with fallback tokens
+        if (filteredTokens.length < 4) {
+            const fallbackTokens = [
+                { symbol: "STON", image_url: "/ston.svg", address: "fallback-ston", name: "STON", decimals: 9, verification: "COMMUNITY" as const },
+                { symbol: "NOT", image_url: "/not.svg", address: "fallback-not", name: "NOT", decimals: 9, verification: "COMMUNITY" as const },
+                { symbol: "CES", image_url: "/ces.svg", address: "fallback-ces", name: "CES", decimals: 9, verification: "COMMUNITY" as const },
+                { symbol: "DUCK", image_url: "/duck.svg", address: "fallback-duck", name: "DUCK", decimals: 9, verification: "COMMUNITY" as const }
+            ];
+            
+            const result = [...filteredTokens];
+            let fallbackIndex = 0;
+            
+            while (result.length < 4 && fallbackIndex < fallbackTokens.length) {
+                const fallbackToken = fallbackTokens[fallbackIndex];
+                // Only add if not already present
+                if (!result.some(token => token.symbol === fallbackToken.symbol)) {
+                    result.push(fallbackToken);
+                }
+                fallbackIndex++;
+            }
+            
+            return result.slice(0, 4);
+        }
+
+        // Sort by market cap (if available) or by verification status, then take top 4
+        const sortedTokens = filteredTokens
+            .sort((a, b) => {
+                // Prioritize WHITELISTED tokens
+                if (a.verification === 'WHITELISTED' && b.verification !== 'WHITELISTED') return -1;
+                if (b.verification === 'WHITELISTED' && a.verification !== 'WHITELISTED') return 1;
+                
+                // Then sort by market cap (higher first)
+                const aMarketCap = a.market_cap || 0;
+                const bMarketCap = b.market_cap || 0;
+                return bMarketCap - aMarketCap;
+            })
+            .slice(0, 4);
+
+        return sortedTokens.map(token => ({
+            symbol: token.symbol,
+            image_url: token.image_url,
+            address: token.address
+        }));
+    }, [allTokens, selectedFromToken]);
+
+    // Function to get top 4 tokens excluding the toToken
+    const getTop4TokensExcludingTo = useCallback(() => {
+        if (!allTokens || allTokens.length === 0) {
+            // Fallback to hardcoded tokens if no tokens are loaded
+            return [
+                { symbol: "STON", image_url: "/ston.svg" },
+                { symbol: "NOT", image_url: "/not.svg" },
+                { symbol: "CES", image_url: "/ces.svg" },
+                { symbol: "DUCK", image_url: "/duck.svg" }
+            ];
+        }
+
+        // Filter out the toToken and get top 4 tokens
+        const filteredTokens = allTokens.filter(token => 
+            token.address !== selectedToToken?.address
+        );
+
+        // If we have less than 4 tokens after filtering, pad with fallback tokens
+        if (filteredTokens.length < 4) {
+            const fallbackTokens = [
+                { symbol: "STON", image_url: "/ston.svg", address: "fallback-ston", name: "STON", decimals: 9, verification: "COMMUNITY" as const },
+                { symbol: "NOT", image_url: "/not.svg", address: "fallback-not", name: "NOT", decimals: 9, verification: "COMMUNITY" as const },
+                { symbol: "CES", image_url: "/ces.svg", address: "fallback-ces", name: "CES", decimals: 9, verification: "COMMUNITY" as const },
+                { symbol: "DUCK", image_url: "/duck.svg", address: "fallback-duck", name: "DUCK", decimals: 9, verification: "COMMUNITY" as const }
+            ];
+            
+            const result = [...filteredTokens];
+            let fallbackIndex = 0;
+            
+            while (result.length < 4 && fallbackIndex < fallbackTokens.length) {
+                const fallbackToken = fallbackTokens[fallbackIndex];
+                // Only add if not already present
+                if (!result.some(token => token.symbol === fallbackToken.symbol)) {
+                    result.push(fallbackToken);
+                }
+                fallbackIndex++;
+            }
+            
+            return result.slice(0, 4);
+        }
+
+        // Sort by market cap (if available) or by verification status, then take top 4
+        const sortedTokens = filteredTokens
+            .sort((a, b) => {
+                // Prioritize WHITELISTED tokens
+                if (a.verification === 'WHITELISTED' && b.verification !== 'WHITELISTED') return -1;
+                if (b.verification === 'WHITELISTED' && a.verification !== 'WHITELISTED') return 1;
+                
+                // Then sort by market cap (higher first)
+                const aMarketCap = a.market_cap || 0;
+                const bMarketCap = b.market_cap || 0;
+                return bMarketCap - aMarketCap;
+            })
+            .slice(0, 4);
+
+        return sortedTokens.map(token => ({
+            symbol: token.symbol,
+            image_url: token.image_url,
+            address: token.address
+        }));
+    }, [allTokens, selectedToToken]);
+
     // Create validation function for keyboard
     const canAddMoreCharacters = useCallback((key: string) => {
         // Check which input is currently focused and use its validation
@@ -507,86 +633,46 @@ export function SwapForm() {
                             {t('max')}
                         </div> : null}
                         <div className='w-full flex justify-end gap-[5px]'>
-                            <Link 
-                                href="/tokens?type=from"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedFromToken?.image_url || "/ston.svg"}
-                                    alt={selectedFromToken?.symbol || "STON"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
+                            {getTop4TokensExcludingFrom().map((token, index) => (
+                                <div
+                                    key={`from-token-${index}-${token.symbol}`}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('🎯 SwapForm: Small token icon clicked for fromToken:', token.symbol);
+                                        
+                                        // Update the selected from token
+                                        setSelectedFromToken(token);
+                                        
+                                        // Store in localStorage
+                                        localStorage.setItem('selectedFromToken', JSON.stringify(token));
+                                        
+                                        // Dispatch custom event for immediate update
+                                        window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                            detail: { token, type: 'from' } 
+                                        }));
+                                        
+                                        console.log('✅ SwapForm: Updated fromToken from small icon:', token.symbol);
                                     }}
-                                />
-                            </Link>
-                            <Link 
-                                href="/tokens?type=from"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedFromToken?.image_url || "/not.svg"}
-                                    alt={selectedFromToken?.symbol || "NOT"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
-                                    }}
-                                />
-                            </Link>
-                            <Link 
-                                href="/tokens?type=from"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedFromToken?.image_url || "/ces.svg"}
-                                    alt={selectedFromToken?.symbol || "CES"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
-                                    }}
-                                />
-                            </Link>
-                            <Link 
-                                href="/tokens?type=from"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedFromToken?.image_url || "/duck.svg"}
-                                    alt={selectedFromToken?.symbol || "DUCK"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
-                                    }}
-                                />
-                            </Link>
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
+                                >
+                                    <Image
+                                        src={token.image_url || "/ston.svg"}
+                                        alt={token.symbol || "STON"}
+                                        width="15"
+                                        height="15"
+                                        style={{
+                                            width: '15px !important',
+                                            height: '15px !important',
+                                            minWidth: '15px',
+                                            minHeight: '15px',
+                                            maxWidth: '15px',
+                                            maxHeight: '15px',
+                                            display: 'block',
+                                        }}
+                                    />
+                                </div>
+                            ))}
                         </div>
                     </div>
                     <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
@@ -690,86 +776,46 @@ export function SwapForm() {
                     <div className='flex flex-row items-center justify-between'>
                         {t('get')}
                         <div className='w-full flex justify-end gap-[5px]'>
-                            <Link 
-                                href="/tokens?type=to"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedToToken?.image_url || "/ston.svg"}
-                                    alt={selectedToToken?.symbol || "STON"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
+                            {getTop4TokensExcludingTo().map((token, index) => (
+                                <div
+                                    key={`to-token-${index}-${token.symbol}`}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('🎯 SwapForm: Small token icon clicked for toToken:', token.symbol);
+                                        
+                                        // Update the selected to token
+                                        setSelectedToToken(token);
+                                        
+                                        // Store in localStorage
+                                        localStorage.setItem('selectedToToken', JSON.stringify(token));
+                                        
+                                        // Dispatch custom event for immediate update
+                                        window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                            detail: { token, type: 'to' } 
+                                        }));
+                                        
+                                        console.log('✅ SwapForm: Updated toToken from small icon:', token.symbol);
                                     }}
-                                />
-                            </Link>
-                            <Link 
-                                href="/tokens?type=to"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedToToken?.image_url || "/not.svg"}
-                                    alt={selectedToToken?.symbol || "NOT"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
-                                    }}
-                                />
-                            </Link>
-                            <Link 
-                                href="/tokens?type=to"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedToToken?.image_url || "/ces.svg"}
-                                    alt={selectedToToken?.symbol || "CES"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
-                                    }}
-                                />
-                            </Link>
-                            <Link 
-                                href="/tokens?type=to"
-                                className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
-                            >
-                                <Image
-                                    src={selectedToToken?.image_url || "/duck.svg"}
-                                    alt={selectedToToken?.symbol || "DUCK"}
-                                    width="15"
-                                    height="15"
-                                    style={{
-                                        width: '15px !important',
-                                        height: '15px !important',
-                                        minWidth: '15px',
-                                        minHeight: '15px',
-                                        maxWidth: '15px',
-                                        maxHeight: '15px',
-                                        display: 'block',
-                                    }}
-                                />
-                            </Link>
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
+                                >
+                                    <Image
+                                        src={token.image_url || "/ston.svg"}
+                                        alt={token.symbol || "STON"}
+                                        width="15"
+                                        height="15"
+                                        style={{
+                                            width: '15px !important',
+                                            height: '15px !important',
+                                            minWidth: '15px',
+                                            minHeight: '15px',
+                                            maxWidth: '15px',
+                                            maxHeight: '15px',
+                                            display: 'block',
+                                        }}
+                                    />
+                                </div>
+                            ))}
                         </div>
                     </div>
                     <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
