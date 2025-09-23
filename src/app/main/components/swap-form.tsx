@@ -34,6 +34,79 @@ export function SwapForm() {
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
     const { allTokens } = useTokensCache();
 
+    // Function to get full token data with market stats
+    const getFullTokenData = useCallback((token: any) => {
+        if (!token || !allTokens) {
+            return token;
+        }
+        
+        // If token already has market_stats, return as is
+        if (token.market_stats?.price_usd) {
+            return token;
+        }
+        
+        // Try to find the full token data from allTokens cache
+        const fullToken = allTokens.find(t => t.address === token.address);
+        return fullToken || token;
+    }, [allTokens]);
+
+    // Function to calculate USD value for a token amount
+    const calculateUSDValue = useCallback((amount: string, token: any) => {
+        if (!token) {
+            return null;
+        }
+        
+        // If amount is empty, return 0
+        if (!amount || amount.trim() === '') {
+            return 0;
+        }
+        
+        // Get full token data with market stats
+        const fullToken = getFullTokenData(token);
+        
+        if (!fullToken.market_stats?.price_usd) {
+            console.log('🔍 SwapForm: No price data for token:', fullToken.symbol, fullToken.market_stats);
+            return null;
+        }
+        
+        const numericAmount = parseFloat(amount);
+        if (isNaN(numericAmount)) {
+            return 0;
+        }
+        
+        const usdValue = numericAmount * fullToken.market_stats.price_usd;
+        console.log('💰 SwapForm: USD calculation:', {
+            amount: numericAmount,
+            price: fullToken.market_stats.price_usd,
+            usdValue: usdValue,
+            symbol: fullToken.symbol
+        });
+        
+        return usdValue;
+    }, [getFullTokenData]);
+
+    // Function to format USD value
+    const formatUSDValue = useCallback((usdValue: number | null) => {
+        if (usdValue === null) {
+            return null;
+        }
+        
+        // Handle zero case
+        if (usdValue === 0) {
+            return '$0';
+        }
+        
+        if (usdValue < 0.01) {
+            return `$${usdValue.toFixed(6)}`;
+        } else if (usdValue < 1) {
+            return `$${usdValue.toFixed(4)}`;
+        } else if (usdValue < 100) {
+            return `$${usdValue.toFixed(2)}`;
+        } else {
+            return `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+        }
+    }, []);
+
     // Only reset to default tokens on actual page refresh, not on navigation
     useEffect(() => {
         
@@ -766,7 +839,7 @@ export function SwapForm() {
                                     />
                                     <div 
                                         style={{
-                                            width: '38.23px',
+                                            width: '30.04px',
                                             height: '21px',
                                             backgroundColor: 'transparent',
                                         }}
@@ -805,9 +878,20 @@ export function SwapForm() {
                             />
                         </div>
                     </div>
-                    <div className='flex flex-row justify-between items-center'>
+                    <div className='flex flex-row justify-between items-center gap-[15px]'>
                         <div className='w-full' style={{ opacity: 0.66 }}>
-                            $1
+                            {(() => {
+                                const currentToken = selectedFromToken || defaultUsdt;
+                                console.log('🔍 SwapForm: FromToken USD calculation:', {
+                                    currentToken: currentToken?.symbol,
+                                    fromAmount,
+                                    hasMarketStats: !!currentToken?.market_stats?.price_usd,
+                                    price: currentToken?.market_stats?.price_usd
+                                });
+                                const usdValue = calculateUSDValue(fromAmount, currentToken);
+                                const formattedValue = formatUSDValue(usdValue);
+                                return formattedValue || '$0';
+                            })()}
                         </div>
                         {walletAddress ? <div className='flex flex-row gap-[5px]'>
                             <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
@@ -824,7 +908,7 @@ export function SwapForm() {
                                 )}
                             </span>
                         </div> : null}
-                        <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
+                        <div className='flex flex-row w-full justify-end text-nowrap' style={{ opacity: 0.66 }}>
                             On TON
                         </div>
                     </div>
@@ -1066,7 +1150,7 @@ export function SwapForm() {
                                     />
                                     <div 
                                         style={{
-                                            width: '30.04px ',
+                                            width: '38.23px ',
                                             height: '21px',
                                             backgroundColor: 'transparent',
                                         }}
@@ -1107,7 +1191,18 @@ export function SwapForm() {
                     </div>
                     <div className='flex flex-row justify-between items-center'>
                         <div className='w-full' style={{ opacity: 0.66 }}>
-                            $1
+                            {(() => {
+                                const currentToken = selectedToToken || defaultTon;
+                                console.log('🔍 SwapForm: ToToken USD calculation:', {
+                                    currentToken: currentToken?.symbol,
+                                    toAmount,
+                                    hasMarketStats: !!currentToken?.market_stats?.price_usd,
+                                    price: currentToken?.market_stats?.price_usd
+                                });
+                                const usdValue = calculateUSDValue(toAmount, currentToken);
+                                const formattedValue = formatUSDValue(usdValue);
+                                return formattedValue || '$0';
+                            })()}
                         </div>
                         <div className='flex flex-row gap-[5px]'>
                             <div style={{ 
