@@ -820,7 +820,63 @@ export function SwapForm() {
                     </div>
                     <div className='flex flex-row items-center gap-[5px] mt-[5px] mb-[5px]'>
                         <div className='h-[1px] w-full bg-[#1ABCFF]'></div>
-                        <div className='w-[30px] h-[30px] flex items-center justify-center'>
+                        <div 
+                            className='w-[30px] h-[30px] flex items-center justify-center cursor-pointer'
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('🔄 SwapForm: Rotate icon clicked - swapping tokens');
+                                
+                                // Get current rotation and add random direction
+                                const currentRotation = e.currentTarget.style.transform || 'rotate(0deg)';
+                                const currentAngle = currentRotation.match(/-?\d+/) ? parseInt(currentRotation.match(/-?\d+/)![0]) : 0;
+                                
+                                // Random direction: either +180 or -180 degrees
+                                const randomDirection = Math.random() < 0.5 ? 1 : -1;
+                                const newAngle = currentAngle + (180 * randomDirection);
+                                
+                                // Apply the new rotation
+                                e.currentTarget.style.transform = `rotate(${newAngle}deg)`;
+                                
+                                console.log(`🎲 SwapForm: Rotating ${randomDirection > 0 ? 'clockwise' : 'counterclockwise'} to ${newAngle} degrees`);
+                                
+                                // Only swap if both tokens are available
+                                if (selectedFromToken && selectedToToken) {
+                                    console.log('🔄 SwapForm: Swapping fromToken and toToken');
+                                    console.log('🔄 SwapForm: Current fromToken:', selectedFromToken.symbol);
+                                    console.log('🔄 SwapForm: Current toToken:', selectedToToken.symbol);
+                                    
+                                    // Store current tokens
+                                    const currentFromToken = selectedFromToken;
+                                    const currentToToken = selectedToToken;
+                                    
+                                    // Swap the tokens
+                                    setSelectedFromToken(currentToToken);
+                                    setSelectedToToken(currentFromToken);
+                                    
+                                    // Update localStorage
+                                    localStorage.setItem('selectedFromToken', JSON.stringify(currentToToken));
+                                    localStorage.setItem('selectedToToken', JSON.stringify(currentFromToken));
+                                    
+                                    // Dispatch custom events for immediate update
+                                    window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                        detail: { token: currentToToken, type: 'from' } 
+                                    }));
+                                    window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                        detail: { token: currentFromToken, type: 'to' } 
+                                    }));
+                                    
+                                    console.log('✅ SwapForm: Tokens swapped successfully');
+                                    console.log('✅ SwapForm: New fromToken:', currentToToken.symbol);
+                                    console.log('✅ SwapForm: New toToken:', currentFromToken.symbol);
+                                } else {
+                                    console.log('⚠️ SwapForm: Cannot swap - one or both tokens are missing');
+                                }
+                            }}
+                            style={{
+                                transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                            }}
+                        >
                             <Image
                                 src="/rotate.svg"
                                 alt="Rotate"

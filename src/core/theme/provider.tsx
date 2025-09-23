@@ -25,6 +25,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (savedTheme && ['system', 'light', 'dark'].includes(savedTheme)) {
         setThemeState(savedTheme);
       }
+      // If no saved theme, use the default (which is now 'dark')
     }
   }, []);
 
