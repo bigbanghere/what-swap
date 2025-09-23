@@ -356,17 +356,64 @@ export function SwapForm() {
                 address: defaultTon.address
             });
         }
-        if (needsToDefault && defaultUsdt && (!selectedToToken || !selectedToToken.symbol)) {
-            console.log('🔄 SwapForm: Setting default to token (USDT) from API - no token in localStorage');
-            setSelectedToToken({
-                symbol: defaultUsdt.symbol,
-                name: defaultUsdt.name,
-                image_url: defaultUsdt.image_url,
-                address: defaultUsdt.address
-            });
+        if (needsToDefault && (!selectedToToken || !selectedToToken.symbol)) {
+            // Smart default: if fromToken is USDT, set TON as toToken, otherwise set USDT
+            const isFromTokenUsdt = selectedFromToken && selectedFromToken.symbol === 'USDT';
+            const defaultToToken = isFromTokenUsdt ? defaultTon : defaultUsdt;
+            
+            if (defaultToToken) {
+                console.log(`🔄 SwapForm: Setting default to token (${defaultToToken.symbol}) from API - no token in localStorage`);
+                setSelectedToToken({
+                    symbol: defaultToToken.symbol,
+                    name: defaultToToken.name,
+                    image_url: defaultToToken.image_url,
+                    address: defaultToToken.address
+                });
+            }
         }
         
-    }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading]); // Include dependencies but logic prevents infinite loops
+        // Additional safety check: if both tokens are the same, fix it
+        if (selectedFromToken && selectedToToken && selectedFromToken.address === selectedToToken.address) {
+            console.log('🔄 SwapForm: Detected same token in both fields, fixing...');
+            console.log('🔄 SwapForm: Current fromToken:', selectedFromToken.symbol);
+            console.log('🔄 SwapForm: Current toToken:', selectedToToken.symbol);
+            
+            // Universal fix: set toToken to the opposite of fromToken
+            let replacementToken = null;
+            
+            // If fromToken is TON, set toToken to USDT
+            if (selectedFromToken.symbol === 'TON' && defaultUsdt) {
+                replacementToken = defaultUsdt;
+            }
+            // If fromToken is USDT, set toToken to TON
+            else if (selectedFromToken.symbol === 'USDT' && defaultTon) {
+                replacementToken = defaultTon;
+            }
+            // For any other token, try to find a different token from the cache
+            else if (allTokens && allTokens.length > 0) {
+                // Find a different token that's not the same as fromToken
+                const differentToken = allTokens.find(token => 
+                    token.address !== selectedFromToken.address && 
+                    token.verification === 'WHITELISTED'
+                );
+                if (differentToken) {
+                    replacementToken = {
+                        symbol: differentToken.symbol,
+                        name: differentToken.name,
+                        image_url: differentToken.image_url,
+                        address: differentToken.address
+                    };
+                }
+            }
+            
+            if (replacementToken) {
+                console.log(`🔄 SwapForm: Setting toToken to ${replacementToken.symbol} to avoid duplicate`);
+                setSelectedToToken(replacementToken);
+                localStorage.setItem('selectedToToken', JSON.stringify(replacementToken));
+            }
+        }
+        
+    }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading, allTokens]); // Include dependencies but logic prevents infinite loops
 
     // Function to get prioritized tokens for shortcuts (exclude TON and USDT)
     const getPrioritizedTokens = useCallback((excludeToken: any) => {
@@ -592,20 +639,87 @@ export function SwapForm() {
                                         e.stopPropagation();
                                         console.log('🎯 SwapForm: Small token icon clicked for fromToken:', token.symbol);
                                         
-                                        // Update the selected from token
-                                        setSelectedFromToken(token);
+                                        // Smart switching logic: if the selected token is already in toToken, swap them
+                                        if (selectedToToken && selectedToToken.address === token.address) {
+                                            console.log('🔄 SwapForm: Token already in toToken, swapping tokens');
+                                            // Store the current fromToken before swapping
+                                            const currentFromToken = selectedFromToken;
+                                            
+                                            // Swap: selectedFromToken becomes toToken, selected token becomes fromToken
+                                            setSelectedToToken(currentFromToken);
+                                            setSelectedFromToken(token);
+                                            
+                                            // Store swapped tokens in localStorage
+                                            localStorage.setItem('selectedFromToken', JSON.stringify(token));
+                                            localStorage.setItem('selectedToToken', JSON.stringify(currentFromToken));
+                                            
+                                            // Dispatch custom events for immediate update
+                                            window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                detail: { token: token, type: 'from' } 
+                                            }));
+                                            window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                detail: { token: currentFromToken, type: 'to' } 
+                                            }));
+                                            
+                                            console.log('✅ SwapForm: Swapped tokens - fromToken:', token.symbol, 'toToken:', currentFromToken?.symbol);
+                                        } else {
+                                            // Normal selection - just update the from token
+                                            setSelectedFromToken(token);
+                                            
+                                            // Store in localStorage
+                                            localStorage.setItem('selectedFromToken', JSON.stringify(token));
+                                            
+                                            // Dispatch custom event for immediate update
+                                            window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                detail: { token, type: 'from' } 
+                                            }));
+                                            
+                                            console.log('✅ SwapForm: Updated fromToken from small icon:', token.symbol);
+                                        }
                                         
-                                        // Store in localStorage
-                                        localStorage.setItem('selectedFromToken', JSON.stringify(token));
-                                        
-                                        // Dispatch custom event for immediate update
-                                        window.dispatchEvent(new CustomEvent('tokenSelected', { 
-                                            detail: { token, type: 'from' } 
-                                        }));
-                                        
-                                        console.log('✅ SwapForm: Updated fromToken from small icon:', token.symbol);
+                                        // Additional safety check: if both tokens are now the same, fix it
+                                        if (selectedToToken && token.address === selectedToToken.address) {
+                                            console.log('🔄 SwapForm: After selection, both tokens are the same, fixing...');
+                                            
+                                            // Universal fix: find a different token for toToken
+                                            let replacementToken = null;
+                                            
+                                            // If fromToken is TON, set toToken to USDT
+                                            if (token.symbol === 'TON' && defaultUsdt) {
+                                                replacementToken = defaultUsdt;
+                                            }
+                                            // If fromToken is USDT, set toToken to TON
+                                            else if (token.symbol === 'USDT' && defaultTon) {
+                                                replacementToken = defaultTon;
+                                            }
+                                            // For any other token, try to find a different token from the cache
+                                            else if (allTokens && allTokens.length > 0) {
+                                                // Find a different token that's not the same as fromToken
+                                                const differentToken = allTokens.find(t => 
+                                                    t.address !== token.address && 
+                                                    t.verification === 'WHITELISTED'
+                                                );
+                                                if (differentToken) {
+                                                    replacementToken = {
+                                                        symbol: differentToken.symbol,
+                                                        name: differentToken.name,
+                                                        image_url: differentToken.image_url,
+                                                        address: differentToken.address
+                                                    };
+                                                }
+                                            }
+                                            
+                                            if (replacementToken) {
+                                                console.log(`🔄 SwapForm: Setting toToken to ${replacementToken.symbol} to avoid duplicate`);
+                                                setSelectedToToken(replacementToken);
+                                                localStorage.setItem('selectedToToken', JSON.stringify(replacementToken));
+                                                window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                    detail: { token: replacementToken, type: 'to' } 
+                                                }));
+                                            }
+                                        }
                                     }}
-                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] cursor-pointer'
                                 >
                                     <Image
                                         src={token.image_url || ''}
@@ -652,7 +766,7 @@ export function SwapForm() {
                     window.location.href = '/tokens-fast?type=from';
                 }
                             }}
-                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] hover:bg-blue-50 transition-colors cursor-pointer select-none'
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] cursor-pointer select-none'
                             style={{ 
                                 userSelect: 'none',
                                 WebkitUserSelect: 'none',
@@ -736,20 +850,87 @@ export function SwapForm() {
                                         e.stopPropagation();
                                         console.log('🎯 SwapForm: Small token icon clicked for toToken:', token.symbol);
                                         
-                                        // Update the selected to token
-                                        setSelectedToToken(token);
+                                        // Smart switching logic: if the selected token is already in fromToken, swap them
+                                        if (selectedFromToken && selectedFromToken.address === token.address) {
+                                            console.log('🔄 SwapForm: Token already in fromToken, swapping tokens');
+                                            // Store the current toToken before swapping
+                                            const currentToToken = selectedToToken;
+                                            
+                                            // Swap: selectedToToken becomes fromToken, selected token becomes toToken
+                                            setSelectedFromToken(currentToToken);
+                                            setSelectedToToken(token);
+                                            
+                                            // Store swapped tokens in localStorage
+                                            localStorage.setItem('selectedFromToken', JSON.stringify(currentToToken));
+                                            localStorage.setItem('selectedToToken', JSON.stringify(token));
+                                            
+                                            // Dispatch custom events for immediate update
+                                            window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                detail: { token: currentToToken, type: 'from' } 
+                                            }));
+                                            window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                detail: { token: token, type: 'to' } 
+                                            }));
+                                            
+                                            console.log('✅ SwapForm: Swapped tokens - fromToken:', currentToToken?.symbol, 'toToken:', token.symbol);
+                                        } else {
+                                            // Normal selection - just update the to token
+                                            setSelectedToToken(token);
+                                            
+                                            // Store in localStorage
+                                            localStorage.setItem('selectedToToken', JSON.stringify(token));
+                                            
+                                            // Dispatch custom event for immediate update
+                                            window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                detail: { token, type: 'to' } 
+                                            }));
+                                            
+                                            console.log('✅ SwapForm: Updated toToken from small icon:', token.symbol);
+                                        }
                                         
-                                        // Store in localStorage
-                                        localStorage.setItem('selectedToToken', JSON.stringify(token));
-                                        
-                                        // Dispatch custom event for immediate update
-                                        window.dispatchEvent(new CustomEvent('tokenSelected', { 
-                                            detail: { token, type: 'to' } 
-                                        }));
-                                        
-                                        console.log('✅ SwapForm: Updated toToken from small icon:', token.symbol);
+                                        // Additional safety check: if both tokens are now the same, fix it
+                                        if (selectedFromToken && token.address === selectedFromToken.address) {
+                                            console.log('🔄 SwapForm: After selection, both tokens are the same, fixing...');
+                                            
+                                            // Universal fix: find a different token for fromToken
+                                            let replacementToken = null;
+                                            
+                                            // If toToken is TON, set fromToken to USDT
+                                            if (token.symbol === 'TON' && defaultUsdt) {
+                                                replacementToken = defaultUsdt;
+                                            }
+                                            // If toToken is USDT, set fromToken to TON
+                                            else if (token.symbol === 'USDT' && defaultTon) {
+                                                replacementToken = defaultTon;
+                                            }
+                                            // For any other token, try to find a different token from the cache
+                                            else if (allTokens && allTokens.length > 0) {
+                                                // Find a different token that's not the same as toToken
+                                                const differentToken = allTokens.find(t => 
+                                                    t.address !== token.address && 
+                                                    t.verification === 'WHITELISTED'
+                                                );
+                                                if (differentToken) {
+                                                    replacementToken = {
+                                                        symbol: differentToken.symbol,
+                                                        name: differentToken.name,
+                                                        image_url: differentToken.image_url,
+                                                        address: differentToken.address
+                                                    };
+                                                }
+                                            }
+                                            
+                                            if (replacementToken) {
+                                                console.log(`🔄 SwapForm: Setting fromToken to ${replacementToken.symbol} to avoid duplicate`);
+                                                setSelectedFromToken(replacementToken);
+                                                localStorage.setItem('selectedFromToken', JSON.stringify(replacementToken));
+                                                window.dispatchEvent(new CustomEvent('tokenSelected', { 
+                                                    detail: { token: replacementToken, type: 'from' } 
+                                                }));
+                                            }
+                                        }
                                     }}
-                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] cursor-pointer'
                                 >
                                     <Image
                                         src={token.image_url || ''}
@@ -796,7 +977,7 @@ export function SwapForm() {
                                     window.location.href = '/tokens-fast?type=to';
                                 }
                             }}
-                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] hover:bg-blue-50 transition-colors cursor-pointer select-none'
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] cursor-pointer select-none'
                             style={{ 
                                 userSelect: 'none',
                                 WebkitUserSelect: 'none',
