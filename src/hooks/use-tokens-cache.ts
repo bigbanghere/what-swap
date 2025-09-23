@@ -57,21 +57,34 @@ const cacheListeners = new Set<() => void>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const pageSize = 100;
 
-const fetchTokensPage = async (page: number): Promise<{ data: Jetton[]; hasMore: boolean }> => {
-  console.log(`🚀 Cache: Fetching page ${page} with size ${pageSize}`);
+const fetchTokensPage = async (page: number, retryCount = 0): Promise<{ data: Jetton[]; hasMore: boolean }> => {
+  console.log(`🚀 Cache: Fetching page ${page} with size ${pageSize}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
   
-  const response = await swapCoffeeApiClient.getJettonsPaginated({
-    page,
-    size: pageSize,
-    verification: ['WHITELISTED', 'COMMUNITY'],
-  });
+  try {
+    const response = await swapCoffeeApiClient.getJettonsPaginated({
+      page,
+      size: pageSize,
+      verification: ['WHITELISTED', 'COMMUNITY'],
+    });
 
-  console.log(`✅ Cache: Page ${page}: Got ${response.data.length} tokens (hasMore: ${response.hasMore})`);
-  
-  return {
-    data: response.data,
-    hasMore: response.hasMore,
-  };
+    console.log(`✅ Cache: Page ${page}: Got ${response.data.length} tokens (hasMore: ${response.hasMore})`);
+    
+    return {
+      data: response.data,
+      hasMore: response.hasMore,
+    };
+  } catch (error) {
+    if (retryCount < 2 && error instanceof Error && error.message.includes('422')) {
+      console.log(`⚠️ Cache: Page ${page} failed with 422, likely end of data`);
+      return { data: [], hasMore: false };
+    } else if (retryCount < 2) {
+      console.log(`🔄 Cache: Retrying page ${page} in 1 second...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchTokensPage(page, retryCount + 1);
+    } else {
+      throw error;
+    }
+  }
 };
 
 const loadTokensPage = async (page: number, isInitial = false) => {
@@ -131,9 +144,9 @@ const startBackgroundLoading = () => {
   }
 };
 
-// Load tokens progressively (first 5 pages only for performance)
+// Load tokens progressively (all available tokens)
 const loadAllTokens = async () => {
-  console.log('🚀 Cache: Starting progressive loading of tokens (limited to first 5 pages)...');
+  console.log('🚀 Cache: Starting progressive loading of all available tokens...');
   
   // Set initial loading state
   cacheState.isLoading = true;
@@ -143,10 +156,9 @@ const loadAllTokens = async () => {
   let page = 1;
   let hasMore = true;
   let allTokens: Jetton[] = [];
-  const maxPages = 5; // Limit to first 5 pages for performance (500 tokens)
   const startTime = Date.now();
   
-  while (hasMore && page <= maxPages) {
+  while (hasMore) {
     try {
       console.log(`📥 Cache: Loading page ${page}...`);
       const { data, hasMore: pageHasMore } = await fetchTokensPage(page);
@@ -174,10 +186,24 @@ const loadAllTokens = async () => {
       cacheListeners.forEach(listener => listener());
       
       // Small delay to prevent overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
     } catch (err) {
       console.error(`❌ Cache: Failed to load page ${page}:`, err);
+      
+      // Handle specific error cases
+      if (err instanceof Error) {
+        if (err.message.includes('422')) {
+          console.log(`⚠️ Cache: Page ${page} returned 422 - likely reached end of data`);
+          hasMore = false;
+          break;
+        } else if (err.message.includes('429')) {
+          console.log(`⚠️ Cache: Rate limited on page ${page}, waiting before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+      }
+      
       cacheState.error = err instanceof Error ? err : new Error('Unknown error');
       break;
     }

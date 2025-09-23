@@ -4,16 +4,16 @@ import { swapCoffeeApiClient } from '@/lib/swap-coffee-api';
 export const TOKENS_QUERY_KEY = 'tokens';
 
 export interface Jetton {
-  created_at: string;
+  created_at?: string;
   address: string;
-  total_supply: string;
+  total_supply?: string;
   name: string;
   symbol: string;
   decimals: number;
-  mintable: boolean;
+  mintable?: boolean;
   verification: 'BLACKLISTED' | 'UNKNOWN' | 'COMMUNITY' | 'WHITELISTED';
-  contract_interface: string;
-  image_url: string;
+  contract_interface?: string;
+  image_url?: string;
   market_stats?: {
     holders_count: number;
     price_usd: number;
@@ -26,7 +26,7 @@ export interface Jetton {
     fdmc: number;
     trust_score: number;
   };
-  labels: Array<{
+  labels?: Array<{
     label: string;
     label_id: number;
     created_at: string;

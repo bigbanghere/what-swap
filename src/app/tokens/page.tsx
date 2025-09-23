@@ -111,7 +111,7 @@ export default function TokensPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [tokenType, setTokenType] = useState<'from' | 'to'>('from');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const listRef = useRef<HTMLDivElement>(null);
+  // listRef removed since infinite scroll is not needed
   
   console.log('🎯 TokensPage: State initialized', { tokenType, searchQuery, isInitialLoad });
 
@@ -147,8 +147,6 @@ export default function TokensPage() {
     isFetching = false,
     error = null,
     hasMore = false,
-    totalLoaded = 0,
-    totalExpected = 1791,
   } = useTokensCache();
   
   console.log('🎯 TokensPage: useTokensQuery result', { 
@@ -156,18 +154,13 @@ export default function TokensPage() {
     isLoading, 
     error,
     hasMore,
-    totalLoaded,
-    totalExpected,
-    isFetchingAll
   });
 
   // Debug the loading indicator values
   console.log('📊 Loading indicator values:', {
-    totalLoaded,
-    totalExpected,
-    percentage: totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0,
-    isFetchingAll,
-    tokensLength: tokens.length
+    tokensLength: tokens.length,
+    isLoading,
+    isFetching
   });
 
   // Filter tokens based on search query
@@ -197,8 +190,8 @@ export default function TokensPage() {
 
   // Debug effect to track tokens changes
   useEffect(() => {
-    console.log('🔄 Tokens array changed:', { length: tokens.length, isFetchingAll, totalLoaded });
-  }, [tokens.length, isFetchingAll, totalLoaded]);
+    console.log('🔄 Tokens array changed:', { length: tokens.length, isLoading, isFetching });
+  }, [tokens.length, isLoading, isFetching]);
 
   // Handle search input change
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,18 +261,7 @@ export default function TokensPage() {
     return `$${usdValue.toFixed(2)}`;
   }, []);
 
-  // Infinite scroll handler
-  const handleScroll = useCallback(() => {
-    if (!listRef.current || isLoadingMore || !hasMore) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 200; // Increased trigger distance
-
-    if (isNearBottom) {
-      console.log('🔄 TokensPage: Triggering load more via scroll');
-      loadMore();
-    }
-  }, [loadMore, isLoadingMore, hasMore]);
+  // Note: Infinite scroll is not needed since useTokensCache loads all tokens automatically
 
   console.log('🎯 TokensPage: About to render');
   
@@ -321,7 +303,7 @@ export default function TokensPage() {
           <p className="text-sm mb-4" style={{ color: colors.text }}>
             Token type: {tokenType}
           </p>
-          <p className="text-red-500 mb-4">Error loading tokens: {error}</p>
+          <p className="text-red-500 mb-4">Error loading tokens: {error?.message || 'Unknown error'}</p>
           <button 
             onClick={() => router.push('/')}
             className="px-4 py-2 bg-blue-500 text-white rounded"
@@ -379,9 +361,7 @@ export default function TokensPage() {
       </div>
 
       <div 
-        ref={listRef}
         className="flex-1 px-4 pb-4 overflow-y-auto"
-        onScroll={handleScroll}
       >
         {isLoading ? (
           // Loading skeletons - fixed number to prevent layout shifts
@@ -457,7 +437,7 @@ export default function TokensPage() {
         {/* Cache is loading all tokens automatically */}
 
         {/* Loading All Tokens Indicator */}
-        {(isFetching || (tokens.length > 0 && tokens.length < totalExpected)) && (
+        {isFetching && (
           <div className="flex justify-center py-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex items-center gap-2">
@@ -466,24 +446,15 @@ export default function TokensPage() {
                   className="text-sm font-medium"
                   style={{ color: colors.text }}
                 >
-                  Loading tokens... {totalLoaded} of {totalExpected}
+                  Loading tokens... {tokens.length} loaded
                 </span>
-              </div>
-              <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                  style={{ width: `${(totalLoaded / totalExpected) * 100}%` }}
-                ></div>
-              </div>
-              <div className="text-xs" style={{ color: colors.secondary || '#6b7280' }}>
-                {Math.round((totalLoaded / totalExpected) * 100)}% complete
               </div>
             </div>
           </div>
         )}
 
         {/* Loading More Indicator */}
-        {isLoadingMore && !isFetching && (
+        {isLoading && !isFetching && (
           <div className="flex justify-center py-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex items-center gap-2">
@@ -503,7 +474,7 @@ export default function TokensPage() {
         )}
 
         {/* End of List Indicator */}
-        {!hasMore && tokens.length > 0 && !isLoadingMore && !isFetching && (
+        {!hasMore && tokens.length > 0 && !isLoading && !isFetching && (
           <div 
             className="text-center py-4 text-xs"
             style={{ color: colors.secondary || '#6b7280' }}

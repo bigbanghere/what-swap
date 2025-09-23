@@ -1,15 +1,15 @@
 // Swap.coffee API client for token data
 export interface Jetton {
-  created_at: string;
+  created_at?: string;
   address: string;
-  total_supply: string;
+  total_supply?: string;
   name: string;
   symbol: string;
   decimals: number;
-  mintable: boolean;
+  mintable?: boolean;
   verification: 'BLACKLISTED' | 'UNKNOWN' | 'COMMUNITY' | 'WHITELISTED';
-  contract_interface: string;
-  image_url: string;
+  contract_interface?: string;
+  image_url?: string;
   market_stats?: {
     holders_count: number;
     price_usd: number;
@@ -22,7 +22,7 @@ export interface Jetton {
     fdmc: number;
     trust_score: number;
   };
-  labels: Array<{
+  labels?: Array<{
     label: string;
     label_id: number;
     created_at: string;
@@ -121,7 +121,7 @@ class SwapCoffeeApiClient {
   }
 
   async getJettonsPaginated(params: JettonsParams = {}): Promise<JettonsResponse> {
-    const { page = 1, size = 100 } = params; // Changed back to 100 for proper API pagination
+    const { page = 1, size = 100 } = params;
     
     console.log(`🌐 API Request: Fetching page ${page} with size ${size}`, params);
     
@@ -129,12 +129,15 @@ class SwapCoffeeApiClient {
     
     console.log(`✅ API Response: Received ${jettons.length} tokens from Swap Coffee API`);
     
+    // If we got fewer tokens than requested, we've reached the end
+    const hasMore = jettons.length === size;
+    
     return {
       data: jettons,
       total: jettons.length,
       page,
       size,
-      hasMore: jettons.length === size, // If we got exactly the requested size, there might be more
+      hasMore,
     };
   }
 

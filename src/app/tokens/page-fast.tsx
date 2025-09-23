@@ -51,9 +51,10 @@ const TokenItem = React.memo(({
 }) => {
   const [imageError, setImageError] = useState(false);
   
-  const handleImageError = useCallback(() => {
+  const handleImageError = useCallback((e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.log(`🖼️ Image failed to load for ${token.symbol}:`, e.currentTarget.src);
     setImageError(true);
-  }, []);
+  }, [token.symbol]);
 
   const formatTokenBalance = () => {
     return "0";
@@ -81,6 +82,7 @@ const TokenItem = React.memo(({
             alt={token.symbol}
             className="w-[30px] h-[30px] object-cover"
             onError={handleImageError}
+            loading="lazy"
           />
         ) : (
           <div
@@ -350,6 +352,15 @@ export default function TokensPageFast() {
                   />
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        
+        {/* Show completion message when all tokens are loaded */}
+        {!isLoading && allTokens.length > 0 && allTokens.length >= TOTAL_TOKENS && (
+          <div className="flex items-center justify-center py-4">
+            <div className="text-sm" style={{ color: colors.secondaryText || '#6b7280' }}>
+              ✅ All {allTokens.length} tokens loaded successfully
             </div>
           </div>
         )}
