@@ -58,7 +58,7 @@ export const useTokensQueryFast = (searchQuery: string = '') => {
       const response = await swapCoffeeApiClient.getJettonsPaginated({
         page,
         size: pageSize,
-        verification: ['WHITELISTED', 'COMMUNITY'],
+        verification: ['WHITELISTED', 'COMMUNITY', 'UNKNOWN', 'BLACKLISTED'],
         ...(searchQuery && { search: searchQuery }),
       });
 
