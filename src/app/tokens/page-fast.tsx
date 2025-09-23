@@ -112,7 +112,7 @@ const TokenItem = React.memo(({
             opacity: 0.66
           }}
         >
-          {token.name}
+          On TON ({token.name})
         </div>
       </div>
 

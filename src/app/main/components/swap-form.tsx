@@ -242,6 +242,7 @@ export function SwapForm() {
             sessionStorage.removeItem('swapFormProcessed'); // Clear the processed flag so it can be processed again
             console.log('🧹 SwapForm: Cleared session flags on page refresh');
         }
+        
 
         // Listen for storage changes (when tokens are selected from tokens page)
         const handleStorageChange = (e: StorageEvent) => {
@@ -364,6 +365,7 @@ export function SwapForm() {
                 address: defaultUsdt.address
             });
         }
+        
     }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading]); // Include dependencies but logic prevents infinite loops
 
     // Function to get prioritized tokens for shortcuts (exclude TON and USDT)
@@ -414,85 +416,29 @@ export function SwapForm() {
     // Function to get top 4 tokens excluding the fromToken
     const getTop4TokensExcludingFrom = useCallback(() => {
         if (!allTokens || allTokens.length === 0) {
-            // Fallback to hardcoded tokens if no tokens are loaded
-            return [
-                { symbol: "STON", image_url: "/ston.svg" },
-                { symbol: "NOT", image_url: "/not.svg" },
-                { symbol: "CES", image_url: "/ces.svg" },
-                { symbol: "DUCK", image_url: "/duck.svg" }
-            ];
+            // Return empty array if no tokens are loaded
+            return [];
         }
 
         // Use prioritized tokens (USDT and TON get priority)
         const prioritizedTokens = getPrioritizedTokens(selectedFromToken);
         
-        // If we have less than 4 tokens, pad with fallback tokens
-        if (prioritizedTokens.length < 4) {
-            const fallbackTokens = [
-                { symbol: "STON", image_url: "/ston.svg", address: "fallback-ston", name: "STON", decimals: 9, verification: "COMMUNITY" as const },
-                { symbol: "NOT", image_url: "/not.svg", address: "fallback-not", name: "NOT", decimals: 9, verification: "COMMUNITY" as const },
-                { symbol: "CES", image_url: "/ces.svg", address: "fallback-ces", name: "CES", decimals: 9, verification: "COMMUNITY" as const },
-                { symbol: "DUCK", image_url: "/duck.svg", address: "fallback-duck", name: "DUCK", decimals: 9, verification: "COMMUNITY" as const }
-            ];
-            
-            const result = [...prioritizedTokens];
-            let fallbackIndex = 0;
-            
-            while (result.length < 4 && fallbackIndex < fallbackTokens.length) {
-                const fallbackToken = fallbackTokens[fallbackIndex];
-                // Only add if not already present
-                if (!result.some(token => token.symbol === fallbackToken.symbol)) {
-                    result.push(fallbackToken);
-                }
-                fallbackIndex++;
-            }
-            
-            return result.slice(0, 4);
-        }
-
-        return prioritizedTokens;
+        // Return up to 4 tokens
+        return prioritizedTokens.slice(0, 4);
     }, [allTokens, selectedFromToken, getPrioritizedTokens]);
 
     // Function to get top 4 tokens excluding the toToken
     const getTop4TokensExcludingTo = useCallback(() => {
         if (!allTokens || allTokens.length === 0) {
-            // Fallback to hardcoded tokens if no tokens are loaded
-            return [
-                { symbol: "STON", image_url: "/ston.svg" },
-                { symbol: "NOT", image_url: "/not.svg" },
-                { symbol: "CES", image_url: "/ces.svg" },
-                { symbol: "DUCK", image_url: "/duck.svg" }
-            ];
+            // Return empty array if no tokens are loaded
+            return [];
         }
 
         // Use prioritized tokens (USDT and TON get priority)
         const prioritizedTokens = getPrioritizedTokens(selectedToToken);
         
-        // If we have less than 4 tokens, pad with fallback tokens
-        if (prioritizedTokens.length < 4) {
-            const fallbackTokens = [
-                { symbol: "STON", image_url: "/ston.svg", address: "fallback-ston", name: "STON", decimals: 9, verification: "COMMUNITY" as const },
-                { symbol: "NOT", image_url: "/not.svg", address: "fallback-not", name: "NOT", decimals: 9, verification: "COMMUNITY" as const },
-                { symbol: "CES", image_url: "/ces.svg", address: "fallback-ces", name: "CES", decimals: 9, verification: "COMMUNITY" as const },
-                { symbol: "DUCK", image_url: "/duck.svg", address: "fallback-duck", name: "DUCK", decimals: 9, verification: "COMMUNITY" as const }
-            ];
-            
-            const result = [...prioritizedTokens];
-            let fallbackIndex = 0;
-            
-            while (result.length < 4 && fallbackIndex < fallbackTokens.length) {
-                const fallbackToken = fallbackTokens[fallbackIndex];
-                // Only add if not already present
-                if (!result.some(token => token.symbol === fallbackToken.symbol)) {
-                    result.push(fallbackToken);
-                }
-                fallbackIndex++;
-            }
-            
-            return result.slice(0, 4);
-        }
-
-        return prioritizedTokens;
+        // Return up to 4 tokens
+        return prioritizedTokens.slice(0, 4);
     }, [allTokens, selectedToToken, getPrioritizedTokens]);
 
     // Create validation function for keyboard
@@ -662,8 +608,8 @@ export function SwapForm() {
                                     className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                                 >
                                     <Image
-                                        src={token.image_url || "/ston.svg"}
-                                        alt={token.symbol || "STON"}
+                                        src={token.image_url || ''}
+                                        alt={token.symbol || ''}
                                         width="15"
                                         height="15"
                                         style={{
@@ -718,8 +664,8 @@ export function SwapForm() {
                             }}
                         >
                             <Image
-                                src={selectedFromToken?.image_url || defaultUsdt?.image_url || "/usdt.svg"}
-                                alt={selectedFromToken?.symbol || defaultUsdt?.symbol || "USDT"}
+                                src={selectedFromToken?.image_url || defaultUsdt?.image_url}
+                                alt={selectedFromToken?.symbol || defaultUsdt?.symbol}
                                 width="20"
                                 height="20"
                                 priority
@@ -735,7 +681,7 @@ export function SwapForm() {
                                 }}
                             />
                             <span className='text-[#1ABCFF]'>
-                                {selectedFromToken?.symbol || defaultUsdt?.symbol || "USDT"}
+                                {selectedFromToken?.symbol || defaultUsdt?.symbol}
                             </span>
                             <MdKeyboardArrowRight 
                                 style={{
@@ -752,7 +698,7 @@ export function SwapForm() {
                         </div>
                         {walletAddress ? <div className='flex flex-row gap-[5px]'>
                             <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
-                            <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>1111.00 USDT</span>
+                            <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>1111.00 {selectedFromToken?.symbol || defaultUsdt?.symbol}</span>
                         </div> : null}
                         <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
                             On TON
@@ -806,8 +752,8 @@ export function SwapForm() {
                                     className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] hover:bg-blue-50 transition-colors cursor-pointer'
                                 >
                                     <Image
-                                        src={token.image_url || "/ston.svg"}
-                                        alt={token.symbol || "STON"}
+                                        src={token.image_url || ''}
+                                        alt={token.symbol || ''}
                                         width="15"
                                         height="15"
                                         style={{
@@ -862,8 +808,8 @@ export function SwapForm() {
                             }}
                         >
                             <Image
-                                src={selectedToToken?.image_url || defaultTon?.image_url || "/ton.svg"}
-                                alt={selectedToToken?.symbol || defaultTon?.symbol || "TON"}
+                                src={selectedToToken?.image_url || defaultTon?.image_url}
+                                alt={selectedToToken?.symbol || defaultTon?.symbol}
                                 width="20"
                                 height="20"
                                 priority
@@ -879,7 +825,7 @@ export function SwapForm() {
                                 }}
                             />
                             <span className='text-[#1ABCFF]'>
-                                {selectedToToken?.symbol || defaultTon?.symbol || "TON"}
+                                {selectedToToken?.symbol || defaultTon?.symbol}
                             </span>
                             <MdKeyboardArrowRight 
                                 style={{
