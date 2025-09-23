@@ -59,18 +59,40 @@ export function Root(props: PropsWithChildren) {
   const didMount = useDidMount();
   const { colors } = useTheme();
 
+  // Apply theme colors immediately to prevent white flash
+  useEffect(() => {
+    if (typeof window !== 'undefined' && colors) {
+      const root = document.documentElement;
+      Object.entries(colors).forEach(([key, value]) => {
+        root.style.setProperty(`--theme-${key}`, value);
+      });
+    }
+  }, [colors]);
+
   return didMount ? (
     <ErrorBoundary fallback={ErrorPage}>
       <RootInner {...props} />
     </ErrorBoundary>
   ) : (
-    <div className="root__loading">
-      <div className="flex flex-col items-center justify-center min-h-screen min-w-screen bg-gray-100 dark:bg-gray-900"
+    <div 
+      className="root__loading"
+      style={{
+        backgroundColor: colors.background || '#000000',
+        color: colors.text || '#ffffff',
+      }}
+    >
+      <div 
+        className="flex flex-col items-center justify-center min-h-screen min-w-screen"
         style={{ 
-          backgroundColor: colors.background,
+          backgroundColor: colors.background || '#000000',
         }}
       >
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mb-4"></div>
+        <div 
+          className="animate-spin rounded-full h-32 w-32 border-b-2 mb-4"
+          style={{
+            borderColor: `${colors.primary || '#8AB4F8'} transparent transparent transparent`
+          }}
+        ></div>
       </div>
     </div>
   );

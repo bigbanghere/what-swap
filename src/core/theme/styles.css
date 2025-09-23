@@ -35,8 +35,8 @@
 
 /* Apply theme background to entire viewport */
 html {
-  background-color: var(--theme-background) !important;
-  color: var(--theme-text) !important;
+  background-color: var(--theme-background, #000000) !important;
+  color: var(--theme-text, #ffffff) !important;
   min-height: 100vh;
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 500; /* Medium weight */
@@ -45,8 +45,8 @@ html {
 
 /* Apply theme background to body */
 body {
-  background-color: var(--theme-background) !important;
-  color: var(--theme-text) !important;
+  background-color: var(--theme-background, #000000) !important;
+  color: var(--theme-text, #ffffff) !important;
   transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 100vh;
   margin: 0;
@@ -151,6 +151,6 @@ html, body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: var(--theme-background);
-  color: var(--theme-text);
+  background-color: var(--theme-background, #000000);
+  color: var(--theme-text, #ffffff);
 }

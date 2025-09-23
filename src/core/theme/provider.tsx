@@ -84,10 +84,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     ? (isDark ? darkTheme : lightTheme)
     : themes[theme];
 
-  // Apply theme colors as CSS variables
+  // Apply theme colors as CSS variables immediately
   useEffect(() => {
     applyThemeColors(colors);
   }, [colors]);
+
+  // Also apply theme colors immediately on mount to prevent white flash
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      applyThemeColors(colors);
+    }
+  }, []);
 
   const value: ThemeContextType = {
     theme,

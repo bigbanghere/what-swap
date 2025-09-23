@@ -415,25 +415,16 @@ export function SwapForm() {
         
     }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading, allTokens]); // Include dependencies but logic prevents infinite loops
 
-    // Function to get prioritized tokens for shortcuts (exclude TON and USDT)
-    const getPrioritizedTokens = useCallback((excludeToken: any) => {
+    // Function to get prioritized tokens for shortcuts (exclude both fromToken and toToken)
+    const getPrioritizedTokens = useCallback((excludeFromToken: any, excludeToToken: any) => {
         if (!allTokens || allTokens.length === 0) {
             return [];
         }
 
-        // Find TON and USDT tokens from the cache to exclude them
-        const tonToken = allTokens.find(token => 
-            token.symbol === 'TON' && token.verification === 'WHITELISTED'
-        );
-        const usdtToken = allTokens.find(token => 
-            token.symbol === 'USDT' && token.verification === 'WHITELISTED'
-        );
-
-        // Filter out the excluded token, TON, and USDT
+        // Filter out both the fromToken and toToken
         const filteredTokens = allTokens.filter(token => 
-            token.address !== excludeToken?.address &&
-            token.address !== tonToken?.address &&
-            token.address !== usdtToken?.address
+            token.address !== excludeFromToken?.address &&
+            token.address !== excludeToToken?.address
         );
 
         // Sort by verification status and market cap
@@ -448,7 +439,7 @@ export function SwapForm() {
                 const bMarketCap = b.market_cap || 0;
                 return bMarketCap - aMarketCap;
             })
-            .slice(0, 4);
+            .slice(0, 5); // Show top 5 instead of 4
 
         return sortedTokens.map(token => ({
             symbol: token.symbol,
@@ -460,33 +451,19 @@ export function SwapForm() {
         }));
     }, [allTokens]);
 
-    // Function to get top 4 tokens excluding the fromToken
-    const getTop4TokensExcludingFrom = useCallback(() => {
+    // Function to get top 5 tokens excluding both fromToken and toToken
+    const getTop5TokensExcludingBoth = useCallback(() => {
         if (!allTokens || allTokens.length === 0) {
             // Return empty array if no tokens are loaded
             return [];
         }
 
-        // Use prioritized tokens (USDT and TON get priority)
-        const prioritizedTokens = getPrioritizedTokens(selectedFromToken);
+        // Use prioritized tokens (exclude both selected fromToken and toToken)
+        const prioritizedTokens = getPrioritizedTokens(selectedFromToken, selectedToToken);
         
-        // Return up to 4 tokens
-        return prioritizedTokens.slice(0, 4);
-    }, [allTokens, selectedFromToken, getPrioritizedTokens]);
-
-    // Function to get top 4 tokens excluding the toToken
-    const getTop4TokensExcludingTo = useCallback(() => {
-        if (!allTokens || allTokens.length === 0) {
-            // Return empty array if no tokens are loaded
-            return [];
-        }
-
-        // Use prioritized tokens (USDT and TON get priority)
-        const prioritizedTokens = getPrioritizedTokens(selectedToToken);
-        
-        // Return up to 4 tokens
-        return prioritizedTokens.slice(0, 4);
-    }, [allTokens, selectedToToken, getPrioritizedTokens]);
+        // Return up to 5 tokens
+        return prioritizedTokens;
+    }, [allTokens, selectedFromToken, selectedToToken, getPrioritizedTokens]);
 
     // Create validation function for keyboard
     const canAddMoreCharacters = useCallback((key: string) => {
@@ -631,7 +608,7 @@ export function SwapForm() {
                             {t('max')}
                         </div> : null}
                         <div className='w-full flex justify-end gap-[5px]'>
-                            {getTop4TokensExcludingFrom().map((token, index) => (
+                            {getTop5TokensExcludingBoth().map((token, index) => (
                                 <div
                                     key={`from-token-${index}-${token.symbol}`}
                                     onClick={(e) => {
@@ -777,26 +754,48 @@ export function SwapForm() {
                                 pointerEvents: 'auto'
                             }}
                         >
-                            <Image
-                                src={selectedFromToken?.image_url || defaultUsdt?.image_url}
-                                alt={selectedFromToken?.symbol || defaultUsdt?.symbol}
-                                width="20"
-                                height="20"
-                                priority
-                                style={{
-                                    width: '20px !important',
-                                    height: '20px !important',
-                                    minWidth: '20px',
-                                    minHeight: '20px',
-                                    maxWidth: '20px',
-                                    maxHeight: '20px',
-                                    display: 'block',
-                                    borderRadius: '50%',
-                                }}
-                            />
-                            <span className='text-[#1ABCFF]'>
-                                {selectedFromToken?.symbol || defaultUsdt?.symbol}
-                            </span>
+                            {defaultTokensLoading ? (
+                                <>
+                                    <div 
+                                        style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            backgroundColor: 'transparent',
+                                            borderRadius: '50%',
+                                        }}
+                                    />
+                                    <div 
+                                        style={{
+                                            width: '38.23px',
+                                            height: '21px',
+                                            backgroundColor: 'transparent',
+                                        }}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <Image
+                                        src={selectedFromToken?.image_url || defaultUsdt?.image_url}
+                                        alt={selectedFromToken?.symbol || defaultUsdt?.symbol}
+                                        width="20"
+                                        height="20"
+                                        priority
+                                        style={{
+                                            width: '20px !important',
+                                            height: '20px !important',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            maxWidth: '20px',
+                                            maxHeight: '20px',
+                                            display: 'block',
+                                            borderRadius: '50%',
+                                        }}
+                                    />
+                                    <span className='text-[#1ABCFF]'>
+                                        {selectedFromToken?.symbol || defaultUsdt?.symbol}
+                                    </span>
+                                </>
+                            )}
                             <MdKeyboardArrowRight 
                                 style={{
                                     width: '20px',
@@ -812,7 +811,18 @@ export function SwapForm() {
                         </div>
                         {walletAddress ? <div className='flex flex-row gap-[5px]'>
                             <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
-                            <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>1111.00 {selectedFromToken?.symbol || defaultUsdt?.symbol}</span>
+                            <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
+                                1111.00 {defaultTokensLoading ? (
+                                    <span style={{ 
+                                        display: 'inline-block',
+                                        width: '38.23px',
+                                        height: '21px',
+                                        backgroundColor: 'transparent'
+                                    }} />
+                                ) : (
+                                    selectedFromToken?.symbol || defaultUsdt?.symbol
+                                )}
+                            </span>
                         </div> : null}
                         <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
                             On TON
@@ -898,7 +908,7 @@ export function SwapForm() {
                     <div className='flex flex-row items-center justify-between'>
                         {t('get')}
                         <div className='w-full flex justify-end gap-[5px]'>
-                            {getTop4TokensExcludingTo().map((token, index) => (
+                            {getTop5TokensExcludingBoth().map((token, index) => (
                                 <div
                                     key={`to-token-${index}-${token.symbol}`}
                                     onClick={(e) => {
@@ -1044,26 +1054,48 @@ export function SwapForm() {
                                 pointerEvents: 'auto'
                             }}
                         >
-                            <Image
-                                src={selectedToToken?.image_url || defaultTon?.image_url}
-                                alt={selectedToToken?.symbol || defaultTon?.symbol}
-                                width="20"
-                                height="20"
-                                priority
-                                style={{
-                                    width: '20px !important',
-                                    height: '20px !important',
-                                    minWidth: '20px',
-                                    minHeight: '20px',
-                                    maxWidth: '20px',
-                                    maxHeight: '20px',
-                                    display: 'block',
-                                    borderRadius: '50%',
-                                }}
-                            />
-                            <span className='text-[#1ABCFF]'>
-                                {selectedToToken?.symbol || defaultTon?.symbol}
-                            </span>
+                            {defaultTokensLoading ? (
+                                <>
+                                    <div 
+                                        style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            backgroundColor: 'transparent',
+                                            borderRadius: '50%',
+                                        }}
+                                    />
+                                    <div 
+                                        style={{
+                                            width: '30.04px ',
+                                            height: '21px',
+                                            backgroundColor: 'transparent',
+                                        }}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <Image
+                                        src={selectedToToken?.image_url || defaultTon?.image_url}
+                                        alt={selectedToToken?.symbol || defaultTon?.symbol}
+                                        width="20"
+                                        height="20"
+                                        priority
+                                        style={{
+                                            width: '20px !important',
+                                            height: '20px !important',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            maxWidth: '20px',
+                                            maxHeight: '20px',
+                                            display: 'block',
+                                            borderRadius: '50%',
+                                        }}
+                                    />
+                                    <span className='text-[#1ABCFF]'>
+                                        {selectedToToken?.symbol || defaultTon?.symbol}
+                                    </span>
+                                </>
+                            )}
                             <MdKeyboardArrowRight 
                                 style={{
                                     width: '20px',
@@ -1094,7 +1126,18 @@ export function SwapForm() {
                                 transition: 'display 0.2s ease'
                             }}>
                                 <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
-                                <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>576.00 TON</span> 
+                                <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
+                                    576.00 {defaultTokensLoading ? (
+                                        <span style={{ 
+                                            display: 'inline-block',
+                                            width: '30.04px',
+                                            height: '21px',
+                                            backgroundColor: 'transparent'
+                                        }} />
+                                    ) : (
+                                        selectedToToken?.symbol || defaultTon?.symbol
+                                    )}
+                                </span> 
                             </div>
                         </div>
                         <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>

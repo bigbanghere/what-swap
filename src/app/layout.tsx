@@ -29,6 +29,21 @@ export default function RootLayout({ children }: PropsWithChildren) {
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" 
           rel="stylesheet" 
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Set dark theme immediately to prevent white flash
+              (function() {
+                const root = document.documentElement;
+                root.style.setProperty('--theme-background', '#000000');
+                root.style.setProperty('--theme-text', '#ffffff');
+                root.style.setProperty('--theme-primary', '#8AB4F8');
+                document.body.style.backgroundColor = '#000000';
+                document.body.style.color = '#ffffff';
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
         <I18nProvider>
