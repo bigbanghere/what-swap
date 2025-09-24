@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDefaultTokens } from '@/hooks/use-default-tokens';
 import { useTokensCache } from '@/hooks/use-tokens-cache';
+import { useSwapCalculation } from '@/hooks/use-swap-calculation';
 
 export function SwapForm() {
     const router = useRouter();
@@ -33,6 +34,16 @@ export function SwapForm() {
     const { setCanAddMoreCharacters } = useValidation();
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
     const { allTokens } = useTokensCache();
+
+    // Swap calculation hook
+    const { outputAmount: calculatedOutputAmount, isLoading: isCalculating, error: calculationError } = useSwapCalculation({
+        fromToken: selectedFromToken,
+        toToken: selectedToToken,
+        fromAmount,
+        toAmount,
+        isFromAmountFocused,
+        isToAmountFocused
+    });
 
     // Function to get full token data with market stats
     const getFullTokenData = useCallback((token: any) => {
@@ -392,6 +403,32 @@ export function SwapForm() {
     useEffect(() => {
         console.log('🔄 SwapForm: selectedToToken changed:', selectedToToken);
     }, [selectedToToken]);
+
+    // Update amounts when we get a calculated output amount
+    useEffect(() => {
+        console.log('🔄 SwapForm: calculatedOutputAmount changed:', {
+            calculatedOutputAmount,
+            isFromAmountFocused,
+            isToAmountFocused,
+            isCalculating
+        });
+        
+        if (calculatedOutputAmount) {
+            if (isFromAmountFocused && !isToAmountFocused) {
+                // User is editing fromAmount, update toAmount
+                console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount);
+                setToAmount(calculatedOutputAmount);
+            } else if (isToAmountFocused && !isFromAmountFocused) {
+                // User is editing toAmount, update fromAmount (reverse calculation)
+                console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
+                setFromAmount(calculatedOutputAmount);
+            } else if (!isFromAmountFocused && !isToAmountFocused) {
+                // Initial calculation on page load, update toAmount
+                console.log('🔄 SwapForm: Initial calculation - updating toAmount:', calculatedOutputAmount);
+                setToAmount(calculatedOutputAmount);
+            }
+        }
+    }, [calculatedOutputAmount, isFromAmountFocused, isToAmountFocused, isCalculating]);
 
     // Ensure default tokens are set if no valid tokens are loaded
     // This runs when default tokens are loaded from API or when token state changes
@@ -1191,18 +1228,28 @@ export function SwapForm() {
                     </div>
                     <div className='flex flex-row justify-between items-center'>
                         <div className='w-full' style={{ opacity: 0.66 }}>
-                            {(() => {
-                                const currentToken = selectedToToken || defaultTon;
-                                console.log('🔍 SwapForm: ToToken USD calculation:', {
-                                    currentToken: currentToken?.symbol,
-                                    toAmount,
-                                    hasMarketStats: !!currentToken?.market_stats?.price_usd,
-                                    price: currentToken?.market_stats?.price_usd
-                                });
-                                const usdValue = calculateUSDValue(toAmount, currentToken);
-                                const formattedValue = formatUSDValue(usdValue);
-                                return formattedValue || '$0';
-                            })()}
+                            {calculationError ? (
+                                <span style={{ color: '#ff6b6b' }}>
+                                    {calculationError}
+                                </span>
+                            ) : isCalculating ? (
+                                <span style={{ color: '#1ABCFF' }}>
+                                    Calculating...
+                                </span>
+                            ) : (
+                                (() => {
+                                    const currentToken = selectedToToken || defaultTon;
+                                    console.log('🔍 SwapForm: ToToken USD calculation:', {
+                                        currentToken: currentToken?.symbol,
+                                        toAmount,
+                                        hasMarketStats: !!currentToken?.market_stats?.price_usd,
+                                        price: currentToken?.market_stats?.price_usd
+                                    });
+                                    const usdValue = calculateUSDValue(toAmount, currentToken);
+                                    const formattedValue = formatUSDValue(usdValue);
+                                    return formattedValue || '$0';
+                                })()
+                            )}
                         </div>
                         <div className='flex flex-row gap-[5px]'>
                             <div style={{ 
