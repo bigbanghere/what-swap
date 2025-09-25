@@ -238,8 +238,23 @@ export function useSwapCalculation({
         }
     }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap]);
 
-    // Note: We only calculate fromAmount -> toAmount to avoid feedback loops
-    // Reverse calculation (toAmount -> fromAmount) is disabled to prevent infinite loops
+    // Calculate when toAmount changes (reverse calculation: toAmount -> fromAmount)
+    useEffect(() => {
+        if (isToAmountFocused && toAmount && fromToken && toToken && parseFloat(toAmount) > 0) {
+            console.log('🔄 Swap calculation: toAmount changed (reverse), calculating...', {
+                toAmount,
+                fromToken: fromToken.symbol,
+                toToken: toToken.symbol
+            });
+            calculateSwap(toToken, fromToken, toAmount).then(outputAmount => {
+                if (outputAmount) {
+                    console.log('✅ Swap calculation: got reverse output amount', outputAmount);
+                    // For reverse calculation, we need to update the fromAmount
+                    setResult(prev => ({ ...prev, outputAmount }));
+                }
+            });
+        }
+    }, [toAmount, fromToken?.address, toToken?.address, calculateSwap]);
 
     // Initial calculation on page load (when tokens are set and fromAmount has a value)
     useEffect(() => {

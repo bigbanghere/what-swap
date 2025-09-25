@@ -35,6 +35,10 @@ export function SwapForm() {
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
     const { allTokens } = useTokensCache();
 
+    // Track user input vs programmatic updates
+    const userInputRef = useRef<'from' | 'to' | null>(null);
+    const lastCalculatedAmount = useRef<string | null>(null);
+
     // Swap calculation hook
     const { outputAmount: calculatedOutputAmount, isLoading: isCalculating, error: calculationError } = useSwapCalculation({
         fromToken: selectedFromToken,
@@ -413,13 +417,27 @@ export function SwapForm() {
             isCalculating
         });
         
-        if (calculatedOutputAmount) {
-            // Only update toAmount when user is typing in fromAmount or on initial load
+        if (calculatedOutputAmount && calculatedOutputAmount !== lastCalculatedAmount.current) {
+            lastCalculatedAmount.current = calculatedOutputAmount;
+            
+            // Update toAmount when user is typing in fromAmount or on initial load
             if ((isFromAmountFocused && !isToAmountFocused) || (!isFromAmountFocused && !isToAmountFocused)) {
-                console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount);
+                // Only update if the user was typing in the from field or it's initial load
+                if (userInputRef.current === 'from' || userInputRef.current === null) {
+                    console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount);
+                    setToAmount(calculatedOutputAmount);
+                    userInputRef.current = null; // Reset after update
+                }
             }
-            // Note: Reverse calculation (toAmount -> fromAmount) is disabled to prevent feedback loops
+            // Update fromAmount when user is typing in toAmount (reverse calculation)
+            else if (isToAmountFocused && !isFromAmountFocused) {
+                // Only update if the user was typing in the to field
+                if (userInputRef.current === 'to') {
+                    console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
+                    setFromAmount(calculatedOutputAmount);
+                    userInputRef.current = null; // Reset after update
+                }
+            }
         }
     }, [calculatedOutputAmount, isFromAmountFocused, isToAmountFocused, isCalculating]);
 
@@ -617,6 +635,7 @@ export function SwapForm() {
     }, [setInputFocused, fromAmount, isToAmountFocused]);
 
     const handleFromAmountChange = useCallback((value: string) => {
+        userInputRef.current = 'from';
         setFromAmount(value);
     }, []);
 
@@ -651,6 +670,7 @@ export function SwapForm() {
     }, [setInputFocused, toAmount, isFromAmountFocused]);
 
     const handleToAmountChange = useCallback((value: string) => {
+        userInputRef.current = 'to';
         setToAmount(value);
     }, []);
 
