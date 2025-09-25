@@ -221,9 +221,9 @@ export function useSwapCalculation({
         }
     }, [convertToApiTokenAddress, calculateFallbackAmount]);
 
-    // Calculate when fromAmount changes and fromAmount is focused
+    // Calculate when fromAmount changes (only when user is typing in fromAmount)
     useEffect(() => {
-        if (isFromAmountFocused && fromAmount && fromToken && toToken) {
+        if (isFromAmountFocused && fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0) {
             console.log('🔄 Swap calculation: fromAmount changed, calculating...', {
                 fromAmount,
                 fromToken: fromToken.symbol,
@@ -236,35 +236,18 @@ export function useSwapCalculation({
                 }
             });
         }
-    }, [fromAmount, fromToken?.address, toToken?.address, isFromAmountFocused, calculateSwap]);
+    }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap]);
 
-    // Calculate when toAmount changes and toAmount is focused (reverse calculation)
-    useEffect(() => {
-        if (isToAmountFocused && toAmount && fromToken && toToken) {
-            console.log('🔄 Swap calculation: toAmount changed (reverse), calculating...', {
-                toAmount,
-                fromToken: fromToken.symbol,
-                toToken: toToken.symbol
-            });
-            calculateSwap(toToken, fromToken, toAmount).then(outputAmount => {
-                if (outputAmount) {
-                    console.log('✅ Swap calculation: got reverse output amount', outputAmount);
-                    // For reverse calculation, we need to update the fromAmount
-                    setResult(prev => ({ ...prev, outputAmount }));
-                }
-            });
-        }
-    }, [toAmount, fromToken?.address, toToken?.address, isToAmountFocused, calculateSwap]);
+    // Note: We only calculate fromAmount -> toAmount to avoid feedback loops
+    // Reverse calculation (toAmount -> fromAmount) is disabled to prevent infinite loops
 
-    // Initial calculation on page load
+    // Initial calculation on page load (when tokens are set and fromAmount has a value)
     useEffect(() => {
-        if (fromToken && toToken && fromAmount && !isFromAmountFocused && !isToAmountFocused) {
+        if (fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0) {
             console.log('🔄 Swap calculation: initial calculation on page load', {
                 fromAmount,
                 fromToken: fromToken.symbol,
-                toToken: toToken.symbol,
-                isFromAmountFocused,
-                isToAmountFocused
+                toToken: toToken.symbol
             });
             calculateSwap(fromToken, toToken, fromAmount).then(outputAmount => {
                 if (outputAmount) {
@@ -275,7 +258,7 @@ export function useSwapCalculation({
                 }
             });
         }
-    }, [fromToken?.address, toToken?.address, fromAmount, isFromAmountFocused, isToAmountFocused, calculateSwap]);
+    }, [fromToken?.address, toToken?.address, fromAmount, calculateSwap]);
 
     return result;
 }

@@ -414,19 +414,12 @@ export function SwapForm() {
         });
         
         if (calculatedOutputAmount) {
-            if (isFromAmountFocused && !isToAmountFocused) {
-                // User is editing fromAmount, update toAmount
+            // Only update toAmount when user is typing in fromAmount or on initial load
+            if ((isFromAmountFocused && !isToAmountFocused) || (!isFromAmountFocused && !isToAmountFocused)) {
                 console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount);
                 setToAmount(calculatedOutputAmount);
-            } else if (isToAmountFocused && !isFromAmountFocused) {
-                // User is editing toAmount, update fromAmount (reverse calculation)
-                console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
-                setFromAmount(calculatedOutputAmount);
-            } else if (!isFromAmountFocused && !isToAmountFocused) {
-                // Initial calculation on page load, update toAmount
-                console.log('🔄 SwapForm: Initial calculation - updating toAmount:', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount);
             }
+            // Note: Reverse calculation (toAmount -> fromAmount) is disabled to prevent feedback loops
         }
     }, [calculatedOutputAmount, isFromAmountFocused, isToAmountFocused, isCalculating]);
 
