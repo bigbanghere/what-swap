@@ -61,62 +61,6 @@ export function useSwapCalculation({
         };
     }, []);
 
-    // Fallback calculation for common token pairs when API is unavailable
-    const calculateFallbackAmount = useCallback((inputToken: any, outputToken: any, amount: number): string | null => {
-        // Simple fallback calculations for common pairs
-        const inputSymbol = inputToken.symbol;
-        const outputSymbol = outputToken.symbol;
-        
-        console.log(`🔄 Fallback calculation: Attempting ${amount} ${inputSymbol} -> ${outputSymbol}`);
-        
-        // Mock exchange rates (these would normally come from a price API)
-        const mockRates: { [key: string]: { [key: string]: number } } = {
-            'TON': {
-                'USDT': 2.5, // 1 TON = 2.5 USDT
-                'CES': 1000, // 1 TON = 1000 CES
-            },
-            'USDT': {
-                'TON': 0.4, // 1 USDT = 0.4 TON
-                'CES': 400, // 1 USDT = 400 CES
-            },
-            'CES': {
-                'TON': 0.001, // 1 CES = 0.001 TON
-                'USDT': 0.0025, // 1 CES = 0.0025 USDT
-            }
-        };
-
-        // Also try with different case variations
-        const inputSymbolUpper = inputSymbol.toUpperCase();
-        const outputSymbolUpper = outputSymbol.toUpperCase();
-
-        console.log(`🔄 Fallback calculation: Available rates:`, mockRates);
-        console.log(`🔄 Fallback calculation: Looking for rate for ${inputSymbol} -> ${outputSymbol}`);
-
-        // Try original case first
-        let rate = mockRates[inputSymbol]?.[outputSymbol];
-        
-        // If not found, try uppercase
-        if (!rate) {
-            rate = mockRates[inputSymbolUpper]?.[outputSymbolUpper];
-            console.log(`🔄 Fallback calculation: Trying uppercase ${inputSymbolUpper} -> ${outputSymbolUpper}`);
-        }
-
-        if (rate) {
-            const result = (amount * rate).toFixed(6);
-            console.log(`✅ Fallback calculation: ${amount} ${inputSymbol} = ${result} ${outputSymbol} (rate: ${rate})`);
-            return result;
-        }
-
-        console.log(`⚠️ No fallback rate available for ${inputSymbol} -> ${outputSymbol}`);
-        console.log(`⚠️ Available input symbols:`, Object.keys(mockRates));
-        if (mockRates[inputSymbol]) {
-            console.log(`⚠️ Available output symbols for ${inputSymbol}:`, Object.keys(mockRates[inputSymbol]));
-        }
-        if (mockRates[inputSymbolUpper]) {
-            console.log(`⚠️ Available output symbols for ${inputSymbolUpper}:`, Object.keys(mockRates[inputSymbolUpper]));
-        }
-        return null;
-    }, []);
 
     // Calculate swap output
     const calculateSwap = useCallback(async (inputToken: any, outputToken: any, inputAmount: string) => {
@@ -150,18 +94,26 @@ export function useSwapCalculation({
             const assetOut = convertToApiTokenAddress(outputToken);
             const amount = parseFloat(inputAmount);
 
-            console.log('🔄 Swap calculation:', {
+            console.log('🔄 Swap calculation: Using API for calculation', {
                 from: assetIn,
                 to: assetOut,
-                amount
+                amount,
+                inputToken: inputToken.symbol,
+                outputToken: outputToken.symbol
             });
 
-                // Use SDK directly to build route
-                const route = await routingApi.current.buildRoute({
-                    input_token: assetIn,
-                    output_token: assetOut,
-                    input_amount: amount,
-                });
+            // Use SDK directly to build route
+            const route = await routingApi.current.buildRoute({
+                input_token: assetIn,
+                output_token: assetOut,
+                input_amount: amount,
+            });
+
+            console.log('🔄 Swap calculation: API response received', {
+                hasData: !!route.data,
+                outputAmount: route.data?.output_amount,
+                routeData: route.data
+            });
 
             if (route.data) {
                 // Get the expected output amount from the route data
@@ -180,38 +132,21 @@ export function useSwapCalculation({
         } catch (error) {
             console.error('❌ Swap calculation error:', error);
             
-            // Try fallback calculation for common token pairs
-            try {
-                console.log('🔄 Attempting fallback calculation...', {
-                    inputToken: inputToken.symbol,
-                    outputToken: outputToken.symbol,
-                    amount,
-                    inputTokenFull: inputToken,
-                    outputTokenFull: outputToken
-                });
-                const fallbackAmount = calculateFallbackAmount(inputToken, outputToken, amount);
-                if (fallbackAmount) {
-                    console.log('✅ Fallback calculation successful:', fallbackAmount);
-                    return fallbackAmount;
-                } else {
-                    console.log('⚠️ Fallback calculation returned null');
-                }
-            } catch (fallbackError) {
-                console.error('❌ Fallback calculation also failed:', fallbackError);
-            }
-            
             // Handle different types of errors
             let errorMessage = 'Calculation failed';
             if (error instanceof Error) {
                 if (error.message.includes('Network Error')) {
-                    errorMessage = 'Network error: Unable to connect to swap.coffee API. This might be due to CORS restrictions or API unavailability.';
+                    errorMessage = 'Network error: Unable to connect to swap.coffee API. Please check your internet connection.';
                 } else if (error.message.includes('CORS')) {
                     errorMessage = 'CORS error: The swap.coffee API is blocking requests from this domain.';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Failed to fetch: Unable to reach the swap.coffee API. Please check your internet connection.';
                 } else {
-                    errorMessage = error.message;
+                    errorMessage = `API Error: ${error.message}`;
                 }
             }
             
+            console.error('❌ Swap calculation failed, no fallback used:', errorMessage);
             setResult(prev => ({ 
                 ...prev, 
                 error: errorMessage
@@ -223,11 +158,11 @@ export function useSwapCalculation({
             // Clear the last calculation reference so we can retry if needed
             lastCalculationRef.current = '';
         }
-    }, [convertToApiTokenAddress, calculateFallbackAmount]);
+    }, [convertToApiTokenAddress]);
 
     // Calculate when fromAmount changes (forward calculation: fromAmount -> toAmount)
     useEffect(() => {
-        if (fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0 && isFromAmountFocused) {
+        if (fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0) {
             console.log('🔄 Swap calculation: fromAmount changed (forward), calculating...', {
                 fromAmount,
                 fromToken: fromToken.symbol,
@@ -242,7 +177,7 @@ export function useSwapCalculation({
                 }
             });
         }
-    }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap, isFromAmountFocused]);
+    }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap]);
 
     // Calculate when toAmount changes (reverse calculation: toAmount -> fromAmount)
     // Only calculate when user is actively focused on toAmount field AND not during a forward calculation
@@ -265,7 +200,7 @@ export function useSwapCalculation({
 
     // Initial calculation when tokens are loaded and fromAmount has a value
     useEffect(() => {
-        if (fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0 && !isFromAmountFocused && !isToAmountFocused) {
+        if (fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0) {
             console.log('🔄 Swap calculation: initial calculation when tokens loaded', {
                 fromAmount,
                 fromToken: fromToken.symbol,
@@ -278,7 +213,7 @@ export function useSwapCalculation({
                 }
             });
         }
-    }, [fromToken?.address, toToken?.address, calculateSwap]);
+    }, [fromToken?.address, toToken?.address, calculateSwap, fromAmount]);
 
     return result;
 }
