@@ -443,6 +443,10 @@ export function SwapForm() {
             if (fromAmount === '0' && toAmount === '' && isToAmountFocused) {
                 console.log('🔄 SwapForm: Main calculation - skipping update when showing 0 in send field for empty get field');
             }
+            // Don't interfere when send field is empty and focused - we want to show 0 in get field
+            else if (isFromAmountFocused && !isToAmountFocused && (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0)) {
+                console.log('🔄 SwapForm: Main calculation - skipping update when send field is empty/focused, should show 0 in get field');
+            }
             // Always update toAmount when we have a calculated value and user is focused on fromAmount
             // BUT NOT when user is actively typing in toAmount OR when user has finished typing in toAmount AND is not typing in fromAmount (to preserve user input)
             else if (isFromAmountFocused && !isToAmountFocused && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
@@ -479,12 +483,18 @@ export function SwapForm() {
             return;
         }
         
+        // Don't interfere when send field is empty and focused - we want to show 0 in get field
+        if (isFromAmountFocused && !isToAmountFocused && (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0)) {
+            console.log('🔄 SwapForm: Additional effect - skipping update when send field is empty/focused, should show 0 in get field');
+            return;
+        }
+        
         if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && userInputRef.current === 'from' && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
             console.log('🔄 SwapForm: Ensuring calculated value is set:', calculatedOutputAmount);
             setToAmount(calculatedOutputAmount);
             isToAmountCalculated.current = true;
         }
-    }, [calculatedOutputAmount, fromAmount, toAmount, isToAmountFocused]);
+    }, [calculatedOutputAmount, fromAmount, toAmount, isToAmountFocused, isFromAmountFocused]);
 
     // Fallback effect to ensure toAmount is updated when user types in fromAmount
     useEffect(() => {
@@ -499,17 +509,34 @@ export function SwapForm() {
             return;
         }
         
+        // Don't interfere when send field is empty and focused - we want to show 0 in get field
+        if (isFromAmountFocused && !isToAmountFocused && (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0)) {
+            console.log('🔄 SwapForm: Fallback - skipping update when send field is empty/focused, should show 0 in get field');
+            return;
+        }
+        
         if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && fromAmount && parseFloat(fromAmount) > 0 && !isToAmountFocused && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
             console.log('🔄 SwapForm: Fallback - updating toAmount with calculated value:', calculatedOutputAmount);
             setToAmount(calculatedOutputAmount);
             isToAmountCalculated.current = true;
         }
-    }, [calculatedOutputAmount, fromAmount, toAmount, isToAmountFocused]);
+    }, [calculatedOutputAmount, fromAmount, toAmount, isToAmountFocused, isFromAmountFocused]);
 
     // Handle zero/empty inputs - show 0 in opposite field when focusing empty field
     useEffect(() => {
+        console.log('🔄 SwapForm: Zero handling effect triggered:', {
+            fromAmount,
+            toAmount,
+            isFromAmountFocused,
+            isToAmountFocused,
+            isCalculating,
+            isUserTyping: isUserTyping.current,
+            hasUserEnteredCustomValue: hasUserEnteredCustomValue.current
+        });
+        
         // Don't interfere during calculations
         if (isCalculating) {
+            console.log('🔄 SwapForm: Skipping zero handling - calculation in progress');
             return;
         }
         
@@ -545,6 +572,8 @@ export function SwapForm() {
             if (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0) {
                 console.log('🔄 SwapForm: fromAmount is empty/zero while focused, setting toAmount to 0');
                 setToAmount('0');
+                // Reset the custom value flag to ensure zero handling works
+                hasUserEnteredCustomValue.current = false;
             }
         }
         // When user is focused on toAmount and it's empty or 0
@@ -868,19 +897,19 @@ export function SwapForm() {
         setFromAmount(value);
         userFinishedTypingToAmount.current = false; // Reset finished typing flag when user starts typing in fromAmount
         
-        // If user completely erases the field (empty string), restore to default
+        // If user completely erases the field (empty string), just leave it empty
+        // The restoration to default (1) will happen in handleFocusChange when unfocusing
         if (value === '') {
-            console.log('🔄 SwapForm: User completely erased fromAmount, restoring to default (1)');
-            setFromAmount('1');
-            // Reset the custom value flag since we're back to default
+            console.log('🔄 SwapForm: User completely erased fromAmount, leaving empty for now');
+            // Don't immediately restore to default - let it stay empty
+            // The restoration will happen on unfocus in handleFocusChange
+            // Reset the custom value flag to allow zero handling to work
             hasUserEnteredCustomValue.current = false;
-            // Mark as default value so it can be cleared on focus
-            isFromAmountDefault.current = true;
-            // Trigger calculation when setting default value
-            userInputRef.current = 'from';
         } else {
             // Mark as no longer default when user types
             isFromAmountDefault.current = false;
+            // Only mark as custom value when user enters a non-empty value
+            hasUserEnteredCustomValue.current = true;
         }
     }, []);
 
@@ -904,11 +933,24 @@ export function SwapForm() {
         }
         setInputFocused(isFocused || isFromAmountFocused);
         
-        // Get field mechanics: Only clear if it's a calculated value (not user input) AND not actively typing AND user hasn't entered custom value
+        // Get field mechanics: Clear calculated value on focus and set send field to 0
+        // Only clear if it's a calculated value AND user hasn't entered a custom value
         if (isFocused && isToAmountCalculated.current && !isUserTyping.current && !isUserTypingToAmount.current && !hasUserEnteredCustomValue.current) {
             console.log('🔄 SwapForm: Clearing toAmount calculated value on focus for user input');
             setToAmount('');
+            setFromAmount('0'); // Set send field to 0 when focusing get field with calculated value
             isToAmountCalculated.current = false;
+            // Reset the custom value flag to allow zero handling to work
+            hasUserEnteredCustomValue.current = false;
+        }
+        // Also clear if the get field has a value but user hasn't entered custom value (for initial calculated values)
+        else if (isFocused && toAmount && parseFloat(toAmount) > 0 && !isUserTyping.current && !isUserTypingToAmount.current && !hasUserEnteredCustomValue.current && !isToAmountCalculated.current) {
+            console.log('🔄 SwapForm: Clearing toAmount initial calculated value on focus for user input');
+            setToAmount('');
+            setFromAmount('0'); // Set send field to 0 when focusing get field with calculated value
+            isToAmountCalculated.current = false;
+            // Reset the custom value flag to allow zero handling to work
+            hasUserEnteredCustomValue.current = false;
         }
         // Get field mechanics: Restore default values when unfocusing and empty
         else if (!isFocused && toAmount === '') {
