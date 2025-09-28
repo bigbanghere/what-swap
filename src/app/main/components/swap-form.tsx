@@ -22,7 +22,7 @@ export function SwapForm() {
     const walletAddress = useTonAddress();
     const { colors } = useTheme();
     const [fromAmount, setFromAmount] = useState<string>('1');
-    const [toAmount, setToAmount] = useState<string>('1');
+    const [toAmount, setToAmount] = useState<string>(''); // Start empty, will be calculated
     const [isFromAmountFocused, setIsFromAmountFocused] = useState<boolean>(false);
     const [isToAmountFocused, setIsToAmountFocused] = useState<boolean>(false);
     const [selectedFromToken, setSelectedFromToken] = useState<any>(null);
@@ -38,6 +38,7 @@ export function SwapForm() {
     // Track user input vs programmatic updates
     const userInputRef = useRef<'from' | 'to' | null>(null);
     const lastCalculatedAmount = useRef<string | null>(null);
+    const isToAmountCalculated = useRef(false); // Track if toAmount is a calculated value
 
     // Swap calculation hook
     const { outputAmount: calculatedOutputAmount, isLoading: isCalculating, error: calculationError } = useSwapCalculation({
@@ -414,32 +415,135 @@ export function SwapForm() {
             calculatedOutputAmount,
             isFromAmountFocused,
             isToAmountFocused,
-            isCalculating
+            isCalculating,
+            userInputRef: userInputRef.current,
+            fromAmount,
+            toAmount
         });
         
         if (calculatedOutputAmount && calculatedOutputAmount !== lastCalculatedAmount.current) {
             lastCalculatedAmount.current = calculatedOutputAmount;
             
-            // Update toAmount when user is typing in fromAmount or on initial load
-            if ((isFromAmountFocused && !isToAmountFocused) || (!isFromAmountFocused && !isToAmountFocused)) {
-                // Only update if the user was typing in the from field or it's initial load
-                if (userInputRef.current === 'from' || userInputRef.current === null) {
-                    console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount);
-                    setToAmount(calculatedOutputAmount);
-                    userInputRef.current = null; // Reset after update
-                }
+            console.log('🔄 SwapForm: Calculation effect condition check:', {
+                isFromAmountFocused,
+                isToAmountFocused,
+                userInputRef: userInputRef.current,
+                shouldUpdateToAmount: isFromAmountFocused && !isToAmountFocused,
+                shouldUpdateFromAmount: isToAmountFocused && !isFromAmountFocused && userInputRef.current === 'to'
+            });
+            
+            // Always update toAmount when we have a calculated value and user is focused on fromAmount
+            if (isFromAmountFocused && !isToAmountFocused) {
+                console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount, 'userInputRef:', userInputRef.current);
+                setToAmount(calculatedOutputAmount);
+                isToAmountCalculated.current = true; // Mark as calculated
+                userInputRef.current = null; // Reset after update
             }
             // Update fromAmount when user is typing in toAmount (reverse calculation)
-            else if (isToAmountFocused && !isFromAmountFocused) {
-                // Only update if the user was typing in the to field
-                if (userInputRef.current === 'to') {
-                    console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
-                    setFromAmount(calculatedOutputAmount);
-                    userInputRef.current = null; // Reset after update
-                }
+            else if (isToAmountFocused && !isFromAmountFocused && userInputRef.current === 'to') {
+                console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
+                setFromAmount(calculatedOutputAmount);
+                userInputRef.current = null; // Reset after update
+            }
+            else {
+                console.log('🔄 SwapForm: No update condition met, skipping update');
             }
         }
-    }, [calculatedOutputAmount, isFromAmountFocused, isToAmountFocused, isCalculating]);
+    }, [calculatedOutputAmount, isFromAmountFocused, isToAmountFocused, isCalculating, fromAmount, toAmount]);
+
+    // Additional effect to ensure calculated values are preserved
+    useEffect(() => {
+        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && userInputRef.current === 'from') {
+            console.log('🔄 SwapForm: Ensuring calculated value is set:', calculatedOutputAmount);
+            setToAmount(calculatedOutputAmount);
+            isToAmountCalculated.current = true;
+        }
+    }, [calculatedOutputAmount]);
+
+    // Fallback effect to ensure toAmount is updated when user types in fromAmount
+    useEffect(() => {
+        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && fromAmount && parseFloat(fromAmount) > 0 && !isToAmountFocused) {
+            console.log('🔄 SwapForm: Fallback - updating toAmount with calculated value:', calculatedOutputAmount);
+            setToAmount(calculatedOutputAmount);
+            isToAmountCalculated.current = true;
+        }
+    }, [calculatedOutputAmount, fromAmount, isToAmountFocused]);
+
+    // Handle zero/empty inputs - show 0 in opposite field when focusing empty field
+    useEffect(() => {
+        // Don't interfere during calculations
+        if (isCalculating) {
+            return;
+        }
+        
+        // Don't interfere when user is actively typing
+        if (isUserTyping.current) {
+            console.log('🔄 SwapForm: Skipping zero handling - user is typing');
+            return;
+        }
+        
+        // When user is focused on fromAmount and it's empty or 0
+        if (isFromAmountFocused && !isToAmountFocused) {
+            // Show 0 in get field when send field is empty/zero
+            if (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0) {
+                console.log('🔄 SwapForm: fromAmount is empty/zero while focused, setting toAmount to 0');
+                setToAmount('0');
+            }
+        }
+        // When user is focused on toAmount and it's empty or 0
+        else if (isToAmountFocused && !isFromAmountFocused) {
+            // Show 0 in send field when get field is empty/zero
+            if (toAmount === '' || toAmount === '0' || parseFloat(toAmount) === 0) {
+                console.log('🔄 SwapForm: toAmount is empty/zero while focused, setting fromAmount to 0');
+                setFromAmount('0');
+            }
+        }
+    }, [fromAmount, toAmount, isFromAmountFocused, isToAmountFocused, isCalculating]);
+
+    // Track when user is actively typing to prevent zero handling from interfering
+    const isUserTyping = useRef(false);
+    const lastFromAmount = useRef<string>('');
+    
+    useEffect(() => {
+        // Detect when user starts typing a valid number
+        if (userInputRef.current === 'from' && fromAmount && parseFloat(fromAmount) > 0) {
+            isUserTyping.current = true;
+            console.log('🔄 SwapForm: User typing valid number detected, blocking zero handling');
+            // Reset after a short delay to allow calculation to complete
+            setTimeout(() => {
+                isUserTyping.current = false;
+                console.log('🔄 SwapForm: User typing flag reset');
+            }, 300);
+        } 
+        // Detect when user clears field (for typing)
+        else if (userInputRef.current === 'from' && fromAmount === '' && lastFromAmount.current && parseFloat(lastFromAmount.current) > 0) {
+            // User cleared a field that had a value - they're probably typing
+            isUserTyping.current = true;
+            console.log('🔄 SwapForm: User cleared field for typing, blocking zero handling');
+            setTimeout(() => {
+                isUserTyping.current = false;
+                console.log('🔄 SwapForm: User typing flag reset after clear');
+            }, 100);
+        }
+        // User is focused but field is empty/zero and wasn't cleared from a valid value
+        else if (userInputRef.current === 'from' && (fromAmount === '' || fromAmount === '0') && (!lastFromAmount.current || parseFloat(lastFromAmount.current) === 0)) {
+            // User is focused on empty field, allow zero handling
+            isUserTyping.current = false;
+        }
+        
+        // Update last value
+        lastFromAmount.current = fromAmount;
+    }, [fromAmount]);
+
+    // Set initial calculated value for get field when tokens are loaded
+    useEffect(() => {
+        if (selectedFromToken && selectedToToken && fromAmount === '1' && toAmount === '') {
+            console.log('🔄 SwapForm: Setting initial calculated value for get field');
+            // Trigger initial calculation
+            userInputRef.current = 'from';
+        }
+    }, [selectedFromToken, selectedToToken, fromAmount, toAmount]);
+
 
     // Ensure default tokens are set if no valid tokens are loaded
     // This runs when default tokens are loaded from API or when token state changes
@@ -624,17 +728,22 @@ export function SwapForm() {
         }
         setInputFocused(isFocused || isToAmountFocused);
         
-        // Clear default value when focusing
-        if (isFocused && fromAmount === '1') {
+        // Send field mechanics: Clear default value when focusing
+        if (isFocused) {
+            console.log('🔄 SwapForm: Clearing fromAmount on focus for user input');
             setFromAmount('');
         }
-        // Reset to default value when unfocusing and empty
+        // Send field mechanics: Reset to default value (1) when unfocusing and empty
         else if (!isFocused && fromAmount === '') {
+            console.log('🔄 SwapForm: Restoring fromAmount default value (1) on unfocus');
             setFromAmount('1');
+            // Trigger calculation when setting default value
+            userInputRef.current = 'from';
         }
     }, [setInputFocused, fromAmount, isToAmountFocused]);
 
     const handleFromAmountChange = useCallback((value: string) => {
+        console.log('🔄 SwapForm: fromAmount changed to:', value);
         userInputRef.current = 'from';
         setFromAmount(value);
     }, []);
@@ -659,19 +768,34 @@ export function SwapForm() {
         }
         setInputFocused(isFocused || isFromAmountFocused);
         
-        // Clear default value when focusing
-        if (isFocused && toAmount === '1') {
+        // Get field mechanics: Clear calculated value when focusing
+        if (isFocused) {
+            console.log('🔄 SwapForm: Clearing toAmount on focus for user input');
             setToAmount('');
+            isToAmountCalculated.current = false;
         }
-        // Reset to default value when unfocusing and empty
+        // Get field mechanics: Restore calculated value when unfocusing and empty
         else if (!isFocused && toAmount === '') {
-            setToAmount('1');
+            console.log('🔄 SwapForm: Restoring toAmount calculated value on unfocus');
+            // If send field is also empty, set it to 1 first
+            if (fromAmount === '') {
+                setFromAmount('1');
+            }
+            // Trigger calculation to restore get amount by temporarily setting focus state
+            userInputRef.current = 'from';
+            // Temporarily set fromAmount as focused to trigger calculation
+            setIsFromAmountFocused(true);
+            // Reset focus state after a brief moment to allow calculation
+            setTimeout(() => {
+                setIsFromAmountFocused(false);
+            }, 100);
         }
-    }, [setInputFocused, toAmount, isFromAmountFocused]);
+    }, [setInputFocused, isFromAmountFocused, fromAmount, toAmount]);
 
     const handleToAmountChange = useCallback((value: string) => {
         userInputRef.current = 'to';
         setToAmount(value);
+        isToAmountCalculated.current = false; // Reset calculated flag when user types
     }, []);
 
     return (
