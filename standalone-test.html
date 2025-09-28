@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Standalone API Test</title>
+    <script src="https://unpkg.com/@swap-coffee/sdk@latest/dist/index.umd.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Standalone API Test - TON/USDT Exchange Rate</h1>
+    <p>This test will check both forward and reverse calculations to verify API accuracy.</p>
+    
+    <button onclick="runAPITest()">Run API Test</button>
+    <div id="results"></div>
+    
+    <script>
+        async function runAPITest() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="result info">🔄 Starting API test...</div>';
+            
+            try {
+                // Check if SDK is loaded
+                if (!window.SwapCoffeeSDK) {
+                    resultsDiv.innerHTML = '<div class="result error">❌ SDK not loaded. Please refresh the page and try again.</div>';
+                    return;
+                }
+                
+                const { RoutingApi } = window.SwapCoffeeSDK;
+                const routingApi = new RoutingApi();
+                
+                // Define tokens exactly as in the app
+                const tonToken = {
+                    blockchain: "ton",
+                    address: "native"
+                };
+                
+                const usdtToken = {
+                    blockchain: "ton", 
+                    address: "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe"
+                };
+                
+                // Test 1: Forward calculation (1 TON → ? USDT)
+                resultsDiv.innerHTML += '<div class="result info">🔄 Test 1: Forward calculation (1 TON → ? USDT)</div>';
+                
+                const forwardRoute = await routingApi.buildRoute({
+                    input_token: tonToken,
+                    output_token: usdtToken,
+                    input_amount: 1,
+                });
+                
+                const forwardResult = forwardRoute.data?.output_amount;
+                resultsDiv.innerHTML += `<div class="result success">✅ Forward result: 1 TON → ${forwardResult} USDT</div>`;
+                
+                // Test 2: Reverse calculation (1 USDT → ? TON)
+                resultsDiv.innerHTML += '<div class="result info">🔄 Test 2: Reverse calculation (1 USDT → ? TON)</div>';
+                
+                const reverseRoute = await routingApi.buildRoute({
+                    input_token: usdtToken,
+                    output_token: tonToken,
+                    input_amount: 1,
+                });
+                
+                const reverseResult = reverseRoute.data?.output_amount;
+                resultsDiv.innerHTML += `<div class="result success">✅ Reverse result: 1 USDT → ${reverseResult} TON</div>`;
+                
+                // Analysis
+                if (reverseResult && reverseResult > 0) {
+                    const usdtNeededFor1Ton = 1 / reverseResult;
+                    const expectedUSDT = 2.68;
+                    const difference = Math.abs(usdtNeededFor1Ton - expectedUSDT);
+                    
+                    resultsDiv.innerHTML += '<div class="result info">📊 Analysis:</div>';
+                    resultsDiv.innerHTML += `<div class="result">• To get 1 TON, need ${usdtNeededFor1Ton.toFixed(6)} USDT</div>`;
+                    resultsDiv.innerHTML += `<div class="result">• Expected: ~${expectedUSDT} USDT for 1 TON</div>`;
+                    resultsDiv.innerHTML += `<div class="result">• Difference: ${difference.toFixed(4)} USDT</div>`;
+                    
+                    // Check if calculation is reasonable
+                    if (difference < 0.1) {
+                        resultsDiv.innerHTML += '<div class="result success">✅ API calculation looks correct! The reverse calculation is accurate.</div>';
+                    } else {
+                        resultsDiv.innerHTML += '<div class="result error">❌ API calculation seems off! Expected ~2.68 USDT for 1 TON, but got ' + usdtNeededFor1Ton.toFixed(4) + ' USDT</div>';
+                    }
+                    
+                    // Additional validation: check if forward and reverse are consistent
+                    if (forwardResult && Math.abs(forwardResult - usdtNeededFor1Ton) < 0.01) {
+                        resultsDiv.innerHTML += '<div class="result success">✅ Forward and reverse calculations are consistent!</div>';
+                    } else {
+                        resultsDiv.innerHTML += '<div class="result error">❌ Forward and reverse calculations are inconsistent!</div>';
+                    }
+                } else {
+                    resultsDiv.innerHTML += '<div class="result error">❌ Could not calculate reverse result - API may have issues with reverse calculations</div>';
+                }
+                
+                // Summary
+                resultsDiv.innerHTML += '<div class="result info">📋 Summary:</div>';
+                resultsDiv.innerHTML += `<div class="result">• Forward: 1 TON → ${forwardResult} USDT</div>`;
+                resultsDiv.innerHTML += `<div class="result">• Reverse: 1 USDT → ${reverseResult} TON</div>`;
+                if (reverseResult) {
+                    resultsDiv.innerHTML += `<div class="result">• Calculated: ${(1/reverseResult).toFixed(6)} USDT needed for 1 TON</div>`;
+                }
+                
+            } catch (error) {
+                console.error('❌ API Error:', error);
+                resultsDiv.innerHTML += `<div class="result error">❌ Error: ${error.message}</div>`;
+                resultsDiv.innerHTML += `<div class="result error">Full error: ${error.toString()}</div>`;
+            }
+        }
+        
+        // Auto-run test when page loads
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (window.SwapCoffeeSDK) {
+                    runAPITest();
+                } else {
+                    document.getElementById('results').innerHTML = '<div class="result info">SDK loading... Please click the button when ready.</div>';
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

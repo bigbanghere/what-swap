@@ -42,6 +42,7 @@ export function SwapForm() {
     const hasUserEnteredCustomValue = useRef(false); // Track if user has entered a custom value
     const isUserTypingToAmount = useRef(false); // Track when user is typing in toAmount field
     const isFromAmountDefault = useRef(true); // Track if fromAmount has the default value (1)
+    const lastUserEnteredValue = useRef<string>('1'); // Track the last value entered by the user for rotation
 
     // Swap calculation hook
     const { outputAmount: calculatedOutputAmount, isLoading: isCalculating, error: calculationError } = useSwapCalculation({
@@ -52,7 +53,8 @@ export function SwapForm() {
         isFromAmountFocused,
         isToAmountFocused,
         hasUserEnteredCustomValue: hasUserEnteredCustomValue.current,
-        isUserTypingToAmount: isUserTypingToAmount.current
+        isUserTypingToAmount: isUserTypingToAmount.current,
+        userInputRef: userInputRef.current
     });
 
     // Function to get full token data with market stats
@@ -469,6 +471,20 @@ export function SwapForm() {
                 isToAmountCalculated.current = true; // Mark as calculated
                 userInputRef.current = null; // Reset after update
             }
+            // Special case: Update fromAmount after rotation when get field has transferred value and send field should be recalculated
+            else if (!isFromAmountFocused && !isToAmountFocused && userInputRef.current === 'to' && toAmount === lastUserEnteredValue.current) {
+                console.log('🔄 SwapForm: Updating fromAmount with calculated value (after rotation):', calculatedOutputAmount);
+                console.log('🔍 Debug: Special case condition details:', {
+                    isFromAmountFocused,
+                    isToAmountFocused,
+                    userInputRef: userInputRef.current,
+                    toAmount,
+                    lastUserEnteredValue: lastUserEnteredValue.current,
+                    calculatedOutputAmount
+                });
+                setFromAmount(calculatedOutputAmount);
+                userInputRef.current = null; // Reset after update
+            }
             // Special case: Update toAmount when user has finished typing in send field and neither field is focused
             else if (!isFromAmountFocused && !isToAmountFocused && userInputRef.current === 'from' && fromAmount && parseFloat(fromAmount) > 0) {
                 console.log('🔄 SwapForm: Updating toAmount with calculated value (after user input):', calculatedOutputAmount);
@@ -478,6 +494,15 @@ export function SwapForm() {
             }
             else {
                 console.log('🔄 SwapForm: No update condition met, skipping update');
+                console.log('🔍 Debug: Condition check details:', {
+                    isFromAmountFocused,
+                    isToAmountFocused,
+                    userInputRef: userInputRef.current,
+                    toAmount,
+                    lastUserEnteredValue: lastUserEnteredValue.current,
+                    calculatedOutputAmount,
+                    fromAmount
+                });
             }
         }
     }, [calculatedOutputAmount, isFromAmountFocused, isToAmountFocused, isCalculating, fromAmount, toAmount]);
@@ -917,6 +942,9 @@ export function SwapForm() {
             isFromAmountDefault.current = false;
             // Only mark as custom value when user enters a non-empty value
             hasUserEnteredCustomValue.current = true;
+            // Update the last user entered value for rotation
+            lastUserEnteredValue.current = value;
+            console.log('🔄 SwapForm: Updated last user entered value to:', value);
         }
     }, []);
 
@@ -997,6 +1025,9 @@ export function SwapForm() {
         } else {
             // Only mark as custom value when user enters a non-empty value
             hasUserEnteredCustomValue.current = true;
+            // Update the last user entered value for rotation
+            lastUserEnteredValue.current = value;
+            console.log('🔄 SwapForm: Updated last user entered value from get field to:', value);
         }
     }, []);
 
@@ -1328,13 +1359,27 @@ export function SwapForm() {
                                     setSelectedFromToken(currentToToken);
                                     setSelectedToToken(currentFromToken);
                                     
-                                    // Swap the values between fields
-                                    setFromAmount(currentToAmount);
-                                    setToAmount(currentFromAmount);
+                                    // Perfect rotation logic: transfer last user entered value to opposite field
+                                    // and recalculate the other amount
+                                    
+                                    // Determine which value to use for rotation
+                                    let valueToTransfer = lastUserEnteredValue.current;
+                                    
+                                    // If we're rotating default values, use the current send field value
+                                    if (fromAmount === '1' && isFromAmountDefault.current && !hasUserEnteredCustomValue.current) {
+                                        valueToTransfer = fromAmount;
+                                        console.log('🔄 SwapForm: Rotating default values, using send field value:', valueToTransfer);
+                                    } else {
+                                        console.log('🔄 SwapForm: Rotating with last user entered value:', valueToTransfer);
+                                    }
+                                    
+                                    // Transfer the value to the opposite field (get field becomes send field)
+                                    setFromAmount(currentToAmount); // Current get field value becomes new send field
+                                    setToAmount(currentFromAmount); // Current send field value becomes new get field
                                     
                                     // Update flags to reflect the state
-                                    // If the new fromAmount is '1', mark it as default
-                                    if (currentToAmount === '1') {
+                                    // If the transferred value is '1', mark it as default
+                                    if (currentFromAmount === '1') {
                                         isFromAmountDefault.current = true;
                                         hasUserEnteredCustomValue.current = false;
                                     } else {
@@ -1342,11 +1387,20 @@ export function SwapForm() {
                                         hasUserEnteredCustomValue.current = true;
                                     }
                                     
-                                    // Mark that toAmount will be calculated
+                                    // Mark that fromAmount will be calculated (reverse calculation)
                                     isToAmountCalculated.current = true;
                                     
-                                    // Trigger recalculation from the fromAmount field
-                                    userInputRef.current = 'from';
+                                    // Trigger reverse calculation from the get field (which now has the transferred value)
+                                    // This will recalculate the send field based on the transferred value in get field
+                                    userInputRef.current = 'to';
+                                    
+                                    // Debug: Log the exact API parameters that will be used for reverse calculation
+                                    console.log('🔍 Debug: Reverse calculation parameters:', {
+                                        inputToken: currentFromToken.symbol, // USDT (was toToken, now fromToken)
+                                        outputToken: currentToToken.symbol,  // TON (was fromToken, now toToken)
+                                        inputAmount: currentFromAmount,      // Current send field value (transferred to get field)
+                                        expectedResult: 'Should calculate how much USDT needed for 1 TON'
+                                    });
                                     
                                     // Update localStorage
                                     localStorage.setItem('selectedFromToken', JSON.stringify(currentToToken));
@@ -1362,7 +1416,7 @@ export function SwapForm() {
                                     
                                     console.log('✅ SwapForm: Tokens and values swapped successfully');
                                     console.log('✅ SwapForm: New fromToken:', currentToToken.symbol, 'New fromAmount:', currentToAmount);
-                                    console.log('✅ SwapForm: New toToken:', currentFromToken.symbol, 'New toAmount:', currentFromAmount, '(will trigger recalculation)');
+                                    console.log('✅ SwapForm: New toToken:', currentFromToken.symbol, 'Transferred value:', currentFromAmount, '(will trigger recalculation)');
                                 } else {
                                     console.log('⚠️ SwapForm: Cannot swap - one or both tokens are missing');
                                 }

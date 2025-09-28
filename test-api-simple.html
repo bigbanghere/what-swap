@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test - TON/USDT</title>
+    <script src="https://unpkg.com/@swap-coffee/sdk@latest/dist/index.umd.js"></script>
+</head>
+<body>
+    <h1>API Test - TON/USDT Exchange Rate</h1>
+    <div id="results"></div>
+    <button onclick="testAPI()">Test API</button>
+    
+    <script>
+        async function testAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing API...</p>';
+            
+            try {
+                // Wait for SDK to load
+                if (!window.SwapCoffeeSDK) {
+                    resultsDiv.innerHTML = '<p style="color: red;">SDK not loaded. Please wait and try again.</p>';
+                    return;
+                }
+                
+                const { RoutingApi } = window.SwapCoffeeSDK;
+                const routingApi = new RoutingApi();
+                
+                // Define tokens
+                const tonToken = {
+                    blockchain: "ton",
+                    address: "native"
+                };
+                
+                const usdtToken = {
+                    blockchain: "ton", 
+                    address: "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe"
+                };
+                
+                console.log('Testing forward: 1 TON → ? USDT');
+                
+                // Test 1: Forward calculation: 1 TON → ? USDT
+                const forwardRoute = await routingApi.buildRoute({
+                    input_token: tonToken,
+                    output_token: usdtToken,
+                    input_amount: 1,
+                });
+                
+                const forwardResult = forwardRoute.data?.output_amount;
+                console.log('Forward result:', forwardResult);
+                
+                // Test 2: Reverse calculation: 1 USDT → ? TON
+                console.log('Testing reverse: 1 USDT → ? TON');
+                
+                const reverseRoute = await routingApi.buildRoute({
+                    input_token: usdtToken,
+                    output_token: tonToken,
+                    input_amount: 1,
+                });
+                
+                const reverseResult = reverseRoute.data?.output_amount;
+                console.log('Reverse result:', reverseResult);
+                
+                // Calculate what we need for 1 TON
+                let usdtNeededFor1Ton = null;
+                if (reverseResult) {
+                    usdtNeededFor1Ton = 1 / reverseResult;
+                }
+                
+                // Display results
+                resultsDiv.innerHTML = `
+                    <h2>Results:</h2>
+                    <p><strong>Forward calculation:</strong> 1 TON → ${forwardResult} USDT</p>
+                    <p><strong>Reverse calculation:</strong> 1 USDT → ${reverseResult} TON</p>
+                    <p><strong>Calculated:</strong> To get 1 TON, need ${usdtNeededFor1Ton} USDT</p>
+                    <p><strong>Expected:</strong> ~2.68 USDT for 1 TON</p>
+                    <p><strong>Difference:</strong> ${usdtNeededFor1Ton ? Math.abs(usdtNeededFor1Ton - 2.68).toFixed(4) : 'N/A'} USDT</p>
+                `;
+                
+                // Log detailed results
+                console.log('=== API Test Results ===');
+                console.log('Forward: 1 TON →', forwardResult, 'USDT');
+                console.log('Reverse: 1 USDT →', reverseResult, 'TON');
+                console.log('To get 1 TON, need:', usdtNeededFor1Ton, 'USDT');
+                console.log('Expected: ~2.68 USDT');
+                console.log('Difference:', usdtNeededFor1Ton ? Math.abs(usdtNeededFor1Ton - 2.68) : 'N/A', 'USDT');
+                
+            } catch (error) {
+                console.error('API Error:', error);
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-run test when page loads, but wait for SDK
+        window.onload = function() {
+            // Wait a bit for SDK to load
+            setTimeout(() => {
+                if (window.SwapCoffeeSDK) {
+                    testAPI();
+                } else {
+                    document.getElementById('results').innerHTML = '<p>SDK loading... Please click the button when ready.</p>';
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

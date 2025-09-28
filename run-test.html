@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Run API Test</title>
+    <script src="https://unpkg.com/@swap-coffee/sdk@latest/dist/index.umd.js"></script>
+</head>
+<body>
+    <h1>API Test Runner</h1>
+    <div id="results"></div>
+    <button onclick="runTest()">Run Test</button>
+    
+    <script>
+        async function runTest() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>🧪 Testing Swap API directly...</p>';
+            
+            try {
+                // Wait for SDK to load
+                if (!window.SwapCoffeeSDK) {
+                    resultsDiv.innerHTML = '<p style="color: red;">SDK not loaded. Please wait and try again.</p>';
+                    return;
+                }
+                
+                const { RoutingApi } = window.SwapCoffeeSDK;
+                const routingApi = new RoutingApi();
+                
+                // Define tokens exactly as in the app
+                const tonToken = {
+                    blockchain: "ton",
+                    address: "native"
+                };
+                
+                const usdtToken = {
+                    blockchain: "ton", 
+                    address: "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe"
+                };
+                
+                console.log('🔄 Testing forward: 1 TON → ? USDT');
+                resultsDiv.innerHTML += '<p>🔄 Testing forward: 1 TON → ? USDT</p>';
+                
+                // Forward calculation: 1 TON → ? USDT
+                const forwardRoute = await routingApi.buildRoute({
+                    input_token: tonToken,
+                    output_token: usdtToken,
+                    input_amount: 1,
+                });
+                
+                const forwardResult = forwardRoute.data?.output_amount;
+                console.log('✅ Forward result: 1 TON →', forwardResult, 'USDT');
+                resultsDiv.innerHTML += `<p>✅ Forward result: 1 TON → ${forwardResult} USDT</p>`;
+                
+                console.log('🔄 Testing reverse: 1 USDT → ? TON');
+                resultsDiv.innerHTML += '<p>🔄 Testing reverse: 1 USDT → ? TON</p>';
+                
+                // Reverse calculation: 1 USDT → ? TON
+                const reverseRoute = await routingApi.buildRoute({
+                    input_token: usdtToken,
+                    output_token: tonToken,
+                    input_amount: 1,
+                });
+                
+                const reverseResult = reverseRoute.data?.output_amount;
+                console.log('✅ Reverse result: 1 USDT →', reverseResult, 'TON');
+                resultsDiv.innerHTML += `<p>✅ Reverse result: 1 USDT → ${reverseResult} TON</p>`;
+                
+                // Calculate what we need for 1 TON
+                if (reverseResult) {
+                    const usdtNeededFor1Ton = 1 / reverseResult;
+                    console.log('📊 Calculated: To get 1 TON, need', usdtNeededFor1Ton, 'USDT');
+                    console.log('📊 Expected: ~2.68 USDT for 1 TON');
+                    console.log('📊 Difference:', Math.abs(usdtNeededFor1Ton - 2.68).toFixed(4), 'USDT');
+                    
+                    resultsDiv.innerHTML += `
+                        <p>📊 Calculated: To get 1 TON, need ${usdtNeededFor1Ton} USDT</p>
+                        <p>📊 Expected: ~2.68 USDT for 1 TON</p>
+                        <p>📊 Difference: ${Math.abs(usdtNeededFor1Ton - 2.68).toFixed(4)} USDT</p>
+                    `;
+                    
+                    // Check if the calculation is reasonable
+                    if (Math.abs(usdtNeededFor1Ton - 2.68) < 0.1) {
+                        console.log('✅ API calculation looks correct!');
+                        resultsDiv.innerHTML += '<p style="color: green;">✅ API calculation looks correct!</p>';
+                    } else {
+                        console.log('❌ API calculation seems off - expected ~2.68 USDT for 1 TON');
+                        resultsDiv.innerHTML += '<p style="color: red;">❌ API calculation seems off - expected ~2.68 USDT for 1 TON</p>';
+                    }
+                }
+                
+                return {
+                    forward: forwardResult,
+                    reverse: reverseResult,
+                    usdtNeededFor1Ton: reverseResult ? 1 / reverseResult : null
+                };
+                
+            } catch (error) {
+                console.error('❌ Error:', error.message);
+                console.error('Full error:', error);
+                resultsDiv.innerHTML += `<p style="color: red;">❌ Error: ${error.message}</p>`;
+                return null;
+            }
+        }
+        
+        // Auto-run test when page loads
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (window.SwapCoffeeSDK) {
+                    runTest();
+                } else {
+                    document.getElementById('results').innerHTML = '<p>SDK loading... Please click the button when ready.</p>';
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
