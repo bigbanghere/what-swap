@@ -39,8 +39,6 @@ export function SwapForm() {
     const userInputRef = useRef<'from' | 'to' | null>(null);
     const lastCalculatedAmount = useRef<string | null>(null);
     const isToAmountCalculated = useRef(false); // Track if toAmount is a calculated value
-    const hasUserEnteredCustomValue = useRef(false); // Track if user has entered a custom value
-    const isUserTypingToAmount = useRef(false); // Track when user is typing in toAmount field
 
     // Swap calculation hook
     const { outputAmount: calculatedOutputAmount, isLoading: isCalculating, error: calculationError } = useSwapCalculation({
@@ -49,9 +47,7 @@ export function SwapForm() {
         fromAmount,
         toAmount,
         isFromAmountFocused,
-        isToAmountFocused,
-        hasUserEnteredCustomValue: hasUserEnteredCustomValue.current,
-        isUserTypingToAmount: isUserTypingToAmount.current
+        isToAmountFocused
     });
 
     // Function to get full token data with market stats
@@ -439,15 +435,14 @@ export function SwapForm() {
             });
             
             // Always update toAmount when we have a calculated value and user is focused on fromAmount
-            // BUT NOT when user is actively typing in toAmount OR when user has finished typing in toAmount AND is not typing in fromAmount (to preserve user input)
-            if (isFromAmountFocused && !isToAmountFocused && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
+            // BUT NOT when user is actively typing in toAmount
+            if (isFromAmountFocused && !isToAmountFocused && !isUserTypingToAmount.current) {
                 console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount, 'userInputRef:', userInputRef.current);
                 setToAmount(calculatedOutputAmount);
                 isToAmountCalculated.current = true; // Mark as calculated
                 userInputRef.current = null; // Reset after update
             }
             // Update fromAmount when user is typing in toAmount (reverse calculation)
-            // Allow reverse calculation when user is actively typing in toAmount field
             else if (isToAmountFocused && !isFromAmountFocused && userInputRef.current === 'to') {
                 console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
                 setFromAmount(calculatedOutputAmount);
@@ -461,7 +456,7 @@ export function SwapForm() {
 
     // Additional effect to ensure calculated values are preserved
     useEffect(() => {
-        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && userInputRef.current === 'from' && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
+        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && userInputRef.current === 'from' && !isUserTypingToAmount.current) {
             console.log('🔄 SwapForm: Ensuring calculated value is set:', calculatedOutputAmount);
             setToAmount(calculatedOutputAmount);
             isToAmountCalculated.current = true;
@@ -470,7 +465,7 @@ export function SwapForm() {
 
     // Fallback effect to ensure toAmount is updated when user types in fromAmount
     useEffect(() => {
-        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && fromAmount && parseFloat(fromAmount) > 0 && !isToAmountFocused && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
+        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && fromAmount && parseFloat(fromAmount) > 0 && !isToAmountFocused && !isUserTypingToAmount.current) {
             console.log('🔄 SwapForm: Fallback - updating toAmount with calculated value:', calculatedOutputAmount);
             setToAmount(calculatedOutputAmount);
             isToAmountCalculated.current = true;
@@ -518,7 +513,8 @@ export function SwapForm() {
     const isUserTyping = useRef(false);
     const lastFromAmount = useRef<string>('');
     const lastToAmount = useRef<string>('');
-    const userFinishedTypingToAmount = useRef(false); // Track when user has finished typing in toAmount field
+    const hasUserEnteredCustomValue = useRef(false); // Track if user has entered a custom value
+    const isUserTypingToAmount = useRef(false); // Track when user is typing in toAmount field
     
     useEffect(() => {
         // Detect when user starts typing a valid number in fromAmount
@@ -562,39 +558,33 @@ export function SwapForm() {
         if (userInputRef.current === 'to' && toAmount && parseFloat(toAmount) > 0) {
             isUserTypingToAmount.current = true;
             hasUserEnteredCustomValue.current = true;
-            userFinishedTypingToAmount.current = false; // Reset finished typing flag
             console.log('🔄 SwapForm: User entered custom value in toAmount, marking as user input');
-            console.log('🔄 SwapForm: User typing valid number in toAmount detected, allowing reverse calculations');
+            console.log('🔄 SwapForm: User typing valid number in toAmount detected, blocking calculation overrides');
+            // Reset after a short delay to allow calculation to complete
+            setTimeout(() => {
+                isUserTypingToAmount.current = false;
+                console.log('🔄 SwapForm: User typing toAmount flag reset');
+            }, 300);
         } 
         // Detect when user clears toAmount field (for typing)
         else if (userInputRef.current === 'to' && toAmount === '' && lastToAmount.current && parseFloat(lastToAmount.current) > 0) {
             // User cleared a field that had a value - they're probably typing
             isUserTypingToAmount.current = true;
-            userFinishedTypingToAmount.current = false; // Reset finished typing flag
-            console.log('🔄 SwapForm: User cleared toAmount field for typing, allowing reverse calculations');
+            console.log('🔄 SwapForm: User cleared toAmount field for typing, blocking calculation overrides');
+            setTimeout(() => {
+                isUserTypingToAmount.current = false;
+                console.log('🔄 SwapForm: User typing toAmount flag reset after clear');
+            }, 100);
         }
         // User is focused but toAmount field is empty/zero and wasn't cleared from a valid value
         else if (userInputRef.current === 'to' && (toAmount === '' || toAmount === '0') && (!lastToAmount.current || parseFloat(lastToAmount.current) === 0)) {
             // User is focused on empty field, allow calculation overrides
             isUserTypingToAmount.current = false;
-            userFinishedTypingToAmount.current = false; // Reset finished typing flag
         }
         
         // Update last value
         lastToAmount.current = toAmount;
     }, [toAmount]);
-
-    // Reset typing flags when user unfocuses the toAmount field
-    useEffect(() => {
-        if (!isToAmountFocused) {
-            // Keep isUserTypingToAmount true for a short time after unfocus to allow final calculations
-            setTimeout(() => {
-                isUserTypingToAmount.current = false;
-                userFinishedTypingToAmount.current = true;
-                console.log('🔄 SwapForm: Reset typing flags after toAmount unfocus');
-            }, 100);
-        }
-    }, [isToAmountFocused]);
 
     // Set initial calculated value for get field when tokens are loaded
     useEffect(() => {
@@ -605,7 +595,14 @@ export function SwapForm() {
         }
     }, [selectedFromToken, selectedToToken, fromAmount, toAmount]);
 
-    // Removed problematic effect that was causing infinite calculation loops
+    // Trigger calculation when get field is unfocused and empty (restore calculated value)
+    useEffect(() => {
+        if (!isToAmountFocused && toAmount === '' && fromAmount && parseFloat(fromAmount) > 0 && selectedFromToken && selectedToToken) {
+            console.log('🔄 SwapForm: Get field unfocused and empty, triggering calculation to restore value');
+            // Trigger calculation by setting userInputRef to 'from' to indicate we want to calculate toAmount
+            userInputRef.current = 'from';
+        }
+    }, [isToAmountFocused, toAmount, fromAmount, selectedFromToken, selectedToToken]);
 
 
     // Ensure default tokens are set if no valid tokens are loaded
@@ -811,7 +808,6 @@ export function SwapForm() {
         console.log('🔄 SwapForm: fromAmount changed to:', value);
         userInputRef.current = 'from';
         setFromAmount(value);
-        userFinishedTypingToAmount.current = false; // Reset finished typing flag when user starts typing in fromAmount
     }, []);
 
     const handleToAmountFocusChange = useCallback((isFocused: boolean) => {
@@ -843,19 +839,11 @@ export function SwapForm() {
         // Get field mechanics: Restore calculated value when unfocusing and empty
         else if (!isFocused && toAmount === '') {
             console.log('🔄 SwapForm: Restoring toAmount calculated value on unfocus');
-            // Reset the finished typing flag to allow calculations
-            userFinishedTypingToAmount.current = false;
             // If send field is also empty, set it to 1 first
             if (fromAmount === '') {
                 setFromAmount('1');
             }
-            // Trigger calculation by setting userInputRef to 'from' - this will trigger the calculation effect
-            userInputRef.current = 'from';
-        }
-        // Reset the finished typing flag when unfocusing toAmount field (regardless of content)
-        else if (!isFocused) {
-            console.log('🔄 SwapForm: Resetting finished typing flag on toAmount unfocus');
-            userFinishedTypingToAmount.current = false;
+            // Don't trigger calculation here - let the existing effects handle it
         }
     }, [setInputFocused, isFromAmountFocused, fromAmount, toAmount]);
 
@@ -863,7 +851,6 @@ export function SwapForm() {
         userInputRef.current = 'to';
         setToAmount(value);
         isToAmountCalculated.current = false; // Reset calculated flag when user types
-        userFinishedTypingToAmount.current = false; // Reset finished typing flag when user starts typing again
     }, []);
 
     return (

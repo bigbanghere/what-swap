@@ -16,6 +16,8 @@ interface UseSwapCalculationProps {
     toAmount: string;
     isFromAmountFocused: boolean;
     isToAmountFocused: boolean;
+    hasUserEnteredCustomValue: boolean;
+    isUserTypingToAmount?: boolean;
 }
 
 export function useSwapCalculation({
@@ -24,7 +26,9 @@ export function useSwapCalculation({
     fromAmount,
     toAmount,
     isFromAmountFocused,
-    isToAmountFocused
+    isToAmountFocused,
+    hasUserEnteredCustomValue,
+    isUserTypingToAmount = false
 }: UseSwapCalculationProps) {
     const [result, setResult] = useState<SwapCalculationResult>({
         outputAmount: null,
@@ -221,12 +225,10 @@ export function useSwapCalculation({
         }
     }, [convertToApiTokenAddress, calculateFallbackAmount]);
 
-    // Calculate when fromAmount changes (when user is typing in fromAmount or when fromAmount has a valid value)
+    // Calculate when fromAmount changes (forward calculation: fromAmount -> toAmount)
     useEffect(() => {
-        if (fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0) {
-            // Always calculate when fromAmount changes and has a valid value
-            // This ensures calculation works for any value including "1"
-            console.log('🔄 Swap calculation: fromAmount changed, calculating...', {
+        if (fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0 && isFromAmountFocused) {
+            console.log('🔄 Swap calculation: fromAmount changed (forward), calculating...', {
                 fromAmount,
                 fromToken: fromToken.symbol,
                 toToken: toToken.symbol,
@@ -235,33 +237,18 @@ export function useSwapCalculation({
             });
             calculateSwap(fromToken, toToken, fromAmount).then(outputAmount => {
                 if (outputAmount) {
-                    console.log('✅ Swap calculation: got output amount', outputAmount);
+                    console.log('✅ Swap calculation: got forward output amount', outputAmount);
                     setResult(prev => ({ ...prev, outputAmount }));
                 }
             });
         }
-    }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap, isFromAmountFocused, isToAmountFocused]);
-
-    // Calculate when fromAmount is set to default value on unfocus
-    useEffect(() => {
-        if (!isFromAmountFocused && !isToAmountFocused && fromAmount === '1' && fromToken && toToken) {
-            console.log('🔄 Swap calculation: fromAmount set to default on unfocus, calculating...', {
-                fromAmount,
-                fromToken: fromToken.symbol,
-                toToken: toToken.symbol
-            });
-            calculateSwap(fromToken, toToken, fromAmount).then(outputAmount => {
-                if (outputAmount) {
-                    console.log('✅ Swap calculation: got output amount for default value', outputAmount);
-                    setResult(prev => ({ ...prev, outputAmount }));
-                }
-            });
-        }
-    }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap, isFromAmountFocused, isToAmountFocused]);
+    }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap, isFromAmountFocused]);
 
     // Calculate when toAmount changes (reverse calculation: toAmount -> fromAmount)
+    // Only calculate when user is actively focused on toAmount field AND not during a forward calculation
+    // Allow reverse calculation when user is actively typing in toAmount field
     useEffect(() => {
-        if (isToAmountFocused && toAmount && fromToken && toToken && parseFloat(toAmount) > 0) {
+        if (isToAmountFocused && toAmount && fromToken && toToken && parseFloat(toAmount) > 0 && !isFromAmountFocused && isUserTypingToAmount) {
             console.log('🔄 Swap calculation: toAmount changed (reverse), calculating...', {
                 toAmount,
                 fromToken: fromToken.symbol,
@@ -270,17 +257,16 @@ export function useSwapCalculation({
             calculateSwap(toToken, fromToken, toAmount).then(outputAmount => {
                 if (outputAmount) {
                     console.log('✅ Swap calculation: got reverse output amount', outputAmount);
-                    // For reverse calculation, we need to update the fromAmount
                     setResult(prev => ({ ...prev, outputAmount }));
                 }
             });
         }
-    }, [toAmount, fromToken?.address, toToken?.address, calculateSwap]);
+    }, [toAmount, fromToken?.address, toToken?.address, calculateSwap, isToAmountFocused, isFromAmountFocused, isUserTypingToAmount]);
 
-    // Initial calculation on page load (when tokens are set and fromAmount has a value)
+    // Initial calculation when tokens are loaded and fromAmount has a value
     useEffect(() => {
-        if (fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0) {
-            console.log('🔄 Swap calculation: initial calculation on page load', {
+        if (fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0 && !isFromAmountFocused && !isToAmountFocused) {
+            console.log('🔄 Swap calculation: initial calculation when tokens loaded', {
                 fromAmount,
                 fromToken: fromToken.symbol,
                 toToken: toToken.symbol
@@ -289,12 +275,10 @@ export function useSwapCalculation({
                 if (outputAmount) {
                     console.log('✅ Swap calculation: got initial output amount', outputAmount);
                     setResult(prev => ({ ...prev, outputAmount }));
-                } else {
-                    console.log('⚠️ Swap calculation: no output amount received');
                 }
             });
         }
-    }, [fromToken?.address, toToken?.address, fromAmount, calculateSwap]);
+    }, [fromToken?.address, toToken?.address, calculateSwap]);
 
     return result;
 }
