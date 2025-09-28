@@ -43,6 +43,7 @@ export function SwapForm() {
     const isUserTypingToAmount = useRef(false); // Track when user is typing in toAmount field
     const isFromAmountDefault = useRef(true); // Track if fromAmount has the default value (1)
     const lastUserEnteredValue = useRef<string>('1'); // Track the last value entered by the user for rotation
+    const isRotating = useRef(false); // Track if we're currently rotating tokens
 
     // Swap calculation hook
     const { outputAmount: calculatedOutputAmount, isLoading: isCalculating, error: calculationError } = useSwapCalculation({
@@ -547,7 +548,7 @@ export function SwapForm() {
             return;
         }
         
-        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && fromAmount && parseFloat(fromAmount) > 0 && !isToAmountFocused && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
+        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && fromAmount && parseFloat(fromAmount) > 0 && !isToAmountFocused && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from') && userInputRef.current !== 'to') {
             console.log('🔄 SwapForm: Fallback - updating toAmount with calculated value:', calculatedOutputAmount);
             setToAmount(calculatedOutputAmount);
             isToAmountCalculated.current = true;
@@ -625,6 +626,11 @@ export function SwapForm() {
     const userFinishedTypingToAmount = useRef(false); // Track when user has finished typing in toAmount field
     
     useEffect(() => {
+        // Don't set typing flags during rotation
+        if (isRotating.current) {
+            return;
+        }
+        
         // Detect when user starts typing a valid number in fromAmount
         if (userInputRef.current === 'from' && fromAmount && parseFloat(fromAmount) > 0) {
             isUserTyping.current = true;
@@ -662,6 +668,11 @@ export function SwapForm() {
 
     // Track when user is actively typing in toAmount field
     useEffect(() => {
+        // Don't set typing flags during rotation
+        if (isRotating.current) {
+            return;
+        }
+        
         // Detect when user starts typing a valid number in toAmount
         if (userInputRef.current === 'to' && toAmount && parseFloat(toAmount) > 0) {
             isUserTypingToAmount.current = true;
@@ -927,6 +938,12 @@ export function SwapForm() {
         console.log('🔄 SwapForm: fromAmount changed to:', value);
         userInputRef.current = 'from';
         setFromAmount(value);
+        
+        // Don't set typing flags during rotation
+        if (isRotating.current) {
+            return;
+        }
+        
         userFinishedTypingToAmount.current = false; // Reset finished typing flag when user starts typing in fromAmount
         
         // If user completely erases the field (empty string), just leave it empty
@@ -1013,6 +1030,12 @@ export function SwapForm() {
     const handleToAmountChange = useCallback((value: string) => {
         userInputRef.current = 'to';
         setToAmount(value);
+        
+        // Don't set typing flags during rotation
+        if (isRotating.current) {
+            return;
+        }
+        
         isToAmountCalculated.current = false; // Reset calculated flag when user types
         userFinishedTypingToAmount.current = false; // Reset finished typing flag when user starts typing again
         
@@ -1343,6 +1366,9 @@ export function SwapForm() {
                                 
                                 // Only swap if both tokens are available
                                 if (selectedFromToken && selectedToToken) {
+                                    // Set rotation flag to prevent typing flags from being set
+                                    isRotating.current = true;
+                                    
                                     console.log('🔄 SwapForm: Swapping fromToken and toToken');
                                     console.log('🔄 SwapForm: Current fromToken:', selectedFromToken.symbol);
                                     console.log('🔄 SwapForm: Current toToken:', selectedToToken.symbol);
@@ -1390,6 +1416,13 @@ export function SwapForm() {
                                     // Mark that fromAmount will be calculated (reverse calculation)
                                     isToAmountCalculated.current = true;
                                     
+                                    // Reset typing flags after rotation to allow normal calculation updates
+                                    isUserTypingToAmount.current = false;
+                                    userFinishedTypingToAmount.current = false;
+                                    
+                                    // Update the last user entered value to the new send field value
+                                    lastUserEnteredValue.current = currentToAmount;
+                                    
                                     // Trigger reverse calculation from the get field (which now has the transferred value)
                                     // This will recalculate the send field based on the transferred value in get field
                                     userInputRef.current = 'to';
@@ -1417,6 +1450,16 @@ export function SwapForm() {
                                     console.log('✅ SwapForm: Tokens and values swapped successfully');
                                     console.log('✅ SwapForm: New fromToken:', currentToToken.symbol, 'New fromAmount:', currentToAmount);
                                     console.log('✅ SwapForm: New toToken:', currentFromToken.symbol, 'Transferred value:', currentFromAmount, '(will trigger recalculation)');
+                                    
+                                    // Reset rotation flag after rotation is complete
+                                    isRotating.current = false;
+                                    
+                                    // Use setTimeout to ensure typing flags are reset after handleToAmountChange has been called
+                                    setTimeout(() => {
+                                        isUserTypingToAmount.current = false;
+                                        userFinishedTypingToAmount.current = false;
+                                        console.log('🔄 SwapForm: Final reset of typing flags after rotation');
+                                    }, 0);
                                 } else {
                                     console.log('⚠️ SwapForm: Cannot swap - one or both tokens are missing');
                                 }
