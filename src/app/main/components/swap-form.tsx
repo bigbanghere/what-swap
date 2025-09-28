@@ -469,6 +469,13 @@ export function SwapForm() {
                 isToAmountCalculated.current = true; // Mark as calculated
                 userInputRef.current = null; // Reset after update
             }
+            // Special case: Update toAmount when user has finished typing in send field and neither field is focused
+            else if (!isFromAmountFocused && !isToAmountFocused && userInputRef.current === 'from' && fromAmount && parseFloat(fromAmount) > 0) {
+                console.log('🔄 SwapForm: Updating toAmount with calculated value (after user input):', calculatedOutputAmount);
+                setToAmount(calculatedOutputAmount);
+                isToAmountCalculated.current = true; // Mark as calculated
+                userInputRef.current = null; // Reset after update
+            }
             else {
                 console.log('🔄 SwapForm: No update condition met, skipping update');
             }
@@ -1308,14 +1315,38 @@ export function SwapForm() {
                                     console.log('🔄 SwapForm: Swapping fromToken and toToken');
                                     console.log('🔄 SwapForm: Current fromToken:', selectedFromToken.symbol);
                                     console.log('🔄 SwapForm: Current toToken:', selectedToToken.symbol);
+                                    console.log('🔄 SwapForm: Current fromAmount:', fromAmount);
+                                    console.log('🔄 SwapForm: Current toAmount:', toAmount);
                                     
-                                    // Store current tokens
+                                    // Store current tokens and amounts
                                     const currentFromToken = selectedFromToken;
                                     const currentToToken = selectedToToken;
+                                    const currentFromAmount = fromAmount;
+                                    const currentToAmount = toAmount;
                                     
                                     // Swap the tokens
                                     setSelectedFromToken(currentToToken);
                                     setSelectedToToken(currentFromToken);
+                                    
+                                    // Swap the values between fields
+                                    setFromAmount(currentToAmount);
+                                    setToAmount(currentFromAmount);
+                                    
+                                    // Update flags to reflect the state
+                                    // If the new fromAmount is '1', mark it as default
+                                    if (currentToAmount === '1') {
+                                        isFromAmountDefault.current = true;
+                                        hasUserEnteredCustomValue.current = false;
+                                    } else {
+                                        isFromAmountDefault.current = false;
+                                        hasUserEnteredCustomValue.current = true;
+                                    }
+                                    
+                                    // Mark that toAmount will be calculated
+                                    isToAmountCalculated.current = true;
+                                    
+                                    // Trigger recalculation from the fromAmount field
+                                    userInputRef.current = 'from';
                                     
                                     // Update localStorage
                                     localStorage.setItem('selectedFromToken', JSON.stringify(currentToToken));
@@ -1329,9 +1360,9 @@ export function SwapForm() {
                                         detail: { token: currentFromToken, type: 'to' } 
                                     }));
                                     
-                                    console.log('✅ SwapForm: Tokens swapped successfully');
-                                    console.log('✅ SwapForm: New fromToken:', currentToToken.symbol);
-                                    console.log('✅ SwapForm: New toToken:', currentFromToken.symbol);
+                                    console.log('✅ SwapForm: Tokens and values swapped successfully');
+                                    console.log('✅ SwapForm: New fromToken:', currentToToken.symbol, 'New fromAmount:', currentToAmount);
+                                    console.log('✅ SwapForm: New toToken:', currentFromToken.symbol, 'New toAmount:', currentFromAmount, '(will trigger recalculation)');
                                 } else {
                                     console.log('⚠️ SwapForm: Cannot swap - one or both tokens are missing');
                                 }
