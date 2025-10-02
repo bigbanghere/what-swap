@@ -17,9 +17,7 @@ export default function TestSDKPage() {
       console.log('🧪 Testing swap.coffee SDK directly...');
       
       // Create routing API instance
-      const routingApi = new RoutingApi({
-        baseUrl: 'https://backend.swap.coffee',
-      });
+      const routingApi = new RoutingApi();
 
       // Test parameters
       const inputToken = {
