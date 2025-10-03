@@ -2,6 +2,8 @@
 
 import { backButton } from '@telegram-apps/sdk-react';
 import { PropsWithChildren, useEffect } from 'react';
+import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
+// Debug panels removed for production
 import { useRouter } from 'next/navigation';
 
 export function Page({ children, back = true }: PropsWithChildren<{
@@ -13,6 +15,7 @@ export function Page({ children, back = true }: PropsWithChildren<{
 }>) {
   console.log('🎯 Page: Component rendering', { back });
   const router = useRouter();
+  const { setNavigationFlags } = useKeyboardDetection();
 
   useEffect(() => {
     console.log('🎯 Page: Setting up backButton', { back });
@@ -34,6 +37,7 @@ export function Page({ children, back = true }: PropsWithChildren<{
     try {
       return backButton.onClick(() => {
         console.log('🎯 Page: Back button clicked, navigating to /');
+        try { setNavigationFlags(); } catch {}
         // Always navigate to main page instead of using browser history
         router.push('/');
       });
@@ -42,5 +46,7 @@ export function Page({ children, back = true }: PropsWithChildren<{
     }
   }, [router]);
 
-  return <>{children}</>;
+  return <>
+    {children}
+  </>;
 }

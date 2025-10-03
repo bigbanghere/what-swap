@@ -66,6 +66,7 @@ const TokenItem = React.memo(({
 
   const handleClick = useCallback(() => {
     console.log('🖱️ TokenItem: Click detected for token:', token.symbol);
+    console.log('🖱️ TokenItem: About to call onSelect with token:', token);
     onSelect(token);
   }, [token, onSelect]);
 
@@ -147,6 +148,7 @@ export default function TokensPageFast() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [tokenType, setTokenType] = useState<'from' | 'to'>('from');
   const [isNearBottom, setIsNearBottom] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Debounce search query
   useEffect(() => {
@@ -213,44 +215,68 @@ export default function TokensPageFast() {
   const localHasMore = false;
 
   const handleTokenSelect = useCallback((token: any) => {
+    console.log('🎯 handleTokenSelect called with:', token?.symbol, 'isNavigating:', isNavigating);
+    
+    // Prevent multiple rapid clicks
+    if (isNavigating) {
+      console.log('🚫 Token selection ignored - already navigating');
+      return;
+    }
+    
+    setIsNavigating(true);
     console.log('🎯 Token selected:', token);
     console.log('🎯 Token type:', tokenType);
     
-    // Store selected token in localStorage
-    const storageKey = `selected${tokenType.charAt(0).toUpperCase() + tokenType.slice(1)}Token`;
-    localStorage.setItem(storageKey, JSON.stringify(token));
-    console.log('💾 Stored token in localStorage with key:', storageKey);
-    
-    // Dispatch custom event for immediate update
-    const eventDetail = { token, type: tokenType };
-    console.log('📡 Dispatching custom event with detail:', eventDetail);
-    window.dispatchEvent(new CustomEvent('tokenSelected', { 
-      detail: eventDetail 
-    }));
-    console.log('✅ Custom event dispatched');
-    
-    // Set navigation flag to indicate we're navigating back from tokens page
-    sessionStorage.setItem('fromTokensPage', 'true');
-    console.log('🎯 Tokens page: Set fromTokensPage flag to true');
-    
-    // Clear the asset selection flag since user completed selection
-    sessionStorage.removeItem('inAssetSelection');
-    console.log('🎯 Tokens page: Asset selection completed, clearing flag');
-    
-    // Debug: Log all sessionStorage
-    console.log('🎯 Tokens page: All sessionStorage:', Object.fromEntries(
-        Array.from({ length: sessionStorage.length }, (_, i) => {
-            const key = sessionStorage.key(i);
-            return [key, sessionStorage.getItem(key || '')];
-        })
-    ));
-    
-    // Navigate back with a small delay to ensure state update is processed
-    console.log('🏠 Navigating back to home page');
-    setTimeout(() => {
-      router.push('/');
-    }, 100);
-  }, [router, tokenType]);
+    try {
+      // Store selected token in localStorage with timestamp
+      const storageKey = `selected${tokenType.charAt(0).toUpperCase() + tokenType.slice(1)}Token`;
+      const tokenWithTimestamp = {
+        ...token,
+        selectedAt: Date.now()
+      };
+      localStorage.setItem(storageKey, JSON.stringify(tokenWithTimestamp));
+      console.log('💾 Stored token in localStorage with key:', storageKey);
+      
+      // Set navigation flags BEFORE dispatching events
+      sessionStorage.setItem('fromTokensPage', 'true');
+      console.log('🎯 Tokens page: Set fromTokensPage flag to true');
+      
+      // Clear the asset selection flag since user completed selection
+      sessionStorage.removeItem('inAssetSelection');
+      console.log('🎯 Tokens page: Asset selection completed, clearing flag');
+      
+      // Dispatch custom event for immediate update
+      const customEvent = new CustomEvent('tokenSelected', {
+        detail: {
+          type: tokenType,
+          token: token
+        }
+      });
+      
+      // Dispatch immediately
+      window.dispatchEvent(customEvent);
+      console.log('📡 TokensPage: Dispatched custom event', customEvent.detail);
+      console.log('📡 TokensPage: Token has address:', !!token.address);
+      console.log('📡 TokensPage: Token has symbol:', !!token.symbol);
+      console.log('📡 TokensPage: Full token object:', token);
+      
+      // Dispatch again after a small delay to ensure it's processed
+      setTimeout(() => {
+        console.log('📡 TokensPage: Dispatching delayed custom event');
+        window.dispatchEvent(customEvent);
+      }, 100);
+      
+      // Add a longer delay to ensure the event is processed before navigation
+      setTimeout(() => {
+        console.log('🏠 Navigating back to home page (delayed)');
+        router.push('/');
+      }, 300);
+      
+    } catch (error) {
+      console.error('❌ Error during token selection:', error);
+      setIsNavigating(false);
+    }
+  }, [router, tokenType, isNavigating]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
