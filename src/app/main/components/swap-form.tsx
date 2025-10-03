@@ -1062,8 +1062,10 @@ export function SwapForm() {
       }
     }
     
-    // Only clear localStorage if it's a true page reload AND not returning from tokens page AND no recent tokens
-    if (isPageReload && !fromTokensPage && !inAssetSelection && !hasRecentTokens) {
+    console.log('🔄 SwapForm: Token freshness check:', { hasRecentTokens, hasStoredTokens });
+    
+    // On page reload, always clear localStorage and use defaults (unless returning from tokens page)
+    if (isPageReload && !fromTokensPage && !inAssetSelection) {
       console.log('🔄 SwapForm: Page reload detected - clearing localStorage tokens to use defaults');
       localStorage.removeItem('selectedFromToken');
       localStorage.removeItem('selectedToToken');
@@ -1071,8 +1073,8 @@ export function SwapForm() {
       return;
     }
     
-    // If there are recent tokens, preserve them even if flags are missing
-    if (hasRecentTokens && (!fromTokensPage && !inAssetSelection)) {
+    // If there are recent tokens and we're NOT on a page reload, preserve them even if flags are missing
+    if (hasRecentTokens && !isPageReload && (!fromTokensPage && !inAssetSelection)) {
       console.log('🔄 SwapForm: Found recent tokens in localStorage, preserving them despite missing flags');
     }
     
