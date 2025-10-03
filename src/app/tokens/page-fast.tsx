@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/core/theme';
 import { Page } from '@/components/Page';
@@ -64,16 +64,55 @@ const TokenItem = React.memo(({
     return "$0";
   };
 
-  const handleClick = useCallback(() => {
-    console.log('🖱️ TokenItem: Click detected for token:', token.symbol);
-    console.log('🖱️ TokenItem: About to call onSelect with token:', token);
+  const handleInteraction = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🖱️👆 TokenItem: Interaction detected for token:', token.symbol, 'Type:', e.type);
+    console.log('🖱️👆 TokenItem: About to call onSelect with token:', token);
     onSelect(token);
   }, [token, onSelect]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const target = e.currentTarget as any;
+    const touchStartTime = target.touchStartTime;
+    const touchStartY = target.touchStartY;
+    
+    if (touchStartTime && touchStartY !== undefined) {
+      const touchDuration = Date.now() - touchStartTime;
+      const touchEndY = e.changedTouches[0].clientY;
+      const touchDistance = Math.abs(touchEndY - touchStartY);
+      
+      console.log('👆 TokenItem: Touch end analysis:', {
+        duration: touchDuration,
+        distance: touchDistance,
+        isTap: touchDuration < 300 && touchDistance < 10
+      });
+      
+      // Only trigger selection if it's a tap (short duration and small distance)
+      if (touchDuration < 300 && touchDistance < 10) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('👆 TokenItem: Touch end - tap detected, selecting token:', token.symbol);
+        onSelect(token);
+      } else {
+        console.log('👆 TokenItem: Touch end - scroll detected, ignoring');
+      }
+    }
+  }, [token, onSelect]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    console.log('👆 TokenItem: Touch start detected for token:', token.symbol);
+    // Store the touch start time to detect if it's a tap vs scroll
+    (e.currentTarget as any).touchStartTime = Date.now();
+    (e.currentTarget as any).touchStartY = e.touches[0].clientY;
+  }, [token.symbol]);
 
   return (
     <div
       className="flex items-center gap-[5px] py-[10px] px-[20px] cursor-pointer hover:opacity-80 transition-opacity"
-      onClick={handleClick}
+      onClick={handleInteraction}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Token Icon */}
       <div className="w-[30px] h-[30px] rounded-full overflow-hidden flex-shrink-0">
@@ -149,6 +188,7 @@ export default function TokensPageFast() {
   const [tokenType, setTokenType] = useState<'from' | 'to'>('from');
   const [isNearBottom, setIsNearBottom] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const isNavigatingRef = useRef(false);
 
   // Debounce search query
   useEffect(() => {
@@ -174,6 +214,11 @@ export default function TokensPageFast() {
   // Cleanup: Clear asset selection flag when component unmounts (user navigates back without selecting)
   useEffect(() => {
     return () => {
+      // Reset navigation state on unmount
+      isNavigatingRef.current = false;
+      setIsNavigating(false);
+      console.log('🧹 Tokens page: Reset isNavigating on unmount');
+      
       // Only clear if user didn't select a token (no fromTokensPage flag set)
       const fromTokensPage = sessionStorage.getItem('fromTokensPage');
       if (!fromTokensPage) {
@@ -215,17 +260,25 @@ export default function TokensPageFast() {
   const localHasMore = false;
 
   const handleTokenSelect = useCallback((token: any) => {
-    console.log('🎯 handleTokenSelect called with:', token?.symbol, 'isNavigating:', isNavigating);
+    console.log('🎯 handleTokenSelect called with:', token?.symbol, 'isNavigating:', isNavigatingRef.current);
     
     // Prevent multiple rapid clicks
-    if (isNavigating) {
+    if (isNavigatingRef.current) {
       console.log('🚫 Token selection ignored - already navigating');
       return;
     }
     
+    isNavigatingRef.current = true;
     setIsNavigating(true);
     console.log('🎯 Token selected:', token);
     console.log('🎯 Token type:', tokenType);
+    
+    // Safety timeout to reset navigation state in case something goes wrong
+    const safetyTimeout = setTimeout(() => {
+      console.log('⚠️ Safety timeout: Resetting isNavigating state');
+      isNavigatingRef.current = false;
+      setIsNavigating(false);
+    }, 5000);
     
     try {
       // Store selected token in localStorage with timestamp
@@ -264,19 +317,28 @@ export default function TokensPageFast() {
       setTimeout(() => {
         console.log('📡 TokensPage: Dispatching delayed custom event');
         window.dispatchEvent(customEvent);
-      }, 100);
+      }, 10);
       
-      // Add a longer delay to ensure the event is processed before navigation
+      // Navigate back to home page immediately
       setTimeout(() => {
         console.log('🏠 Navigating back to home page (delayed)');
         router.push('/');
-      }, 300);
+        // Reset navigation state after navigation starts
+        setTimeout(() => {
+          clearTimeout(safetyTimeout);
+          isNavigatingRef.current = false;
+          setIsNavigating(false);
+          console.log('🔄 Reset isNavigating to false after navigation');
+        }, 10);
+      }, 30);
       
     } catch (error) {
       console.error('❌ Error during token selection:', error);
+      clearTimeout(safetyTimeout);
+      isNavigatingRef.current = false;
       setIsNavigating(false);
     }
-  }, [router, tokenType, isNavigating]);
+  }, [router, tokenType]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -287,6 +349,14 @@ export default function TokensPageFast() {
       <div 
         className="min-h-screen"
         style={{ backgroundColor: colors.background }}
+        onTouchStart={(e) => {
+          // Ensure viewport can expand on touch
+          console.log('📱 Touch start on main container - allowing viewport expansion');
+        }}
+        onTouchMove={(e) => {
+          // Allow both viewport expansion and content scrolling
+          console.log('📱 Touch move on main container - allowing both viewport and scroll');
+        }}
       >
         {/* Search Bar */}
         <div className="px-[20px] pt-[20px] pb-[10px]">
@@ -318,6 +388,19 @@ export default function TokensPageFast() {
         {/* Tokens List */}
         <div 
           className="flex-1 overflow-y-auto"
+          style={{
+            // Ensure proper touch handling for both viewport expansion and scrolling
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch'
+          }}
+          onTouchStart={(e) => {
+            // Allow viewport expansion on touch start
+            console.log('📱 Touch start on tokens list - allowing viewport expansion');
+          }}
+          onTouchMove={(e) => {
+            // Allow both viewport expansion and scrolling
+            console.log('📱 Touch move on tokens list - allowing both viewport and scroll');
+          }}
         >
           {isLoading && filteredTokens.length === 0 ? (
             // Loading skeletons - show 6 skeletons only when no tokens are loaded yet
