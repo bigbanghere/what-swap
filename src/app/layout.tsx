@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import { Analytics } from "@vercel/analytics/next"
 
 import { Root } from '@/components/Root/Root';
-import { I18nProvider } from '@/core/i18n/provider';
+import { getMessages, getLocale } from 'next-intl/server';
+import { LocaleProvider } from '@/components/LocaleProvider';
 import { ThemeProvider } from '@/core/theme/provider';
 import { ValidationProvider } from '@/contexts/validation-context';
 import { QueryProvider } from '@/providers/query-provider';
@@ -19,9 +20,12 @@ export const metadata: Metadata = {
   description: 'Your application description goes here',
 };
 
-export default function RootLayout({ children }: PropsWithChildren) {
+export default async function RootLayout({ children }: PropsWithChildren) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+  
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -46,7 +50,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
         />
       </head>
       <body>
-        <I18nProvider>
+        <LocaleProvider serverMessages={messages} serverLocale={locale}>
           <ThemeProvider>
             <QueryProvider>
               <ValidationProvider>
@@ -55,7 +59,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
               </ValidationProvider>
             </QueryProvider>
           </ThemeProvider>
-        </I18nProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

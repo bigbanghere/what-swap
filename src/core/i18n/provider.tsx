@@ -9,19 +9,8 @@ const I18nProvider = ({
 }: {
   children: any;
 }) => {
-  // Use static messages for now to avoid server/client issues
-  const messages = {
-    translations: {
-      swap_tokens: "Swap tokens",
-      get: "Get",
-      connect: "Connect",
-      disconnect: "Disconnect",
-      copy_address: "Copy address",
-      send: "Send",
-      max: "MAX",
-      swap: "Swap"
-    }
-  };
+  // This provider is no longer used - the app now uses NextIntlClientProvider in layout.tsx
+  const messages = {};
 
   return (
     <NextIntlClientProvider locale="en" messages={messages} timeZone={timeZone}>
