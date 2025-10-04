@@ -177,6 +177,16 @@ export function useSwapCalculation({
 
     // Clear stale result whenever inputs or direction change to avoid applying outdated values
     useEffect(() => {
+        console.log('🔄 Swap calculation: Dependencies changed, clearing stale result', {
+            fromAmount,
+            toAmount,
+            fromTokenAddress: fromToken?.address,
+            toTokenAddress: toToken?.address,
+            isFromAmountFocused,
+            isToAmountFocused,
+            isUserTypingToAmount,
+            userInputRef
+        });
         setResult(prev => ({ ...prev, outputAmount: null, calcKey: null }));
         // also reset duplicate suppression so next calc isn't skipped
         lastCalculationRef.current = '';
@@ -184,6 +194,17 @@ export function useSwapCalculation({
 
     // Calculate when fromAmount changes (forward calculation: fromAmount -> toAmount)
     useEffect(() => {
+        console.log('🔄 Swap calculation: Forward calculation effect triggered', {
+            fromAmount,
+            fromToken: fromToken?.symbol,
+            toToken: toToken?.symbol,
+            fromTokenAddress: fromToken?.address,
+            toTokenAddress: toToken?.address,
+            parseFloatFromAmount: fromAmount ? parseFloat(fromAmount) : 0,
+            userInputRef,
+            shouldCalculate: fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0 && userInputRef !== 'to'
+        });
+        
         if (fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0 && userInputRef !== 'to') {
             console.log('🔄 Swap calculation: fromAmount changed (forward), calculating...', {
                 fromAmount,
@@ -202,6 +223,14 @@ export function useSwapCalculation({
                         console.log('⚠️ Ignoring stale forward result. expected:', expectedKey, 'got:', payload.key);
                     }
                 }
+            });
+        } else {
+            console.log('⚠️ Swap calculation: Not calculating - missing requirements', {
+                hasFromAmount: !!fromAmount,
+                hasFromToken: !!fromToken,
+                hasToToken: !!toToken,
+                fromAmountValid: fromAmount ? parseFloat(fromAmount) > 0 : false,
+                userInputRefNotTo: userInputRef !== 'to'
             });
         }
     }, [fromAmount, fromToken?.address, toToken?.address, calculateSwap, userInputRef]);

@@ -535,6 +535,13 @@ export function SwapForm() {
                 isToAmountCalculated.current = true; // Mark as calculated
                 userInputRef.current = null; // Reset after update
             }
+            // Special case: Update toAmount when tokens are selected via shortcuts (neither field focused, but we have a valid calculation)
+            else if (isForwardCalculation && !isFromAmountFocused && !isToAmountFocused && fromAmount && parseFloat(fromAmount) > 0 && !isUserTypingToAmount.current) {
+                console.log('🔄 SwapForm: Updating toAmount with calculated value (shortcut selection):', calculatedOutputAmount);
+                setToAmount(calculatedOutputAmount);
+                isToAmountCalculated.current = true; // Mark as calculated
+                userInputRef.current = null; // Reset after update
+            }
             // Special case after rotation: do NOT overwrite the send (fromAmount) basis.
             // We only used reverse calculation to validate; keep the transferred send amount intact.
             else if (isReverseCalculation && !isFromAmountFocused && !isToAmountFocused && userInputRef.current === 'to' && rotatedTransferredToAmount.current && toAmount === rotatedTransferredToAmount.current) {
@@ -996,6 +1003,9 @@ export function SwapForm() {
         // Also store in localStorage for persistence
         localStorage.setItem('selectedFromToken', JSON.stringify(token));
         console.log('✅ SwapForm: Updated selectedFromToken from custom event and localStorage');
+        
+        // Force recalculation by triggering a state update
+        console.log('🔄 SwapForm: Triggering recalculation after fromToken selection');
       }
       if (type === 'to' && token) {
         console.log('✅ SwapForm: Updating selectedToToken from custom event');
@@ -1004,6 +1014,9 @@ export function SwapForm() {
         // Also store in localStorage for persistence
         localStorage.setItem('selectedToToken', JSON.stringify(token));
         console.log('✅ SwapForm: Updated selectedToToken from custom event and localStorage');
+        
+        // Force recalculation by triggering a state update
+        console.log('🔄 SwapForm: Triggering recalculation after toToken selection');
       }
     } else {
       console.log('⚠️ SwapForm: Ignoring invalid event (missing address or symbol)');
@@ -1476,6 +1489,13 @@ export function SwapForm() {
                                             }));
                                             
                                             console.log('✅ SwapForm: Swapped tokens - fromToken:', token.symbol, 'toToken:', currentFromToken?.symbol);
+                                            console.log('🔄 SwapForm: Triggering recalculation after token swap');
+                                            
+                                            // Force a state update to trigger recalculation after swap
+                                            setTimeout(() => {
+                                                console.log('🔄 SwapForm: Forcing recalculation after swap timeout');
+                                                setFromAmount(prev => prev);
+                                            }, 10);
                                         } else {
                                             // Normal selection - just update the from token
                                             setSelectedFromToken(token);
@@ -1489,6 +1509,15 @@ export function SwapForm() {
                                             }));
                                             
                                             console.log('✅ SwapForm: Updated fromToken from small icon:', token.symbol);
+                                            console.log('🔄 SwapForm: Triggering recalculation after shortcut selection');
+                                            
+                                            // Force a state update to trigger recalculation
+                                            // This ensures the useSwapCalculation hook detects the change
+                                            setTimeout(() => {
+                                                console.log('🔄 SwapForm: Forcing recalculation after timeout');
+                                                // Trigger a small state change to force recalculation
+                                                setFromAmount(prev => prev);
+                                            }, 10);
                                         }
                                         
                                         // Additional safety check: if both tokens are now the same, fix it
@@ -1891,6 +1920,13 @@ export function SwapForm() {
                                             }));
                                             
                                             console.log('✅ SwapForm: Swapped tokens - fromToken:', currentToToken?.symbol, 'toToken:', token.symbol);
+                                            console.log('🔄 SwapForm: Triggering recalculation after toToken swap');
+                                            
+                                            // Force a state update to trigger recalculation after swap
+                                            setTimeout(() => {
+                                                console.log('🔄 SwapForm: Forcing recalculation after toToken swap timeout');
+                                                setFromAmount(prev => prev);
+                                            }, 10);
                                         } else {
                                             // Normal selection - just update the to token
                                             setSelectedToToken(token);
@@ -1904,6 +1940,13 @@ export function SwapForm() {
                                             }));
                                             
                                             console.log('✅ SwapForm: Updated toToken from small icon:', token.symbol);
+                                            console.log('🔄 SwapForm: Triggering recalculation after toToken selection');
+                                            
+                                            // Force a state update to trigger recalculation
+                                            setTimeout(() => {
+                                                console.log('🔄 SwapForm: Forcing recalculation after toToken selection timeout');
+                                                setFromAmount(prev => prev);
+                                            }, 10);
                                         }
                                         
                                         // Additional safety check: if both tokens are now the same, fix it
@@ -2066,8 +2109,8 @@ export function SwapForm() {
                                     {calculationError}
                                 </span>
                             ) : isCalculating ? (
-                                <span style={{ color: '#1ABCFF' }}>
-                                    Calculating...
+                                <span style={{ }}>
+                                    ...
                                 </span>
                             ) : (
                                 (() => {

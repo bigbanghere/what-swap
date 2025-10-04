@@ -344,19 +344,35 @@ export default function TokensPageFast() {
     setSearchQuery(e.target.value);
   }, []);
 
+  // Handle touch events to allow both viewport expansion and scrolling
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    console.log('📱 Touch start - allowing natural viewport expansion and scrolling');
+    // Don't prevent default to allow natural Telegram WebApp behavior
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    console.log('📱 Touch move - allowing both viewport expansion and scrolling');
+    // Don't prevent default to allow natural scrolling and viewport expansion
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    console.log('📱 Touch end - natural behavior');
+    // Don't prevent default to allow natural behavior
+  }, []);
+
   return (
     <Page back={true}>
       <div 
         className="min-h-screen"
-        style={{ backgroundColor: colors.background }}
-        onTouchStart={(e) => {
-          // Ensure viewport can expand on touch
-          console.log('📱 Touch start on main container - allowing viewport expansion');
+        style={{ 
+          backgroundColor: colors.background,
+          // Allow natural touch behavior for viewport expansion
+          touchAction: 'pan-y',
+          overscrollBehavior: 'auto'
         }}
-        onTouchMove={(e) => {
-          // Allow both viewport expansion and content scrolling
-          console.log('📱 Touch move on main container - allowing both viewport and scroll');
-        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Search Bar */}
         <div className="px-[20px] pt-[20px] pb-[10px]">
@@ -389,17 +405,11 @@ export default function TokensPageFast() {
         <div 
           className="flex-1 overflow-y-auto"
           style={{
-            // Ensure proper touch handling for both viewport expansion and scrolling
+            // Allow natural Telegram WebApp viewport expansion and scrolling
             touchAction: 'pan-y',
-            WebkitOverflowScrolling: 'touch'
-          }}
-          onTouchStart={(e) => {
-            // Allow viewport expansion on touch start
-            console.log('📱 Touch start on tokens list - allowing viewport expansion');
-          }}
-          onTouchMove={(e) => {
-            // Allow both viewport expansion and scrolling
-            console.log('📱 Touch move on tokens list - allowing both viewport and scroll');
+            WebkitOverflowScrolling: 'touch',
+            // Don't contain overscroll to allow viewport expansion
+            overscrollBehavior: 'auto'
           }}
         >
           {isLoading && filteredTokens.length === 0 ? (
