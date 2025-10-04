@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image';
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
@@ -52,7 +52,12 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
     const lastChangedTokenRef = useRef<'from' | 'to' | null>(null); // Tracks which token was last changed
 
     // Swap calculation hook
-    const { outputAmount: calculatedOutputAmount, calcKey: calculationKey, isLoading: isCalculating, error: calculationError } = useSwapCalculation({
+    const { 
+        outputAmount: calculatedOutputAmount, 
+        calcKey: calculationKey, 
+        isLoading: isCalculating, 
+        error: calculationError
+    } = useSwapCalculation({
         fromToken: selectedFromToken,
         toToken: selectedToToken,
         fromAmount,
@@ -98,8 +103,14 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             return 0;
         }
         
-        // Get full token data with market stats
-        const fullToken = getFullTokenData(token);
+        // Get full token data with market stats (inline to avoid dependency issues)
+        let fullToken = token;
+        if (allTokens && allTokens.length > 0) {
+            const foundToken = allTokens.find(t => t.address === token.address);
+            if (foundToken) {
+                fullToken = foundToken;
+            }
+        }
         
         if (!fullToken.market_stats?.price_usd) {
             console.log('🔍 SwapForm: No price data for token:', fullToken.symbol, fullToken.market_stats);
@@ -120,7 +131,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         });
         
         return usdValue;
-    }, [getFullTokenData]);
+    }, [allTokens]);
 
     // Function to format USD value
     const formatUSDValue = useCallback((usdValue: number | null) => {
@@ -143,6 +154,112 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             return `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
         }
     }, []);
+
+    // Stable USD calculations to prevent blinking
+    const fromTokenUSDValueRef = useRef<string>('$0');
+    const toTokenUSDValueRef = useRef<string>('$0');
+    const lastFromAmountRef = useRef<string>('');
+    const lastToAmountRef = useRef<string>('');
+    const lastFromTokenRef = useRef<string>('');
+    const lastToTokenRef = useRef<string>('');
+    
+    // Calculate USD values inline to prevent blinking
+    const calculateUSDValueInline = useCallback((amount: string, token: any) => {
+        if (!token) {
+            return null;
+        }
+        
+        // If amount is empty, return 0
+        if (!amount || amount.trim() === '') {
+            return 0;
+        }
+        
+        // Get full token data with market stats (inline to avoid dependency issues)
+        let fullToken = token;
+        if (allTokens && allTokens.length > 0) {
+            const foundToken = allTokens.find(t => t.address === token.address);
+            if (foundToken) {
+                fullToken = foundToken;
+            }
+        }
+        
+        if (!fullToken.market_stats?.price_usd) {
+            return null;
+        }
+        
+        const numericAmount = parseFloat(amount);
+        if (isNaN(numericAmount)) {
+            return 0;
+        }
+        
+        const usdValue = numericAmount * fullToken.market_stats.price_usd;
+        return usdValue;
+    }, [allTokens]);
+
+    const formatUSDValueInline = useCallback((usdValue: number | null) => {
+        if (usdValue === null) {
+            return null;
+        }
+        if (usdValue === 0) {
+            return '$0';
+        }
+        if (usdValue < 0.01) {
+            return `$${usdValue.toFixed(6)}`;
+        } else if (usdValue < 1) {
+            return `$${usdValue.toFixed(4)}`;
+        } else if (usdValue < 100) {
+            return `$${usdValue.toFixed(2)}`;
+        } else {
+            return `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+        }
+    }, []);
+
+    // Calculate USD values with smart caching
+    const fromTokenUSDValue = useMemo(() => {
+        const currentToken = selectedFromToken || defaultUsdt;
+        const currentAmount = fromAmount;
+        const currentTokenAddress = currentToken?.address || '';
+        
+        // Check if we need to recalculate
+        if (lastFromAmountRef.current === currentAmount && 
+            lastFromTokenRef.current === currentTokenAddress &&
+            fromTokenUSDValueRef.current !== '$0') {
+            return fromTokenUSDValueRef.current;
+        }
+        
+        const usdValue = calculateUSDValueInline(currentAmount, currentToken);
+        const formattedValue = formatUSDValueInline(usdValue) || '$0';
+        
+        // Update refs
+        fromTokenUSDValueRef.current = formattedValue;
+        lastFromAmountRef.current = currentAmount;
+        lastFromTokenRef.current = currentTokenAddress;
+        
+        return formattedValue;
+    }, [fromAmount, selectedFromToken?.address, defaultUsdt?.address, calculateUSDValueInline, formatUSDValueInline]);
+
+    const toTokenUSDValue = useMemo(() => {
+        const currentToken = selectedToToken || defaultTon;
+        const currentAmount = toAmount;
+        const currentTokenAddress = currentToken?.address || '';
+        
+        // Check if we need to recalculate
+        if (lastToAmountRef.current === currentAmount && 
+            lastToTokenRef.current === currentTokenAddress &&
+            toTokenUSDValueRef.current !== '$0') {
+            return toTokenUSDValueRef.current;
+        }
+        
+        const usdValue = calculateUSDValueInline(currentAmount, currentToken);
+        const formattedValue = formatUSDValueInline(usdValue) || '$0';
+        
+        // Update refs
+        toTokenUSDValueRef.current = formattedValue;
+        lastToAmountRef.current = currentAmount;
+        lastToTokenRef.current = currentTokenAddress;
+        
+        return formattedValue;
+    }, [toAmount, selectedToToken?.address, defaultTon?.address, calculateUSDValueInline, formatUSDValueInline]);
 
     // Only reset to default tokens on actual page refresh, not on navigation
     useEffect(() => {
@@ -469,353 +586,75 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
     }
   }, [selectedFromToken, selectedToToken]);
 
-    // Update amounts when we get a calculated output amount
+    // Update amounts when we get a calculated output amount - SIMPLIFIED VERSION
     useEffect(() => {
-            console.log('🔄 SwapForm: useEffect triggered for calculatedOutputAmount:', calculatedOutputAmount);
-            console.log('🔄 SwapForm: calculatedOutputAmount changed:', {
-                calculatedOutputAmount,
-                isFromAmountFocused,
-                isToAmountFocused,
-                isCalculating,
-                userInputRef: userInputRef.current,
-                fromAmount,
-                toAmount,
-                isUserTypingToAmount: isUserTypingToAmount.current,
-                calculationKey,
-                selectedFromToken: selectedFromToken?.address,
-                selectedToToken: selectedToToken?.address
-            });
+        console.log('🔄 SwapForm: useEffect triggered for calculatedOutputAmount:', calculatedOutputAmount);
         
         if (calculatedOutputAmount && calculatedOutputAmount !== lastCalculatedAmount.current) {
-            // Apply only if current calcKey matches the expected context (forward when typing from, reverse when typing to)
+            // Apply only if current calcKey matches the expected context
             const expectedForwardKey = selectedFromToken && selectedToToken && fromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${fromAmount}-forward` : null;
             const expectedReverseKey = selectedFromToken && selectedToToken && toAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${toAmount}-reverse` : null;
-            // Check if this is a forward calculation (fromAmount -> toAmount) or reverse calculation (toAmount -> fromAmount)
+            
             const isForwardCalculation = calculationKey === expectedForwardKey;
             const isReverseCalculation = calculationKey === expectedReverseKey;
             
-            // Allow calculation if it's a forward calculation and we have valid tokens and fromAmount
-            // This handles the case when tokens change and we need to recalculate
-            // Also allow calculation when user enters "1" (special case for default value)
-            const isTokenChangeCalculation = isForwardCalculation || isReverseCalculation || (selectedFromToken && selectedToToken && calculationKey && calculationKey.includes(selectedFromToken.address) && calculationKey.includes(selectedToToken.address));
-            const isOneValueCalculation = fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && selectedFromToken && selectedToToken;
-            console.log('🔄 SwapForm: isOneValueCalculation check:', {
-                fromAmount,
-                isFromAmountFocused,
-                isToAmountFocused,
-                selectedFromToken: selectedFromToken?.address,
-                selectedToToken: selectedToToken?.address,
-                isOneValueCalculation
-            });
-            
-            if (!isForwardCalculation && !isReverseCalculation && !isTokenChangeCalculation && !isOneValueCalculation) {
-                console.log('⚠️ SwapForm: Ignoring calculatedOutputAmount due to calcKey mismatch', { 
-                    calculationKey, 
-                    expectedForwardKey, 
-                    expectedReverseKey, 
-                    userInputRef: userInputRef.current,
-                    isForwardCalculation,
-                    isReverseCalculation,
-                    isTokenChangeCalculation,
-                    isOneValueCalculation
-                });
-                return;
-            }
-            lastCalculatedAmount.current = calculatedOutputAmount;
-            
-            console.log('🔄 SwapForm: Calculation effect condition check:', {
-                isFromAmountFocused,
-                isToAmountFocused,
-                userInputRef: userInputRef.current,
-                isUserTypingToAmount: isUserTypingToAmount.current,
-                shouldUpdateToAmount: isFromAmountFocused && !isToAmountFocused && !isUserTypingToAmount.current,
-                shouldUpdateFromAmount: isToAmountFocused && !isFromAmountFocused && userInputRef.current === 'to',
-                isForwardCalculation,
-                isReverseCalculation,
-                isTokenChangeCalculation,
-                isOneValueCalculation,
+            console.log('🔄 SwapForm: Calculation analysis:', {
                 calculationKey,
                 expectedForwardKey,
-                expectedReverseKey
+                expectedReverseKey,
+                isForwardCalculation,
+                isReverseCalculation,
+                isFromAmountFocused,
+                isToAmountFocused
             });
             
-            // Don't interfere when get field is empty and we want to show 0 in send field
-            if (fromAmount === '0' && toAmount === '' && isToAmountFocused) {
-                console.log('🔄 SwapForm: Main calculation - skipping update when showing 0 in send field for empty get field');
-            }
-            // Don't interfere when send field is empty and focused - we want to show 0 in get field
-            else if (isFromAmountFocused && !isToAmountFocused && (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0) && !isForwardCalculation) {
-                console.log('🔄 SwapForm: Main calculation - skipping update when send field is empty/focused, should show 0 in get field');
-            }
-            // Special case: Always update when user enters "1" - bypass all complex logic
-            console.log('🔄 SwapForm: Checking special case for "1":', {
-                fromAmount,
-                isFromAmountFocused,
-                isToAmountFocused,
-                calculatedOutputAmount,
-                condition: fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && Number(calculatedOutputAmount) > 0
-            });
-            if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && Number(calculatedOutputAmount) > 0) {
-                console.log('🔄 SwapForm: Special case - user entered "1", updating toAmount directly:', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount.toString());
+            if (!isForwardCalculation && !isReverseCalculation) {
+                console.log('⚠️ SwapForm: Ignoring calculatedOutputAmount due to calcKey mismatch');
                 return;
             }
-            // Always update toAmount when we have a forward calculation and user is focused on fromAmount
-            // BUT NOT when user is actively typing in toAmount OR when user has finished typing in toAmount AND is not typing in fromAmount (to preserve user input)
-            // Also handle special case when user enters "1"
-            else if ((isForwardCalculation && isFromAmountFocused && !isToAmountFocused) || isOneValueCalculation || (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && selectedFromToken && selectedToToken)) {
-                console.log('🔄 SwapForm: Forward calculation condition met - checking flags:', {
-                    isForwardCalculation,
-                    isFromAmountFocused,
-                    isToAmountFocused,
-                    isUserTypingToAmount: isUserTypingToAmount.current,
-                    userFinishedTypingToAmount: userFinishedTypingToAmount.current,
-                    userInputRef: userInputRef.current,
-                    calculatedOutputAmount
-                });
-                
-                // Reset typing flags if they're blocking the update
-                if (isUserTypingToAmount.current) {
-                    console.log('🔄 SwapForm: Resetting isUserTypingToAmount to allow update');
-                    isUserTypingToAmount.current = false;
-                }
-                if (userFinishedTypingToAmount.current) {
-                    console.log('🔄 SwapForm: Resetting userFinishedTypingToAmount to allow update');
-                    userFinishedTypingToAmount.current = false;
-                }
-                
-                console.log('🔄 SwapForm: Updating toAmount with calculated value:', calculatedOutputAmount, 'userInputRef:', userInputRef.current);
+            
+            lastCalculatedAmount.current = calculatedOutputAmount;
+            
+            // SIMPLIFIED LOGIC - No overlapping conditions
+            if (isForwardCalculation) {
+                // Forward calculation: update toAmount (Get field)
+                console.log('🔄 SwapForm: Updating toAmount with forward calculation:', calculatedOutputAmount);
                 setToAmount(calculatedOutputAmount);
-                isToAmountCalculated.current = true; // Mark as calculated
-                userInputRef.current = null; // Reset after update
-            }
-            // Update fromAmount when we have a reverse calculation and user is typing in toAmount
-            // Allow reverse calculation when user is actively typing in toAmount field
-            else if (isReverseCalculation && isToAmountFocused && userInputRef.current === 'to') {
-                    console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
-                    setFromAmount(calculatedOutputAmount);
-                    userInputRef.current = null; // Reset after update
-            }
-            // Special case: Update toAmount when restoring default values (neither field focused, fromAmount is '1', toAmount is empty, and userInputRef is 'from')
-            else if (isForwardCalculation && !isFromAmountFocused && !isToAmountFocused && fromAmount === '1' && toAmount === '' && userInputRef.current === 'from') {
-                console.log('🔄 SwapForm: Updating toAmount with calculated value (restoring defaults):', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount);
-                isToAmountCalculated.current = true; // Mark as calculated
-                userInputRef.current = null; // Reset after update
-            }
-            // Special case: Update toAmount when tokens are selected via shortcuts (neither field focused, but we have a valid calculation)
-            else if (isForwardCalculation && !isFromAmountFocused && !isToAmountFocused && fromAmount && parseFloat(fromAmount) > 0 && !isUserTypingToAmount.current) {
-                console.log('🔄 SwapForm: Updating toAmount with calculated value (shortcut selection):', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount);
-                isToAmountCalculated.current = true; // Mark as calculated
-                // Don't reset userInputRef here - preserve it for token change after user input logic
-            }
-            // Special case: Update opposite field when tokens change after user input (respects last user input)
-            else if (isForwardCalculation && userInputRef.current === 'from' && fromAmount && parseFloat(fromAmount) > 0 && !isUserTypingToAmount.current) {
-                console.log('🔄 SwapForm: Updating toAmount with calculated value (token change after user input):', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount);
-                isToAmountCalculated.current = true; // Mark as calculated
-                userInputRef.current = null; // Reset after update
-            }
-            else if (isReverseCalculation && userInputRef.current === 'to' && toAmount && parseFloat(toAmount) > 0 && !isUserTyping.current) {
-                console.log('🔄 SwapForm: Updating fromAmount with calculated value (token change after user input):', calculatedOutputAmount);
+                isToAmountCalculated.current = true;
+                userInputRef.current = null;
+            } else if (isReverseCalculation) {
+                // Reverse calculation: update fromAmount (Send field)
+                console.log('🔄 SwapForm: Updating fromAmount with reverse calculation:', calculatedOutputAmount);
                 setFromAmount(calculatedOutputAmount);
-                userInputRef.current = null; // Reset after update
-            }
-            // Special case after rotation: do NOT overwrite the send (fromAmount) basis.
-            // We only used reverse calculation to validate; keep the transferred send amount intact.
-            else if (isReverseCalculation && !isFromAmountFocused && !isToAmountFocused && userInputRef.current === 'to' && rotatedTransferredToAmount.current && toAmount === rotatedTransferredToAmount.current) {
-                console.log('🔄 SwapForm: Post-rotation guard - keeping fromAmount fixed, ignoring reverse overwrite');
-                // Clear marker so we don't retrigger
-                rotatedTransferredToAmount.current = null;
-                userInputRef.current = null; // Reset after update
-            }
-            // Special case: Update toAmount when user has finished typing in send field and neither field is focused
-            else if (isForwardCalculation && !isFromAmountFocused && !isToAmountFocused && userInputRef.current === 'from' && fromAmount && parseFloat(fromAmount) > 0) {
-                console.log('🔄 SwapForm: Updating toAmount with calculated value (after user input):', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount);
-                isToAmountCalculated.current = true; // Mark as calculated
-                userInputRef.current = null; // Reset after update
-            }
-            // Special case: Update appropriate field when tokens change based on which token was changed
-            // Allow this even when user is typing in toAmount if we need to update fromAmount (send field)
-            else if (isTokenChangeCalculation && (lastChangedTokenRef.current === 'from' || !isUserTypingToAmount.current)) {
-                console.log('🔄 SwapForm: Token change calculation condition met', {
-                    isTokenChangeCalculation,
-                    lastChangedTokenRef: lastChangedTokenRef.current,
-                    isUserTypingToAmount: isUserTypingToAmount.current,
-                    calculatedOutputAmount
-                });
-                console.log('🔄 SwapForm: Token change calculation triggered', {
-                    lastChangedTokenRef: lastChangedTokenRef.current,
-                    isFromAmountFocused,
-                    isToAmountFocused,
-                    isUserTypingToAmount: isUserTypingToAmount.current,
-                    isForwardCalculation,
-                    isReverseCalculation,
-                    fromAmount,
-                    toAmount,
-                    calculatedOutputAmount,
-                    isTokenChangeCalculation
-                });
-                
-                if (lastChangedTokenRef.current === 'from') {
-                    // When fromToken changes, recalculate fromAmount (send field) based on toAmount
-                    // This requires a reverse calculation (toAmount → fromAmount)
-                    console.log('🔄 SwapForm: Processing fromToken change', {
-                        toAmount,
-                        isReverseCalculation,
-                        isForwardCalculation,
-                        calculationKey,
-                        expectedReverseKey,
-                        expectedForwardKey
-                    });
-                    
-                    if (toAmount && parseFloat(toAmount) > 0) {
-                        console.log('🔄 SwapForm: Updating fromAmount with calculated value (fromToken change):', calculatedOutputAmount);
-                        setFromAmount(calculatedOutputAmount);
-                        userInputRef.current = null; // Reset after update
-                    } else {
-                        console.log('🔄 SwapForm: fromToken changed but no valid toAmount', {
-                            toAmount,
-                            isReverseCalculation,
-                            isForwardCalculation,
-                            calculationKey,
-                            expectedReverseKey,
-                            expectedForwardKey
-                        });
-                    }
-                } else if (lastChangedTokenRef.current === 'to') {
-                    // When toToken changes, decide which calculation to do based on which field has a value
-                    console.log('🔄 SwapForm: Processing toToken change', {
-                        fromAmount,
-                        toAmount,
-                        isForwardCalculation,
-                        isReverseCalculation,
-                        isToAmountFocused,
-                        calculationKey,
-                        expectedForwardKey,
-                        expectedReverseKey
-                    });
-                    
-                    // If toAmount has a value, do reverse calculation to update fromAmount
-                    if (toAmount && parseFloat(toAmount) > 0 && isReverseCalculation && !isFromAmountFocused) {
-                        console.log('🔄 SwapForm: Updating fromAmount with calculated value (toToken change, reverse calc):', calculatedOutputAmount);
-                        setFromAmount(calculatedOutputAmount);
-                        userInputRef.current = null; // Reset after update
-                    }
-                    // If fromAmount has a value, do forward calculation to update toAmount
-                    else if (fromAmount && parseFloat(fromAmount) > 0 && isForwardCalculation && !isToAmountFocused) {
-                        console.log('🔄 SwapForm: Updating toAmount with calculated value (toToken change, forward calc):', calculatedOutputAmount);
-                        setToAmount(calculatedOutputAmount);
-                        isToAmountCalculated.current = true; // Mark as calculated
-                        userInputRef.current = null; // Reset after update
-                    } else {
-                        console.log('🔄 SwapForm: toToken changed but no valid calculation possible', {
-                            fromAmount,
-                            toAmount,
-                            isForwardCalculation,
-                            isReverseCalculation,
-                            isToAmountFocused,
-                            isFromAmountFocused,
-                            calculationKey,
-                            expectedForwardKey,
-                            expectedReverseKey
-                        });
-                    }
-                }
-                // Reset the token change tracker after processing
-                lastChangedTokenRef.current = null;
-            }
-            else {
-                console.log('🔄 SwapForm: No update condition met, skipping update');
-                console.log('🔍 Debug: Condition check details:', {
-                    isFromAmountFocused,
-                    isToAmountFocused,
-                    userInputRef: userInputRef.current,
-                    toAmount,
-                    lastUserEnteredValue: lastUserEnteredValue.current,
-                    calculatedOutputAmount,
-                    fromAmount,
-                    isForwardCalculation,
-                    isReverseCalculation,
-                    isTokenChangeCalculation,
-                    lastChangedTokenRef: lastChangedTokenRef.current,
-                    tokenChangeCondition: isTokenChangeCalculation && (lastChangedTokenRef.current === 'from' || !isUserTypingToAmount.current)
-                });
+                userInputRef.current = null;
             }
         }
-    }, [calculatedOutputAmount, isFromAmountFocused, isToAmountFocused, isCalculating, fromAmount, toAmount, calculationKey, selectedFromToken, selectedToToken]);
+    }, [calculatedOutputAmount, calculationKey]);
 
-    // Additional effect to ensure calculated values are preserved
-    useEffect(() => {
-        // Don't interfere when get field is empty and we want to show 0 in send field
-        if (fromAmount === '0' && toAmount === '' && isToAmountFocused) {
-            console.log('🔄 SwapForm: Additional effect - skipping update when showing 0 in send field for empty get field');
-            return;
-        }
-        
-        // Don't interfere when send field is empty and focused - we want to show 0 in get field
-        if (isFromAmountFocused && !isToAmountFocused && (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0)) {
-            console.log('🔄 SwapForm: Additional effect - skipping update when send field is empty/focused, should show 0 in get field');
-            return;
-        }
-        
-        // Also do not override get field while user is focusing send field at all
-        if (isFromAmountFocused) {
-            return;
-        }
+    // REMOVED: Additional effect that was causing conflicts
 
-        // Skip during rotation transfer handling or default restoration
-        if (rotatedTransferredToAmount.current || isRestoringDefaults.current) {
-            return;
-        }
-
-        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && userInputRef.current === 'from' && !isUserTypingToAmount.current && !(userFinishedTypingToAmount.current && userInputRef.current !== 'from')) {
-            console.log('🔄 SwapForm: Ensuring calculated value is set:', calculatedOutputAmount);
-            setToAmount(calculatedOutputAmount);
-            isToAmountCalculated.current = true;
-        }
-    }, [calculatedOutputAmount, fromAmount, toAmount, isToAmountFocused, isFromAmountFocused]);
-
-    // Fallback effect to ensure toAmount is updated when user types in fromAmount
-    useEffect(() => {
-        // Don't interfere when user is actively typing in toAmount field
-        if (isUserTypingToAmount.current) {
-            return;
-        }
-        
-        // Don't interfere when get field is empty and we want to show 0 in send field
-        if (fromAmount === '0' && toAmount === '' && isToAmountFocused) {
-            console.log('🔄 SwapForm: Fallback - skipping update when showing 0 in send field for empty get field');
-            return;
-        }
-        
-        // Don't interfere when send field is empty and focused - we want to show 0 in get field
-        if (isFromAmountFocused && !isToAmountFocused && (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0)) {
-            console.log('🔄 SwapForm: Fallback - skipping update when send field is empty/focused, should show 0 in get field');
-            return;
-        }
-        
-        // Do not override while user is focusing send field at all
-        if (isFromAmountFocused) {
-            return;
-        }
-
-        // Skip during rotation transfer handling or default restoration
-        if (rotatedTransferredToAmount.current || isRestoringDefaults.current) {
-            return;
-        }
-
-        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0 && fromAmount && parseFloat(fromAmount) > 0 && !isToAmountFocused && !isUserTypingToAmount.current && userInputRef.current === 'from') {
-            console.log('🔄 SwapForm: Fallback - updating toAmount with calculated value:', calculatedOutputAmount);
-            setToAmount(calculatedOutputAmount);
-            isToAmountCalculated.current = true;
-        }
-    }, [calculatedOutputAmount, fromAmount, toAmount, isToAmountFocused, isFromAmountFocused]);
+    // REMOVED: Fallback effect that was causing conflicts
 
     // Handle zero/empty inputs - show 0 in opposite field when focusing empty field
     useEffect(() => {
+        // COMPREHENSIVE GUARD: Skip entirely if user is actively typing in Get field
+        if (isToAmountFocused && toAmount && parseFloat(toAmount) > 0) {
+            console.log('🔄 SwapForm: Zero handling effect - SKIPPING ENTIRELY - user typing in Get field');
+            return;
+        }
+        
+        // COMPREHENSIVE GUARD: Skip entirely if user has entered custom value
+        if (hasUserEnteredCustomValue.current) {
+            console.log('🔄 SwapForm: Zero handling effect - SKIPPING ENTIRELY - user has entered custom value');
+            return;
+        }
+        
+        // COMPREHENSIVE GUARD: Skip entirely if we have a valid calculation result
+        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0) {
+            console.log('🔄 SwapForm: Zero handling effect - SKIPPING ENTIRELY - valid calculation result present');
+            return;
+        }
+        
         console.log('🔄 SwapForm: Zero handling effect triggered:', {
             fromAmount,
             toAmount,
@@ -848,6 +687,24 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         // Don't interfere if user has entered a custom value
         if (hasUserEnteredCustomValue.current) {
             console.log('🔄 SwapForm: Skipping zero handling - user has entered custom value');
+            return;
+        }
+        
+        // Don't interfere when we have a valid calculation result
+        if (calculatedOutputAmount && parseFloat(calculatedOutputAmount) > 0) {
+            console.log('🔄 SwapForm: Skipping zero handling - valid calculation result present');
+            return;
+        }
+        
+        // Don't interfere when user is typing in the Get field (toAmount)
+        if (isToAmountFocused && toAmount && parseFloat(toAmount) > 0) {
+            console.log('🔄 SwapForm: Skipping zero handling - user typing in Get field');
+            return;
+        }
+        
+        // Don't interfere when we have a valid fromAmount (result of calculation)
+        if (fromAmount && parseFloat(fromAmount) > 0 && !isFromAmountFocused) {
+            console.log('🔄 SwapForm: Skipping zero handling - valid fromAmount present');
             return;
         }
         
@@ -1908,18 +1765,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                     </div>
                     <div className='flex flex-row justify-between items-center gap-[15px]'>
                         <div className='w-full' style={{ opacity: 0.66 }}>
-                            {(() => {
-                                const currentToken = selectedFromToken || defaultUsdt;
-                                console.log('🔍 SwapForm: FromToken USD calculation:', {
-                                    currentToken: currentToken?.symbol,
-                                    fromAmount,
-                                    hasMarketStats: !!currentToken?.market_stats?.price_usd,
-                                    price: currentToken?.market_stats?.price_usd
-                                });
-                                const usdValue = calculateUSDValue(fromAmount, currentToken);
-                                const formattedValue = formatUSDValue(usdValue);
-                                return formattedValue || '$0';
-                            })()}
+                            {fromTokenUSDValue}
                         </div>
                         {walletAddress ? <div className='flex flex-row gap-[5px]'>
                             <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
@@ -2348,18 +2194,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                     ...
                                 </span>
                             ) : (
-                                (() => {
-                                    const currentToken = selectedToToken || defaultTon;
-                                    console.log('🔍 SwapForm: ToToken USD calculation:', {
-                                        currentToken: currentToken?.symbol,
-                                        toAmount,
-                                        hasMarketStats: !!currentToken?.market_stats?.price_usd,
-                                        price: currentToken?.market_stats?.price_usd
-                                    });
-                                    const usdValue = calculateUSDValue(toAmount, currentToken);
-                                    const formattedValue = formatUSDValue(usdValue);
-                                    return formattedValue || '$0';
-                                })()
+                                toTokenUSDValue
                             )}
                         </div>
                         <div className='flex flex-row gap-[5px]'>
