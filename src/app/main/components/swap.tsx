@@ -7,7 +7,7 @@ import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 import { SwapForm } from './swap-form';
 import Image from 'next/image';
 
-export function Swap() {
+export function Swap({ onErrorChange }: { onErrorChange?: (error: string | null) => void }) {
     const { colors } = useTheme();
     const [fromAmount, setFromAmount] = useState<string>('1');
     const [toAmount, setToAmount] = useState<string>('1');
@@ -43,7 +43,7 @@ export function Swap() {
             </div>
             
             {/* Single SwapForm instance with internal layout switching */}
-            <SwapForm />
+            <SwapForm onErrorChange={onErrorChange} />
         </div>
     );
 }

@@ -16,7 +16,8 @@ const i18nRequestConfig = getRequestConfig(async () => {
         disconnect: "Disconnect",
         copy_address: "Copy address",
         send: "Send",
-        max: "MAX"
+        max: "MAX",
+        swap: "Swap"
       }
     },
   };

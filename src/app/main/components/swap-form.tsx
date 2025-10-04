@@ -17,7 +17,7 @@ import { useDefaultTokens } from '@/hooks/use-default-tokens';
 import { useTokensCache } from '@/hooks/use-tokens-cache';
 import { useSwapCalculation } from '@/hooks/use-swap-calculation';
 
-export function SwapForm() {
+export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | null) => void }) {
     const router = useRouter();
     const walletAddress = useTonAddress();
     const { colors } = useTheme();
@@ -63,6 +63,13 @@ export function SwapForm() {
         isUserTypingToAmount: isUserTypingToAmount.current,
         userInputRef: userInputRef.current
     });
+
+    // Notify parent component of error changes
+    useEffect(() => {
+        if (onErrorChange) {
+            onErrorChange(calculationError);
+        }
+    }, [calculationError, onErrorChange]);
 
     // Function to get full token data with market stats
     const getFullTokenData = useCallback((token: any) => {
@@ -464,31 +471,44 @@ export function SwapForm() {
 
     // Update amounts when we get a calculated output amount
     useEffect(() => {
-        console.log('🔄 SwapForm: calculatedOutputAmount changed:', {
-            calculatedOutputAmount,
-            isFromAmountFocused,
-            isToAmountFocused,
-            isCalculating,
-            userInputRef: userInputRef.current,
-            fromAmount,
-            toAmount,
-            isUserTypingToAmount: isUserTypingToAmount.current,
-            calculationKey
-        });
+            console.log('🔄 SwapForm: useEffect triggered for calculatedOutputAmount:', calculatedOutputAmount);
+            console.log('🔄 SwapForm: calculatedOutputAmount changed:', {
+                calculatedOutputAmount,
+                isFromAmountFocused,
+                isToAmountFocused,
+                isCalculating,
+                userInputRef: userInputRef.current,
+                fromAmount,
+                toAmount,
+                isUserTypingToAmount: isUserTypingToAmount.current,
+                calculationKey,
+                selectedFromToken: selectedFromToken?.address,
+                selectedToToken: selectedToToken?.address
+            });
         
         if (calculatedOutputAmount && calculatedOutputAmount !== lastCalculatedAmount.current) {
             // Apply only if current calcKey matches the expected context (forward when typing from, reverse when typing to)
-            const expectedForwardKey = selectedFromToken && selectedToToken && fromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${fromAmount}` : null;
-            const expectedReverseKey = selectedFromToken && selectedToToken && toAmount ? `${selectedToToken.address}-${selectedFromToken.address}-${toAmount}` : null;
+            const expectedForwardKey = selectedFromToken && selectedToToken && fromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${fromAmount}-forward` : null;
+            const expectedReverseKey = selectedFromToken && selectedToToken && toAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${toAmount}-reverse` : null;
             // Check if this is a forward calculation (fromAmount -> toAmount) or reverse calculation (toAmount -> fromAmount)
             const isForwardCalculation = calculationKey === expectedForwardKey;
             const isReverseCalculation = calculationKey === expectedReverseKey;
             
             // Allow calculation if it's a forward calculation and we have valid tokens and fromAmount
             // This handles the case when tokens change and we need to recalculate
+            // Also allow calculation when user enters "1" (special case for default value)
             const isTokenChangeCalculation = isForwardCalculation || isReverseCalculation || (selectedFromToken && selectedToToken && calculationKey && calculationKey.includes(selectedFromToken.address) && calculationKey.includes(selectedToToken.address));
+            const isOneValueCalculation = fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && selectedFromToken && selectedToToken;
+            console.log('🔄 SwapForm: isOneValueCalculation check:', {
+                fromAmount,
+                isFromAmountFocused,
+                isToAmountFocused,
+                selectedFromToken: selectedFromToken?.address,
+                selectedToToken: selectedToToken?.address,
+                isOneValueCalculation
+            });
             
-            if (!isForwardCalculation && !isReverseCalculation && !isTokenChangeCalculation) {
+            if (!isForwardCalculation && !isReverseCalculation && !isTokenChangeCalculation && !isOneValueCalculation) {
                 console.log('⚠️ SwapForm: Ignoring calculatedOutputAmount due to calcKey mismatch', { 
                     calculationKey, 
                     expectedForwardKey, 
@@ -496,7 +516,8 @@ export function SwapForm() {
                     userInputRef: userInputRef.current,
                     isForwardCalculation,
                     isReverseCalculation,
-                    isTokenChangeCalculation
+                    isTokenChangeCalculation,
+                    isOneValueCalculation
                 });
                 return;
             }
@@ -508,7 +529,14 @@ export function SwapForm() {
                 userInputRef: userInputRef.current,
                 isUserTypingToAmount: isUserTypingToAmount.current,
                 shouldUpdateToAmount: isFromAmountFocused && !isToAmountFocused && !isUserTypingToAmount.current,
-                shouldUpdateFromAmount: isToAmountFocused && !isFromAmountFocused && userInputRef.current === 'to'
+                shouldUpdateFromAmount: isToAmountFocused && !isFromAmountFocused && userInputRef.current === 'to',
+                isForwardCalculation,
+                isReverseCalculation,
+                isTokenChangeCalculation,
+                isOneValueCalculation,
+                calculationKey,
+                expectedForwardKey,
+                expectedReverseKey
             });
             
             // Don't interfere when get field is empty and we want to show 0 in send field
@@ -519,9 +547,23 @@ export function SwapForm() {
             else if (isFromAmountFocused && !isToAmountFocused && (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0) && !isForwardCalculation) {
                 console.log('🔄 SwapForm: Main calculation - skipping update when send field is empty/focused, should show 0 in get field');
             }
+            // Special case: Always update when user enters "1" - bypass all complex logic
+            console.log('🔄 SwapForm: Checking special case for "1":', {
+                fromAmount,
+                isFromAmountFocused,
+                isToAmountFocused,
+                calculatedOutputAmount,
+                condition: fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && calculatedOutputAmount > 0
+            });
+            if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && calculatedOutputAmount > 0) {
+                console.log('🔄 SwapForm: Special case - user entered "1", updating toAmount directly:', calculatedOutputAmount);
+                setToAmount(calculatedOutputAmount.toString());
+                return;
+            }
             // Always update toAmount when we have a forward calculation and user is focused on fromAmount
             // BUT NOT when user is actively typing in toAmount OR when user has finished typing in toAmount AND is not typing in fromAmount (to preserve user input)
-            else if (isForwardCalculation && isFromAmountFocused && !isToAmountFocused) {
+            // Also handle special case when user enters "1"
+            else if ((isForwardCalculation && isFromAmountFocused && !isToAmountFocused) || isOneValueCalculation || (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && selectedFromToken && selectedToToken)) {
                 console.log('🔄 SwapForm: Forward calculation condition met - checking flags:', {
                     isForwardCalculation,
                     isFromAmountFocused,
@@ -549,7 +591,7 @@ export function SwapForm() {
             }
             // Update fromAmount when we have a reverse calculation and user is typing in toAmount
             // Allow reverse calculation when user is actively typing in toAmount field
-            else if (isReverseCalculation && isToAmountFocused && !isFromAmountFocused && userInputRef.current === 'to') {
+            else if (isReverseCalculation && isToAmountFocused && userInputRef.current === 'to') {
                     console.log('🔄 SwapForm: Updating fromAmount with calculated value (reverse):', calculatedOutputAmount);
                     setFromAmount(calculatedOutputAmount);
                     userInputRef.current = null; // Reset after update
@@ -644,29 +686,41 @@ export function SwapForm() {
                         });
                     }
                 } else if (lastChangedTokenRef.current === 'to') {
-                    // When toToken changes, recalculate toAmount (get field) based on fromAmount
-                    // This requires a forward calculation (fromAmount → toAmount)
-                    // Only update if the toAmount input is not focused (to avoid overriding user input)
+                    // When toToken changes, decide which calculation to do based on which field has a value
                     console.log('🔄 SwapForm: Processing toToken change', {
                         fromAmount,
+                        toAmount,
                         isForwardCalculation,
+                        isReverseCalculation,
                         isToAmountFocused,
                         calculationKey,
-                        expectedForwardKey
+                        expectedForwardKey,
+                        expectedReverseKey
                     });
                     
-                    if (fromAmount && parseFloat(fromAmount) > 0 && isForwardCalculation && !isToAmountFocused) {
+                    // If toAmount has a value, do reverse calculation to update fromAmount
+                    if (toAmount && parseFloat(toAmount) > 0 && isReverseCalculation && !isFromAmountFocused) {
+                        console.log('🔄 SwapForm: Updating fromAmount with calculated value (toToken change, reverse calc):', calculatedOutputAmount);
+                        setFromAmount(calculatedOutputAmount);
+                        userInputRef.current = null; // Reset after update
+                    }
+                    // If fromAmount has a value, do forward calculation to update toAmount
+                    else if (fromAmount && parseFloat(fromAmount) > 0 && isForwardCalculation && !isToAmountFocused) {
                         console.log('🔄 SwapForm: Updating toAmount with calculated value (toToken change, forward calc):', calculatedOutputAmount);
                         setToAmount(calculatedOutputAmount);
                         isToAmountCalculated.current = true; // Mark as calculated
                         userInputRef.current = null; // Reset after update
                     } else {
-                        console.log('🔄 SwapForm: toToken changed but no fromAmount or not forward calculation or toAmount is focused', {
+                        console.log('🔄 SwapForm: toToken changed but no valid calculation possible', {
                             fromAmount,
+                            toAmount,
                             isForwardCalculation,
+                            isReverseCalculation,
                             isToAmountFocused,
+                            isFromAmountFocused,
                             calculationKey,
-                            expectedForwardKey
+                            expectedForwardKey,
+                            expectedReverseKey
                         });
                     }
                 }
@@ -772,14 +826,21 @@ export function SwapForm() {
             hasUserEnteredCustomValue: hasUserEnteredCustomValue.current
         });
         
+        // SPECIAL CASE: Always update when user enters "1" - bypass all complex logic
+        if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && calculatedOutputAmount > 0) {
+            console.log('🔄 SwapForm: Special case - user entered "1", updating toAmount directly:', calculatedOutputAmount);
+            setToAmount(calculatedOutputAmount.toString());
+            return;
+        }
+        
         // Don't interfere during calculations
         if (isCalculating) {
             console.log('🔄 SwapForm: Skipping zero handling - calculation in progress');
             return;
         }
         
-        // Don't interfere when user is actively typing
-        if (isUserTyping.current) {
+        // Don't interfere when user is actively typing, but allow zero handling when field is empty
+        if (isUserTyping.current && fromAmount !== '' && fromAmount !== '0') {
             console.log('🔄 SwapForm: Skipping zero handling - user is typing');
             return;
         }
@@ -787,6 +848,19 @@ export function SwapForm() {
         // Don't interfere if user has entered a custom value
         if (hasUserEnteredCustomValue.current) {
             console.log('🔄 SwapForm: Skipping zero handling - user has entered custom value');
+            return;
+        }
+        
+        // Don't interfere when user enters "1" (even if not marked as custom value yet)
+        // But only if the user has actually entered "1" (not when field is empty)
+        if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && hasUserEnteredCustomValue.current) {
+            console.log('🔄 SwapForm: Skipping zero handling - user entered "1"');
+            return;
+        }
+        
+        // Don't interfere when user is typing and fromAmount is "1"
+        if (isUserTyping.current && fromAmount === '1') {
+            console.log('🔄 SwapForm: Skipping zero handling - user is typing "1"');
             return;
         }
         
@@ -807,12 +881,28 @@ export function SwapForm() {
         // When user is focused on fromAmount and it's empty or 0
         if (isFromAmountFocused && !isToAmountFocused) {
             // Show 0 in get field when send field is empty/zero
-            if (fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0) {
+            // But don't interfere if user has entered a custom value (including "1")
+            // Also don't interfere if toAmount already has a calculated value
+            if ((fromAmount === '' || fromAmount === '0' || parseFloat(fromAmount) === 0) && 
+                !hasUserEnteredCustomValue.current) {
                 console.log('🔄 SwapForm: fromAmount is empty/zero while focused, setting toAmount to 0');
                 setToAmount('0');
-                // Reset the custom value flag to ensure zero handling works
-                hasUserEnteredCustomValue.current = false;
+            } else {
+                console.log('🔄 SwapForm: Zero handling condition not met:', {
+                    fromAmount,
+                    hasUserEnteredCustomValue: hasUserEnteredCustomValue.current,
+                    toAmount,
+                    isFromAmountFocused,
+                    isToAmountFocused
+                });
             }
+        }
+        
+        // Don't interfere with calculation results when user enters "1"
+        // This prevents zero handling from overriding calculated values
+        if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && hasUserEnteredCustomValue.current) {
+            console.log('🔄 SwapForm: Skipping zero handling - user entered "1" and has custom value');
+            return;
         }
         // When user is focused on toAmount and it's empty or 0
         else if (isToAmountFocused && !isFromAmountFocused) {
@@ -984,6 +1074,7 @@ export function SwapForm() {
         });
 
         // Only set defaults if we actually need them and don't have valid tokens
+        // Always set TON as from token and USDT as to token for consistency
         if (needsFromDefault && defaultTon && (!selectedFromToken || !selectedFromToken.symbol || !selectedFromToken.address)) {
             console.log('🔄 SwapForm: Setting default from token (TON) from API - no token in localStorage');
             setSelectedFromToken({
@@ -994,19 +1085,13 @@ export function SwapForm() {
             });
         }
         if (needsToDefault && defaultUsdt && (!selectedToToken || !selectedToToken.symbol || !selectedToToken.address)) {
-            // Smart default: if fromToken is USDT, set TON as toToken, otherwise set USDT
-            const isFromTokenUsdt = selectedFromToken && selectedFromToken.symbol === 'USDT';
-            const defaultToToken = isFromTokenUsdt ? defaultTon : defaultUsdt;
-            
-            if (defaultToToken) {
-                console.log(`🔄 SwapForm: Setting default to token (${defaultToToken.symbol}) from API - no token in localStorage`);
-                setSelectedToToken({
-                    symbol: defaultToToken.symbol,
-                    name: defaultToToken.name,
-                    image_url: defaultToToken.image_url,
-                    address: defaultToToken.address
-                });
-            }
+            console.log('🔄 SwapForm: Setting default to token (USDT) from API - no token in localStorage');
+            setSelectedToToken({
+                symbol: defaultUsdt.symbol,
+                name: defaultUsdt.name,
+                image_url: defaultUsdt.image_url,
+                address: defaultUsdt.address
+            });
         }
         
         // Additional safety check: if both tokens are the same, fix it
@@ -1134,6 +1219,8 @@ export function SwapForm() {
         console.log('✅ SwapForm: New token:', token.symbol, token.name);
         setSelectedToToken(token);
         lastChangedTokenRef.current = 'to'; // Track that to token was changed
+        // Set userInputRef to 'to' to trigger reverse calculation if toAmount has a value
+        userInputRef.current = 'to';
         // Also store in localStorage for persistence
         localStorage.setItem('selectedToToken', JSON.stringify(token));
         console.log('✅ SwapForm: Updated selectedToToken from custom event and localStorage');
@@ -1156,7 +1243,9 @@ export function SwapForm() {
     
     // Check if this is a page reload (not navigation from tokens page)
     const isPageReload = performance.navigation?.type === 1 || 
-                        (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload';
+                        (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload' ||
+                        document.referrer === '' || 
+                        window.performance.getEntriesByType('navigation')[0]?.type === 'reload';
     
     // Check if we're returning from tokens page (don't clear localStorage in this case)
     const fromTokensPage = sessionStorage.getItem('fromTokensPage') === 'true';
@@ -1169,6 +1258,16 @@ export function SwapForm() {
       isNavigationReturn: sessionStorage.getItem('isNavigationReturn'),
       wasInCompactMode: sessionStorage.getItem('wasInCompactMode')
     });
+    
+    // Clear sessionStorage flags on page reload to ensure fresh state
+    if (isPageReload) {
+      console.log('🔄 SwapForm: Page reload detected - clearing sessionStorage flags');
+      sessionStorage.removeItem('fromTokensPage');
+      sessionStorage.removeItem('inAssetSelection');
+      sessionStorage.removeItem('isNavigationReturn');
+      sessionStorage.removeItem('wasInCompactMode');
+      sessionStorage.removeItem('tokenSelectionProcessed');
+    }
     
     // Check if there are recent tokens in localStorage that might have been selected
     const recentFromTokenData = localStorage.getItem('selectedFromToken');
@@ -1200,8 +1299,8 @@ export function SwapForm() {
     
     console.log('🔄 SwapForm: Token freshness check:', { hasRecentTokens, hasStoredTokens });
     
-    // On page reload, always clear localStorage and use defaults (unless returning from tokens page)
-    if (isPageReload && !fromTokensPage && !inAssetSelection) {
+    // On page reload, always clear localStorage and use defaults
+    if (isPageReload) {
       console.log('🔄 SwapForm: Page reload detected - clearing localStorage tokens to use defaults');
       localStorage.removeItem('selectedFromToken');
       localStorage.removeItem('selectedToToken');
@@ -2065,6 +2164,8 @@ export function SwapForm() {
                                             // Normal selection - just update the to token
                                             setSelectedToToken(token);
                                             lastChangedTokenRef.current = 'to'; // Track that to token was changed
+                                            // Set userInputRef to 'to' to trigger reverse calculation if toAmount has a value
+                                            userInputRef.current = 'to';
                                             
                                             // Store in localStorage for persistence
                                             localStorage.setItem('selectedToToken', JSON.stringify(token));
@@ -2240,11 +2341,7 @@ export function SwapForm() {
                     </div>
                     <div className='flex flex-row justify-between items-center'>
                         <div className='w-full' style={{ opacity: 0.66 }}>
-                            {calculationError ? (
-                                <span style={{ color: '#ff6b6b' }}>
-                                    {calculationError}
-                                </span>
-                            ) : isCalculating ? (
+                            {isCalculating ? (
                                 <span style={{ }}>
                                     ...
                                 </span>

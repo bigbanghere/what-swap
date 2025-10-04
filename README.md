@@ -1,3 +1,4 @@
++ Swap button states: Connect Wallet, Insufficient balance, Price impact too high
 + shortcut assets calculation
 + calculation design
 + assets-page scrolling

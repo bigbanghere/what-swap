@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from './main/components/header';
 import { Swap } from './main/components/swap';
 import { Footer } from './main/components/footer';
@@ -13,6 +13,7 @@ import { Page } from '@/components/Page';
 export default function Home() {
   const { colors } = useTheme();
   const { shouldBeCompact, isInputFocused } = useKeyboardDetection();
+  const [swapError, setSwapError] = useState<string | null>(null);
 
   return (
     <Page back={false}>
@@ -23,8 +24,8 @@ export default function Home() {
         style={{ backgroundColor: colors.background, color: colors.text }}
       >
         <Header />
-        <Swap />
-        <Footer />
+        <Swap onErrorChange={setSwapError} />
+        <Footer error={swapError} />
         {isInputFocused ? <CustomKeyboard /> : null}
         <BackgroundLoadingIndicator />
       </div>

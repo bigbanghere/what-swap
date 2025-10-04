@@ -67,13 +67,13 @@ export function useSwapCalculation({
 
 
     // Calculate swap output
-    const calculateSwap = useCallback(async (inputToken: any, outputToken: any, inputAmount: string) => {
-        if (!inputToken || !outputToken || !inputAmount || parseFloat(inputAmount) <= 0) {
+    const calculateSwap = useCallback(async (inputToken: any, outputToken: any, amount: string, isReverseCalculation: boolean = false) => {
+        if (!inputToken || !outputToken || !amount || parseFloat(amount) <= 0) {
             return null;
         }
 
         // Create a unique key for this calculation
-        const calculationKey = `${inputToken.address}-${outputToken.address}-${inputAmount}`;
+        const calculationKey = `${inputToken.address}-${outputToken.address}-${amount}-${isReverseCalculation ? 'reverse' : 'forward'}`;
         
         // Prevent duplicate calculations of the SAME key while that same calculation is in flight
         if (calculationInProgress.current && lastCalculationRef.current === calculationKey) {
@@ -85,7 +85,8 @@ export function useSwapCalculation({
             calculationKey,
             inputToken: inputToken.symbol,
             outputToken: outputToken.symbol,
-            amount: inputAmount
+            amount,
+            isReverseCalculation
         });
 
         calculationInProgress.current = true;
@@ -96,49 +97,71 @@ export function useSwapCalculation({
 
             const assetIn = convertToApiTokenAddress(inputToken);
             const assetOut = convertToApiTokenAddress(outputToken);
-            const amount = parseFloat(inputAmount);
+            const amountValue = parseFloat(amount);
 
             console.log('🔄 Swap calculation: Using API for calculation', {
                 from: assetIn,
                 to: assetOut,
-                amount,
+                amount: amountValue,
                 inputToken: inputToken.symbol,
                 outputToken: outputToken.symbol,
-                isReverseCalculation: userInputRef === 'to',
+                isReverseCalculation,
                 fullInputToken: inputToken,
                 fullOutputToken: outputToken,
-                apiCall: {
+                apiCall: isReverseCalculation ? {
                     input_token: assetIn,
                     output_token: assetOut,
-                    input_amount: amount
+                    output_amount: amountValue
+                } : {
+                    input_token: assetIn,
+                    output_token: assetOut,
+                    input_amount: amountValue
                 },
-                question: userInputRef === 'to' ? 
-                    `How much ${inputToken.symbol} needed to get ${amount} ${outputToken.symbol}?` :
-                    `How much ${outputToken.symbol} do I get for ${amount} ${inputToken.symbol}?`
+                question: isReverseCalculation ? 
+                    `How much ${inputToken.symbol} needed to get ${amountValue} ${outputToken.symbol}?` :
+                    `How much ${outputToken.symbol} do I get for ${amountValue} ${inputToken.symbol}?`
             });
 
-            // Use SDK directly to build route
-            const route = await routingApi.current.buildRoute({
-                input_token: assetIn,
-                output_token: assetOut,
-                input_amount: amount,
-            });
+            // Use SDK directly to build route with appropriate parameter
+            const route = await routingApi.current.buildRoute(
+                isReverseCalculation ? {
+                    input_token: assetIn,
+                    output_token: assetOut,
+                    output_amount: amountValue,
+                } : {
+                    input_token: assetIn,
+                    output_token: assetOut,
+                    input_amount: amountValue,
+                }
+            );
 
             console.log('🔄 Swap calculation: API response received', {
                 hasData: !!route.data,
+                inputAmount: route.data?.input_amount,
                 outputAmount: route.data?.output_amount,
                 routeData: route.data
             });
 
             if (route.data) {
-                // Get the expected output amount from the route data
-                const outputAmount = route.data.output_amount;
+                // For reverse calculations, we want the input_amount (how much to send)
+                // For forward calculations, we want the output_amount (how much to receive)
+                const resultAmount = isReverseCalculation ? route.data.input_amount : route.data.output_amount;
 
-                if (outputAmount) {
+                if (resultAmount && resultAmount > 0) {
                     // The API already returns the value in the correct units, no conversion needed
-                    const formattedAmount = outputAmount.toFixed(6);
+                    const formattedAmount = resultAmount.toFixed(6);
                     console.log('✅ Swap calculation result:', formattedAmount);
                     return { amount: formattedAmount, key: calculationKey } as const;
+                } else if (resultAmount === 0) {
+                    // API returned 0, which indicates no liquidity pools available
+                    console.warn('⚠️ API returned 0 - no liquidity pools available for this amount');
+                    setResult(prev => ({ 
+                        ...prev, 
+                        error: 'No liquidity pools available for this amount',
+                        outputAmount: null,
+                        calcKey: calculationKey
+                    }));
+                    return null;
                 }
             }
 
@@ -213,9 +236,9 @@ export function useSwapCalculation({
                 isFromAmountFocused,
                 isToAmountFocused
             });
-            calculateSwap(fromToken, toToken, fromAmount).then(payload => {
+            calculateSwap(fromToken, toToken, fromAmount, false).then(payload => {
                 if (payload) {
-                    const expectedKey = `${fromToken.address}-${toToken.address}-${fromAmount}`;
+                    const expectedKey = `${fromToken.address}-${toToken.address}-${fromAmount}-forward`;
                     if (payload.key === expectedKey) {
                         console.log('✅ Swap calculation: got forward output amount', payload.amount);
                         setResult(prev => ({ ...prev, outputAmount: payload.amount, calcKey: payload.key }));
@@ -250,9 +273,9 @@ export function useSwapCalculation({
                 isUserTypingToAmount,
                 userInputRef
             });
-            calculateSwap(toToken, fromToken, toAmount).then(payload => {
+            calculateSwap(fromToken, toToken, toAmount, true).then(payload => {
                 if (payload) {
-                    const expectedKey = `${toToken.address}-${fromToken.address}-${toAmount}`;
+                    const expectedKey = `${fromToken.address}-${toToken.address}-${toAmount}-reverse`;
                     if (payload.key === expectedKey) {
                         console.log('✅ Swap calculation: got reverse output amount', payload.amount);
                         setResult(prev => ({ ...prev, outputAmount: payload.amount, calcKey: payload.key }));
@@ -272,9 +295,9 @@ export function useSwapCalculation({
                 fromToken: fromToken.symbol,
                 toToken: toToken.symbol
             });
-            calculateSwap(fromToken, toToken, fromAmount).then(payload => {
+            calculateSwap(fromToken, toToken, fromAmount, false).then(payload => {
                 if (payload) {
-                    const expectedKey = `${fromToken.address}-${toToken.address}-${fromAmount}`;
+                    const expectedKey = `${fromToken.address}-${toToken.address}-${fromAmount}-forward`;
                     if (payload.key === expectedKey) {
                         console.log('✅ Swap calculation: got initial output amount', payload.amount);
                         setResult(prev => ({ ...prev, outputAmount: payload.amount, calcKey: payload.key }));
@@ -295,9 +318,9 @@ export function useSwapCalculation({
                 toToken: toToken.symbol,
                 userInputRef
             });
-            calculateSwap(toToken, fromToken, toAmount).then(payload => {
+            calculateSwap(fromToken, toToken, toAmount, true).then(payload => {
                 if (payload) {
-                    const expectedKey = `${toToken.address}-${fromToken.address}-${toAmount}`;
+                    const expectedKey = `${fromToken.address}-${toToken.address}-${toAmount}-reverse`;
                     if (payload.key === expectedKey) {
                         console.log('✅ Swap calculation: got reverse output amount for token change', payload.amount);
                         setResult(prev => ({ ...prev, outputAmount: payload.amount, calcKey: payload.key }));
@@ -308,6 +331,29 @@ export function useSwapCalculation({
             });
         }
     }, [fromToken?.address, calculateSwap, toAmount, toToken?.address, userInputRef]);
+
+    // Handle toToken changes - trigger reverse calculation when toToken changes and we have toAmount
+    useEffect(() => {
+        if (fromToken && toToken && toAmount && parseFloat(toAmount) > 0 && userInputRef === 'to') {
+            console.log('🔄 Swap calculation: toToken changed, triggering reverse calculation', {
+                toAmount,
+                fromToken: fromToken.symbol,
+                toToken: toToken.symbol,
+                userInputRef
+            });
+            calculateSwap(fromToken, toToken, toAmount, true).then(payload => {
+                if (payload) {
+                    const expectedKey = `${fromToken.address}-${toToken.address}-${toAmount}-reverse`;
+                    if (payload.key === expectedKey) {
+                        console.log('✅ Swap calculation: got reverse output amount for toToken change', payload.amount);
+                        setResult(prev => ({ ...prev, outputAmount: payload.amount, calcKey: payload.key }));
+                    } else {
+                        console.log('⚠️ Ignoring stale toToken change result. expected:', expectedKey, 'got:', payload.key);
+                    }
+                }
+            });
+        }
+    }, [toToken?.address, calculateSwap, toAmount, fromToken?.address, userInputRef]);
 
     return result;
 }

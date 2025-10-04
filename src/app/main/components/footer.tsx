@@ -5,7 +5,7 @@ import React from 'react';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 
-export function Footer() {
+export function Footer({ error }: { error?: string | null }) {
   const t = useTranslations('translations');
   const { colors } = useTheme();
   const { shouldBeCompact } = useKeyboardDetection();
@@ -33,21 +33,24 @@ export function Footer() {
           style={{ 
             backgroundColor: '#1ABCFF',
             color: "#FFFFFF",
+            opacity: error && error.includes('No liquidity pools') ? 0.66 : 1,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '0.8';
+            e.currentTarget.style.opacity = error && error.includes('No liquidity pools') ? '0.66' : '0.8';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = '#1ABCFF';
+            e.currentTarget.style.opacity = error && error.includes('No liquidity pools') ? '0.66' : '1';
           }}
           onMouseDown={(e) => {
-            e.currentTarget.style.opacity = '0.8';
+            e.currentTarget.style.opacity = error && error.includes('No liquidity pools') ? '0.66' : '0.8';
           }}
           onMouseUp={(e) => {
             e.currentTarget.style.backgroundColor = '#1ABCFF';
+            e.currentTarget.style.opacity = error && error.includes('No liquidity pools') ? '0.66' : '1';
           }}
         >
-          {t('get')}
+          {error && error.includes('No liquidity pools') ? 'No pools' : t('swap')}
         </button>
       </div>
     </footer>

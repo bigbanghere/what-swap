@@ -18,7 +18,8 @@ const I18nProvider = ({
       disconnect: "Disconnect",
       copy_address: "Copy address",
       send: "Send",
-      max: "MAX"
+      max: "MAX",
+      swap: "Swap"
     }
   };
 
