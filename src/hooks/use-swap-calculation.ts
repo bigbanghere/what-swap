@@ -286,5 +286,28 @@ export function useSwapCalculation({
         }
     }, [fromToken?.address, toToken?.address, calculateSwap, fromAmount, userInputRef]);
 
+    // Handle token changes - trigger reverse calculation when fromToken changes and we have toAmount
+    useEffect(() => {
+        if (fromToken && toToken && toAmount && parseFloat(toAmount) > 0 && userInputRef === 'to') {
+            console.log('🔄 Swap calculation: fromToken changed, triggering reverse calculation', {
+                toAmount,
+                fromToken: fromToken.symbol,
+                toToken: toToken.symbol,
+                userInputRef
+            });
+            calculateSwap(toToken, fromToken, toAmount).then(payload => {
+                if (payload) {
+                    const expectedKey = `${toToken.address}-${fromToken.address}-${toAmount}`;
+                    if (payload.key === expectedKey) {
+                        console.log('✅ Swap calculation: got reverse output amount for token change', payload.amount);
+                        setResult(prev => ({ ...prev, outputAmount: payload.amount, calcKey: payload.key }));
+                    } else {
+                        console.log('⚠️ Ignoring stale token change result. expected:', expectedKey, 'got:', payload.key);
+                    }
+                }
+            });
+        }
+    }, [fromToken?.address, calculateSwap, toAmount, toToken?.address, userInputRef]);
+
     return result;
 }
