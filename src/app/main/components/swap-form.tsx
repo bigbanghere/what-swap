@@ -50,14 +50,11 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
     const rotatedFromDefaultsRef = useRef<boolean>(false); // Tracks if last rotation started from true defaults
     const defaultBasisSideRef = useRef<'from' | 'to'>('from'); // Tracks where basis "1" should be on default restore
     const lastChangedTokenRef = useRef<'from' | 'to' | null>(null); // Tracks which token was last changed
+    const originalBasisValueRef = useRef<string | null>(null); // Tracks the original basis value for rotations
+    const basisFieldRef = useRef<'from' | 'to'>('from'); // Tracks which field currently has the basis value
 
     // Swap calculation hook
-    const { 
-        outputAmount: calculatedOutputAmount, 
-        calcKey: calculationKey, 
-        isLoading: isCalculating, 
-        error: calculationError
-    } = useSwapCalculation({
+    const swapCalculationResult = useSwapCalculation({
         fromToken: selectedFromToken,
         toToken: selectedToToken,
         fromAmount,
@@ -65,9 +62,16 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         isFromAmountFocused,
         isToAmountFocused,
         hasUserEnteredCustomValue: hasUserEnteredCustomValue.current,
-        isUserTypingToAmount: isUserTypingToAmount.current,
-        userInputRef: userInputRef.current
+        onErrorChange: onErrorChange
     });
+    
+    const { 
+        outputAmount: calculatedOutputAmount, 
+        calcKey: calculationKey, 
+        isLoading: isCalculating, 
+        error: calculationError
+    } = swapCalculationResult;
+    
 
     // Notify parent component of error changes
     useEffect(() => {
@@ -590,46 +594,69 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
     useEffect(() => {
         console.log('🔄 SwapForm: useEffect triggered for calculatedOutputAmount:', calculatedOutputAmount);
         
-        if (calculatedOutputAmount && calculatedOutputAmount !== lastCalculatedAmount.current) {
-            // Apply only if current calcKey matches the expected context
-            const expectedForwardKey = selectedFromToken && selectedToToken && fromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${fromAmount}-forward` : null;
-            const expectedReverseKey = selectedFromToken && selectedToToken && toAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${toAmount}-reverse` : null;
-            
-            const isForwardCalculation = calculationKey === expectedForwardKey;
-            const isReverseCalculation = calculationKey === expectedReverseKey;
-            
-            console.log('🔄 SwapForm: Calculation analysis:', {
-                calculationKey,
-                expectedForwardKey,
-                expectedReverseKey,
-                isForwardCalculation,
-                isReverseCalculation,
-                isFromAmountFocused,
-                isToAmountFocused
-            });
-            
-            if (!isForwardCalculation && !isReverseCalculation) {
-                console.log('⚠️ SwapForm: Ignoring calculatedOutputAmount due to calcKey mismatch');
-                return;
-            }
-            
-            lastCalculatedAmount.current = calculatedOutputAmount;
-            
+        // Apply only if current calcKey matches the expected context
+        const expectedForwardKey = selectedFromToken && selectedToToken && fromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${fromAmount}-forward` : null;
+        const expectedReverseKey = selectedFromToken && selectedToToken && toAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${toAmount}-reverse` : null;
+        
+        const isForwardCalculation = calculationKey === expectedForwardKey;
+        const isReverseCalculation = calculationKey === expectedReverseKey;
+        
+        console.log('🔄 SwapForm: Calculation analysis:', {
+            calculationKey,
+            expectedForwardKey,
+            expectedReverseKey,
+            isForwardCalculation,
+            isReverseCalculation,
+            isFromAmountFocused,
+            isToAmountFocused,
+            currentToAmount: toAmount,
+            calculatedOutputAmount
+        });
+        
+        if (!isForwardCalculation && !isReverseCalculation) {
+            console.log('⚠️ SwapForm: Ignoring calculatedOutputAmount due to calcKey mismatch');
+            return;
+        }
+        
+        // Check if we need to update the amount
+        if (calculatedOutputAmount) {
             // SIMPLIFIED LOGIC - No overlapping conditions
             if (isForwardCalculation) {
                 // Forward calculation: update toAmount (Get field)
-                console.log('🔄 SwapForm: Updating toAmount with forward calculation:', calculatedOutputAmount);
-                setToAmount(calculatedOutputAmount);
-                isToAmountCalculated.current = true;
+                // Check if the current toAmount matches the calculated value
+                if (toAmount !== calculatedOutputAmount) {
+                    // Allow calculation if user is actively typing in Send field
+                    if (basisFieldRef.current !== 'to' || isFromAmountFocused) {
+                        console.log('🔄 SwapForm: Updating toAmount with forward calculation:', calculatedOutputAmount);
+                        setToAmount(calculatedOutputAmount);
+                        isToAmountCalculated.current = true;
+                        lastCalculatedAmount.current = calculatedOutputAmount;
+                    } else {
+                        console.log('🔄 SwapForm: Skipping toAmount update - basis value is in Get field and Send field not focused');
+                    }
+                } else {
+                    console.log('🔄 SwapForm: toAmount already matches calculated value');
+                }
                 userInputRef.current = null;
             } else if (isReverseCalculation) {
                 // Reverse calculation: update fromAmount (Send field)
-                console.log('🔄 SwapForm: Updating fromAmount with reverse calculation:', calculatedOutputAmount);
-                setFromAmount(calculatedOutputAmount);
+                // Check if the current fromAmount matches the calculated value
+                if (fromAmount !== calculatedOutputAmount) {
+                    // Allow calculation if user is actively typing in Get field
+                    if (basisFieldRef.current !== 'from' || isToAmountFocused) {
+                        console.log('🔄 SwapForm: Updating fromAmount with reverse calculation:', calculatedOutputAmount);
+                        setFromAmount(calculatedOutputAmount);
+                        lastCalculatedAmount.current = calculatedOutputAmount;
+                    } else {
+                        console.log('🔄 SwapForm: Skipping fromAmount update - basis value is in Send field and Get field not focused');
+                    }
+                } else {
+                    console.log('🔄 SwapForm: fromAmount already matches calculated value');
+                }
                 userInputRef.current = null;
             }
         }
-    }, [calculatedOutputAmount, calculationKey]);
+    }, [calculatedOutputAmount, calculationKey, toAmount, fromAmount, isFromAmountFocused, isToAmountFocused]);
 
     // REMOVED: Additional effect that was causing conflicts
 
@@ -949,6 +976,12 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 image_url: defaultUsdt.image_url,
                 address: defaultUsdt.address
             });
+        }
+        
+        // Initialize original basis value for rotations
+        if (originalBasisValueRef.current === null) {
+            originalBasisValueRef.current = '1';
+            console.log('🔄 SwapForm: Initialized original basis value to 1');
         }
         
         // Additional safety check: if both tokens are the same, fix it
@@ -1319,6 +1352,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         if (isFocused && isFromAmountDefault.current && !hasUserEnteredCustomValue.current && fromAmount && parseFloat(fromAmount) > 0) {
             console.log('🔄 SwapForm: Clearing fromAmount default value on focus for user input:', fromAmount);
             setFromAmount('');
+            setToAmount('0'); // Set get field to 0 when focusing send field with default value
             isFromAmountDefault.current = false; // Mark as no longer default
         }
         // Send field mechanics: Reset to default value when unfocusing and empty or zero
@@ -1327,11 +1361,12 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             const defaultValue = fromDefaultValueRef.current || '1';
             console.log('🔄 SwapForm: Restoring fromAmount default value on unfocus:', defaultValue, 'basisSide:', defaultBasisSideRef.current);
             isRestoringDefaults.current = true;
-            if (defaultBasisSideRef.current === 'from') {
-            setFromAmount('1');
+            // Check where the basis value should be based on current rotation state
+            if (basisFieldRef.current === 'from') {
+                setFromAmount('1');
                 // Ensure get is cleared so forward calc fills it
                 setToAmount('');
-            userInputRef.current = 'from';
+                userInputRef.current = 'from';
             } else {
                 setFromAmount(defaultValue);
                 // Ensure get shows basis 1 for reverse calc
@@ -1431,7 +1466,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             // Use tracked default send value (may be not '1' after rotation)
             const defaultSend = fromDefaultValueRef.current || '1';
             // Decide where basis '1' belongs depending on rotation parity
-            if (defaultBasisSideRef.current === 'from') {
+            if (basisFieldRef.current === 'from') {
                 // Basis on send side
                 setFromAmount('1');
                 setToAmount('');
@@ -1865,17 +1900,37 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         valueToTransfer = fromAmount;
                                         console.log('🔄 SwapForm: Rotating default values, using send field value:', valueToTransfer);
                                     } else {
-                                        console.log('🔄 SwapForm: Rotating with last user entered value:', valueToTransfer);
+                                        // For non-default rotations, preserve the original basis value
+                                        // Check if we have a stored original basis value
+                                        if (originalBasisValueRef.current !== null) {
+                                            valueToTransfer = originalBasisValueRef.current;
+                                            console.log('🔄 SwapForm: Rotating with preserved original basis value:', valueToTransfer);
+                                        } else {
+                                            console.log('🔄 SwapForm: Rotating with last user entered value:', valueToTransfer);
+                                        }
                                     }
                                     
                                     // Remember the exact value transferred into the get field to detect reverse completion
                                     rotatedTransferredToAmount.current = currentFromAmount;
 
-                                    // Transfer the value to the opposite field (get field becomes send field)
-                                    setFromAmount(currentToAmount); // Current get field value becomes new send field
+                                    // Move the basis value "1" to the opposite field of where it currently is
+                                    // This ensures the basis value alternates between Send and Get fields
+                                    if (basisFieldRef.current === 'from') {
+                                        // Basis was in Send field, move it to Get field
+                                        setFromAmount(currentToAmount); // Current get field value becomes new send field
+                                        setToAmount(valueToTransfer); // Put basis value in Get field
+                                        basisFieldRef.current = 'to';
+                                        console.log('🔄 SwapForm: Moved basis value to Get field');
+                                    } else {
+                                        // Basis was in Get field, move it to Send field
+                                        setFromAmount(valueToTransfer); // Put basis value in Send field
+                                        setToAmount(currentFromAmount); // Current send field value becomes new get field
+                                        basisFieldRef.current = 'from';
+                                        console.log('🔄 SwapForm: Moved basis value to Send field');
+                                    }
+                                    
                                     // Update default send reference to match new context (so unfocus restores this)
-                                    fromDefaultValueRef.current = currentToAmount;
-                                    setToAmount(currentFromAmount); // Current send field value becomes new get field
+                                    fromDefaultValueRef.current = basisFieldRef.current === 'from' ? valueToTransfer : currentToAmount;
                                     
                                     // Update flags to reflect the state
                                     // Only treat rotated values as default if we rotated from true defaults
@@ -1886,8 +1941,8 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                     );
                                     // Persist this info for unfocus/default restoration logic
                                     rotatedFromDefaultsRef.current = rotatedFromDefaults;
-                                    // Toggle basis side: odd rotations → basis on 'to', even → basis on 'from'
-                                    defaultBasisSideRef.current = defaultBasisSideRef.current === 'from' ? 'to' : 'from';
+                                    // Don't toggle defaultBasisSideRef during rotation - it should remain consistent
+                                    // The basisFieldRef tracks the current position, but defaultBasisSideRef should stay stable
                                     isFromAmountDefault.current = rotatedFromDefaults; // New send is default only if rotation started from default '1'
                                     isToAmountCalculated.current = true; // The new get field value is calculated
                                     hasUserEnteredCustomValue.current = !rotatedFromDefaults; // If not default rotation, consider it user-entered
