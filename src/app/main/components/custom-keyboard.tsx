@@ -8,7 +8,7 @@ import Image from 'next/image';
 export function CustomKeyboard() {
   const t = useTranslations('translations');
   const { colors, isDark } = useTheme();
-  const { setInputFocused } = useKeyboardDetection();
+  const { setInputFocused, shouldBeCompact } = useKeyboardDetection();
   
   // State for continuous deletion
   const [isBackspaceHeld, setIsBackspaceHeld] = useState(false);
@@ -91,8 +91,10 @@ export function CustomKeyboard() {
         const textWidth = tempElement.getBoundingClientRect().width;
         document.body.removeChild(tempElement);
         
-        // Use the same calculation as CustomInput: 100% of container width minus 20px buffer
-        const availableWidth = containerWidth - 20;
+        // Mode-aware available width calculation (same as CustomInput):
+        // - Compact mode: containerWidth - 20px (for currency selector and gap)
+        // - Full mode: containerWidth - 40px (20px for currency selector + 20px for form padding)
+        const availableWidth = containerWidth - (shouldBeCompact ? 20 : 40);
         
         let optimalSize;
         if (textWidth <= availableWidth) {

@@ -11,6 +11,7 @@ interface CustomInputProps {
   maxLength?: number;
   type?: 'text' | 'number';
   onFocusChange?: (isFocused: boolean) => void;
+  shouldBeCompact?: boolean;
 }
 
 interface CustomInputRef {
@@ -27,7 +28,8 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   style = {},
   maxLength,
   type = 'text',
-  onFocusChange
+  onFocusChange,
+  shouldBeCompact = false
 }, ref) {
   const [isFocused, setIsFocused] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -71,8 +73,10 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     const textWidth = tempElement.getBoundingClientRect().width;
     document.body.removeChild(tempElement);
     
-    // Use 100% of container width minus 37px buffer for currency selector and gap
-    const availableWidth = containerWidth - 20;
+    // Mode-aware available width calculation:
+    // - Compact mode: containerWidth - 20px (for currency selector and gap)
+    // - Full mode: containerWidth - 40px (20px for currency selector + 20px for form padding)
+    const availableWidth = containerWidth - (shouldBeCompact ? 20 : 40);
     
     // If text fits within the available width at max size, return max size
     if (textWidth <= availableWidth) {
@@ -85,7 +89,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     
     // Ensure we don't go below minimum font size
     return Math.max(calculatedFontSize, minFontSize);
-  }, []);
+  }, [shouldBeCompact]);
 
   // Check if we can add more characters (font size would be at minimum)
   const canAddMoreCharacters = useCallback((text: string, containerWidth: number): boolean => {
@@ -338,6 +342,15 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     const optimalSize = calculateOptimalFontSize(value, containerWidth);
     setCurrentFontSize(optimalSize);
   }, [value, hasMounted, calculateOptimalFontSize]);
+
+  // Recalculate font size when mode changes (compact <-> full)
+  useEffect(() => {
+    if (!inputRef.current || !hasMounted) return;
+    
+    const containerWidth = inputRef.current.getBoundingClientRect().width;
+    const optimalSize = calculateOptimalFontSize(value, containerWidth);
+    setCurrentFontSize(optimalSize);
+  }, [shouldBeCompact, value, hasMounted, calculateOptimalFontSize]);
 
   // Calculate and update cursor left position
   useEffect(() => {

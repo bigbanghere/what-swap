@@ -553,9 +553,9 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 isFromAmountFocused,
                 isToAmountFocused,
                 calculatedOutputAmount,
-                condition: fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && calculatedOutputAmount > 0
+                condition: fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && Number(calculatedOutputAmount) > 0
             });
-            if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && calculatedOutputAmount > 0) {
+            if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && Number(calculatedOutputAmount) > 0) {
                 console.log('🔄 SwapForm: Special case - user entered "1", updating toAmount directly:', calculatedOutputAmount);
                 setToAmount(calculatedOutputAmount.toString());
                 return;
@@ -827,7 +827,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         });
         
         // SPECIAL CASE: Always update when user enters "1" - bypass all complex logic
-        if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && calculatedOutputAmount > 0) {
+        if (fromAmount === '1' && isFromAmountFocused && !isToAmountFocused && calculatedOutputAmount && Number(calculatedOutputAmount) > 0) {
             console.log('🔄 SwapForm: Special case - user entered "1", updating toAmount directly:', calculatedOutputAmount);
             setToAmount(calculatedOutputAmount.toString());
             return;
@@ -1245,7 +1245,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
     const isPageReload = performance.navigation?.type === 1 || 
                         (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload' ||
                         document.referrer === '' || 
-                        window.performance.getEntriesByType('navigation')[0]?.type === 'reload';
+                        (window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload';
     
     // Check if we're returning from tokens page (don't clear localStorage in this case)
     const fromTokensPage = sessionStorage.getItem('fromTokensPage') === 'true';
@@ -1660,7 +1660,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 className="w-full"
             >
                 <div className='z-20 w-full p-[15px] flex flex-col'>
-                    <div className='flex flex-row items-center justify-between'>
+                    <div className='flex flex-row gap-[15px] items-center justify-between'>
                         <div className='flex flex-row w-full items-center gap-[5px]'>
                             {shouldBeCompact && (
                                 <div style={{ width: '25px', height: '20px', overflow: 'hidden', transition: 'width 0.2s ease' }}>
@@ -1826,6 +1826,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             type='number'
                             placeholder='0'
                             onFocusChange={handleFocusChange}
+                            shouldBeCompact={shouldBeCompact}
                         />
                         <div 
                             key={`from-token-${selectedFromToken?.address || 'default'}`}
@@ -2260,6 +2261,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             type='number'
                             placeholder='0'
                             onFocusChange={handleToAmountFocusChange}
+                            shouldBeCompact={shouldBeCompact}
                         />
                         <div 
                             key={`to-token-${selectedToToken?.address || 'default'}`}
@@ -2391,7 +2393,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                 </span> 
                             </div>
                         </div>
-                        <div className='flex flex-row w-full justify-end' style={{ opacity: 0.66 }}>
+                        <div className='flex flex-row w-full justify-end text-nowrap' style={{ opacity: 0.66 }}>
                             On TON
                         </div>
                     </div>

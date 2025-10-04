@@ -1,9 +1,8 @@
-+ Swap button states: Connect Wallet, Insufficient balance, Price impact too high
-+ shortcut assets calculation
-+ calculation design
-+ assets-page scrolling
 + amount minimization
-+ check themes & languages support
++ Swap button states: Connect Wallet, Insufficient balance, Price impact too high
++ assets-page scrolling
++ languages support
++ check themes
 + wallet balance
 + user's tokens shortlist
 + value selection on long tap

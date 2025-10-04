@@ -2,6 +2,21 @@
 
 import { useEffect, useState } from 'react';
 
+// Type declarations for Telegram WebApp API
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initDataUnsafe?: {
+          user?: {
+            language_code?: string;
+          };
+        };
+      };
+    };
+  }
+}
+
 export function useLocaleDetection() {
   const [locale, setLocale] = useState<string>('en');
 

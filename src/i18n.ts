@@ -1,9 +1,10 @@
 import { getRequestConfig } from 'next-intl/server';
 import { defaultLocale, locales } from './core/i18n/config';
 
-const i18nRequestConfig = getRequestConfig(async ({ request }) => {
-  // Get the Accept-Language header from the request
-  const acceptLanguage = request?.headers?.get('accept-language');
+const i18nRequestConfig = getRequestConfig(async () => {
+  // For now, we'll use a simple locale detection
+  // In a real app, you might want to use headers() from next/headers
+  const acceptLanguage = null; // We'll handle this client-side
   
   // Function to detect locale from Accept-Language header
   const detectLocale = (acceptLanguage: string | null): string => {
