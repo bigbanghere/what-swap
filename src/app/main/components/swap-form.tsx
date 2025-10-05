@@ -25,6 +25,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
     const [toAmount, setToAmount] = useState<string>(''); // Start empty, will be calculated
     const [isFromAmountFocused, setIsFromAmountFocused] = useState<boolean>(false);
     const [isToAmountFocused, setIsToAmountFocused] = useState<boolean>(false);
+    const isToAmountFocusedRef = useRef<boolean>(false);
     const [selectedFromToken, setSelectedFromToken] = useState<any>(null);
     const [selectedToToken, setSelectedToToken] = useState<any>(null);
     const fromAmountRef = useRef<{ blur: () => void; focus: () => void; canAddMoreCharacters: (key: string) => boolean }>(null);
@@ -40,7 +41,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
     const lastCalculatedAmount = useRef<string | null>(null);
     const isToAmountCalculated = useRef(false); // Track if toAmount is a calculated value
     const hasUserEnteredCustomValue = useRef(false); // Track if user has entered a custom value
-    const isUserTypingToAmount = useRef(false); // Track when user is typing in toAmount field
+    const [isUserTypingToAmount, setIsUserTypingToAmount] = useState(false); // Track when user is typing in toAmount field
     const isFromAmountDefault = useRef(true); // Track if fromAmount has the default value (1)
     const lastUserEnteredValue = useRef<string>('1'); // Track the last value entered by the user for rotation
     const isRotating = useRef(false); // Track if we're currently rotating tokens
@@ -59,10 +60,8 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         toToken: selectedToToken,
         fromAmount,
         toAmount,
-        isFromAmountFocused,
-        isToAmountFocused,
         hasUserEnteredCustomValue: hasUserEnteredCustomValue.current,
-        onErrorChange: onErrorChange
+        isUserTypingToAmount: isUserTypingToAmount
     });
     
     const { 
@@ -626,7 +625,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 // Check if the current toAmount matches the calculated value
                 if (toAmount !== calculatedOutputAmount) {
                     // Allow calculation if user is actively typing in Send field
-                    if (basisFieldRef.current !== 'to' || isFromAmountFocused) {
+                    if ((basisFieldRef.current !== 'to' || isFromAmountFocused) && !isToAmountFocusedRef.current) {
                         console.log('🔄 SwapForm: Updating toAmount with forward calculation:', calculatedOutputAmount);
                         setToAmount(calculatedOutputAmount);
                         isToAmountCalculated.current = true;
@@ -643,7 +642,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 // Check if the current fromAmount matches the calculated value
                 if (fromAmount !== calculatedOutputAmount) {
                     // Allow calculation if user is actively typing in Get field
-                    if (basisFieldRef.current !== 'from' || isToAmountFocused) {
+                    if (basisFieldRef.current !== 'from' || isToAmountFocusedRef.current) {
                         console.log('🔄 SwapForm: Updating fromAmount with reverse calculation:', calculatedOutputAmount);
                         setFromAmount(calculatedOutputAmount);
                         lastCalculatedAmount.current = calculatedOutputAmount;
@@ -757,7 +756,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         
         // Don't interfere when get field is empty and we want to show 0 in send field
         // But only if we're not in the process of setting it to 0
-        if (fromAmount === '0' && toAmount === '' && isToAmountFocused && !isUserTypingToAmount.current) {
+        if (fromAmount === '0' && toAmount === '' && isToAmountFocused && !isUserTypingToAmount) {
             console.log('🔄 SwapForm: Skipping zero handling - showing 0 in send field for empty get field');
             return;
         }
@@ -796,7 +795,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 setFromAmount('0');
             }
         }
-    }, [fromAmount, toAmount, isFromAmountFocused, isToAmountFocused, isCalculating]);
+    }, [fromAmount, toAmount, isFromAmountFocused, isToAmountFocused, isCalculating, isUserTypingToAmount]);
 
     // Track when user is actively typing to prevent zero handling from interfering
     const isUserTyping = useRef(false);
@@ -874,7 +873,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         
         // Detect when user starts typing a valid number in toAmount
         if (userInputRef.current === 'to' && toAmount && parseFloat(toAmount) > 0) {
-            isUserTypingToAmount.current = true;
+            setIsUserTypingToAmount(true);
             hasUserEnteredCustomValue.current = true;
             userFinishedTypingToAmount.current = false; // Reset finished typing flag
             console.log('🔄 SwapForm: User entered custom value in toAmount, marking as user input');
@@ -890,7 +889,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         // User is focused but toAmount field is empty/zero and wasn't cleared from a valid value
         else if (userInputRef.current === 'to' && (toAmount === '' || toAmount === '0') && (!lastToAmount.current || parseFloat(lastToAmount.current) === 0)) {
             // User is focused on empty field, allow calculation overrides
-            isUserTypingToAmount.current = false;
+            setIsUserTypingToAmount(false);
             userFinishedTypingToAmount.current = false; // Reset finished typing flag
         }
         
@@ -903,7 +902,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         if (!isToAmountFocused) {
             // Keep isUserTypingToAmount true for a short time after unfocus to allow final calculations
             setTimeout(() => {
-                isUserTypingToAmount.current = false;
+                setIsUserTypingToAmount(false);
                 userFinishedTypingToAmount.current = true;
                 console.log('🔄 SwapForm: Reset typing flags after toAmount unfocus');
             }, 100);
@@ -1336,7 +1335,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             // Set userInputRef to 'from' for forward calculations
             userInputRef.current = 'from';
             // Reset typing flags when focusing fromAmount field
-            isUserTypingToAmount.current = false;
+            setIsUserTypingToAmount(false);
             userFinishedTypingToAmount.current = false;
             // Blur the other input in the DOM
             if (toAmountRef.current) {
@@ -1421,6 +1420,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         console.log('🟨 fromAmountRef.current:', fromAmountRef.current);
         
         setIsToAmountFocused(isFocused);
+        isToAmountFocusedRef.current = isFocused; // Update ref immediately
         // Unfocus the other input when this one is focused
         if (isFocused) {
             console.log('🟨 TO input focused - attempting to blur FROM input');
@@ -1439,7 +1439,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         
         // Get field mechanics: Clear calculated value on focus and set send field to 0
         // Only clear if it's a calculated value AND user hasn't entered a custom value
-        if (isFocused && isToAmountCalculated.current && !isUserTyping.current && !isUserTypingToAmount.current && !hasUserEnteredCustomValue.current && toAmount && parseFloat(toAmount) > 0) {
+        if (isFocused && isToAmountCalculated.current && !isUserTyping.current && !isUserTypingToAmount && !hasUserEnteredCustomValue.current && toAmount && parseFloat(toAmount) > 0) {
             console.log('🔄 SwapForm: Clearing toAmount calculated value on focus for user input:', toAmount);
             setToAmount('');
             setFromAmount('0'); // Set send field to 0 when focusing get field with calculated value
@@ -1448,7 +1448,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             hasUserEnteredCustomValue.current = false;
         }
         // Also clear if the get field has a value but user hasn't entered custom value (for initial calculated values)
-        else if (isFocused && toAmount && parseFloat(toAmount) > 0 && !isUserTyping.current && !isUserTypingToAmount.current && !hasUserEnteredCustomValue.current && !isToAmountCalculated.current) {
+        else if (isFocused && toAmount && parseFloat(toAmount) > 0 && !isUserTyping.current && !isUserTypingToAmount && !hasUserEnteredCustomValue.current && !isToAmountCalculated.current) {
             console.log('🔄 SwapForm: Clearing toAmount initial calculated value on focus for user input');
             setToAmount('');
             setFromAmount('0'); // Set send field to 0 when focusing get field with calculated value
@@ -1491,7 +1491,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             console.log('🔄 SwapForm: Resetting finished typing flag on toAmount unfocus');
             userFinishedTypingToAmount.current = false;
         }
-    }, [setInputFocused, isFromAmountFocused, toAmount]);
+    }, [setInputFocused, isFromAmountFocused, toAmount, isUserTypingToAmount]);
 
     const handleToAmountChange = useCallback((value: string) => {
         userInputRef.current = 'to';
@@ -1502,6 +1502,8 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             return;
         }
         
+        // Set typing flag immediately when user types in Get field
+        setIsUserTypingToAmount(true);
         isToAmountCalculated.current = false; // Reset calculated flag when user types
         userFinishedTypingToAmount.current = false; // Reset finished typing flag when user starts typing again
         // Any user typing cancels the rotated-from-defaults context
@@ -1520,7 +1522,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             lastUserEnteredValue.current = value;
             console.log('🔄 SwapForm: Updated last user entered value from get field to:', value);
         }
-    }, []);
+    }, [setIsUserTypingToAmount]);
 
     return (
         <div 
@@ -1948,7 +1950,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                     hasUserEnteredCustomValue.current = !rotatedFromDefaults; // If not default rotation, consider it user-entered
                                     
                                     // Reset typing flags after rotation to allow normal calculation updates
-                                    isUserTypingToAmount.current = false;
+                                    setIsUserTypingToAmount(false);
                                     userFinishedTypingToAmount.current = false;
                                     
                                     // Update the last user entered value to the new send field value
@@ -1987,7 +1989,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         // End rotation now so input effects resume normally
                                         isRotating.current = false;
                                         // Ensure typing flags are cleared
-                                        isUserTypingToAmount.current = false;
+                                        setIsUserTypingToAmount(false);
                                         userFinishedTypingToAmount.current = false;
                                         // Preserve whether this rotation came from defaults
                                         hasUserEnteredCustomValue.current = !rotatedFromDefaults;

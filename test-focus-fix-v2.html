@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Focus Fix V2</title>
+</head>
+<body>
+    <h1>Testing Focus Fix V2</h1>
+    <p>This page will test if focusing on the opposite field still causes recalculation, and if value editing works after focusing.</p>
+    
+    <script>
+        // Open the app in a new window
+        const appWindow = window.open('http://localhost:3001', '_blank');
+        
+        // Wait for the page to load
+        setTimeout(() => {
+            console.log('App opened, testing focus behavior...');
+            
+            // Instructions for manual testing
+            console.log('Manual test steps:');
+            console.log('1. Input "1111" in the Send field');
+            console.log('2. Focus on the Get field (opposite field)');
+            console.log('3. Check console logs - there should be NO recalculation triggered');
+            console.log('4. Try typing in the Get field - it should work and trigger recalculation');
+            console.log('');
+            console.log('Expected behavior:');
+            console.log('- Input "1111" in Send field → triggers forward calculation ✅');
+            console.log('- Focus on Get field → NO calculation triggered ✅');
+            console.log('- Type in Get field → triggers reverse calculation ✅');
+            console.log('- Value editing should work normally after focusing ✅');
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -15,8 +15,6 @@ interface UseSwapCalculationProps {
     toToken: any;
     fromAmount: string;
     toAmount: string;
-    isFromAmountFocused: boolean;
-    isToAmountFocused: boolean;
     hasUserEnteredCustomValue: boolean;
     isUserTypingToAmount?: boolean;
     userInputRef?: string | null;
@@ -47,8 +45,6 @@ export function useSwapCalculation({
     toToken,
     fromAmount,
     toAmount,
-    isFromAmountFocused,
-    isToAmountFocused,
     hasUserEnteredCustomValue,
     isUserTypingToAmount = false,
     userInputRef = null
@@ -82,6 +78,7 @@ export function useSwapCalculation({
     const currentInputValues = useRef<{fromAmount: string, toAmount: string, fromToken: any, toToken: any} | null>(null);
     const routingApi = useRef(new RoutingApi());
     const lastValuesRef = useRef<{fromAmount: string, toAmount: string}>({ fromAmount: '', toAmount: '' });
+    const executeCalculationRef = useRef<((calculationType: CalculationType) => Promise<void>) | null>(null);
 
     // Action-based calculation system
     type ActionType = 
@@ -89,7 +86,6 @@ export function useSwapCalculation({
         | 'USER_INPUT_TO'        // User typed in Get field  
         | 'TOKEN_CHANGE_FROM'    // User changed Send token
         | 'TOKEN_CHANGE_TO'      // User changed Get token
-        | 'FOCUS_CHANGE'         // User focused different field
         | 'NONE';                // No action needed
 
     interface ActionContext {
@@ -98,8 +94,6 @@ export function useSwapCalculation({
         toAmount: string;
         fromToken: any;
         toToken: any;
-        isFromAmountFocused: boolean;
-        isToAmountFocused: boolean;
         previousFromAmount: string;
         previousToAmount: string;
         previousFromToken: any;
@@ -111,9 +105,7 @@ export function useSwapCalculation({
         fromAmount: '',
         toAmount: '',
         fromToken: null as any,
-        toToken: null as any,
-        isFromAmountFocused: false,
-        isToAmountFocused: false
+        toToken: null as any
     });
 
     // Track calculation results to prevent loops
@@ -132,9 +124,7 @@ export function useSwapCalculation({
             fromAmount,
             toAmount,
             fromToken,
-            toToken,
-            isFromAmountFocused,
-            isToAmountFocused
+            toToken
         };
         const previous = previousStateRef.current;
 
@@ -175,21 +165,21 @@ export function useSwapCalculation({
             return 'TOKEN_CHANGE_TO';
         }
 
-        // Check for amount changes - prioritize based on focus state
+        // Focus changes should NEVER trigger calculations - only value changes should
+        // We don't need to detect focus changes at all, just ignore them
+
+        // Check for amount changes
         if (fromAmount !== previous.fromAmount && toAmount !== previous.toAmount) {
-            // Both amounts changed - prioritize based on which field is focused
-            if (isFromAmountFocused) {
-                return 'USER_INPUT_FROM';
-            } else if (isToAmountFocused) {
+            // Both amounts changed - prioritize based on which field user is currently typing in
+            console.log('🎯 Both amounts changed - isUserTypingToAmount:', isUserTypingToAmount);
+            if (isUserTypingToAmount) {
+                // User is typing in Get field - this is USER_INPUT_TO
+                console.log('🎯 Detected USER_INPUT_TO based on isUserTypingToAmount');
                 return 'USER_INPUT_TO';
             } else {
-                // Neither focused - check which changed more recently (use previous state)
-                // If toAmount was empty before and now has value, it's likely user input
-                if (previous.toAmount === '' && toAmount !== '') {
-                    return 'USER_INPUT_TO';
-                } else {
-                    return 'USER_INPUT_FROM';
-                }
+                // User is typing in Send field - this is USER_INPUT_FROM
+                console.log('🎯 Detected USER_INPUT_FROM based on isUserTypingToAmount');
+                return 'USER_INPUT_FROM';
             }
         } else if (fromAmount !== previous.fromAmount) {
             return 'USER_INPUT_FROM';
@@ -197,14 +187,8 @@ export function useSwapCalculation({
             return 'USER_INPUT_TO';
         }
 
-        // Check for focus changes
-        if (isFromAmountFocused !== previous.isFromAmountFocused || 
-            isToAmountFocused !== previous.isToAmountFocused) {
-            return 'FOCUS_CHANGE';
-        }
-
         return 'NONE';
-    }, [fromAmount, toAmount, fromToken, toToken, isFromAmountFocused, isToAmountFocused]);
+    }, [fromAmount, toAmount, fromToken, toToken, isUserTypingToAmount]);
 
     // Handle specific actions with strict algorithms
     const handleAction = useCallback((actionType: ActionType) => {
@@ -213,46 +197,42 @@ export function useSwapCalculation({
         switch (actionType) {
             case 'USER_INPUT_FROM':
                 // User typed in Send field - perform FORWARD calculation
-                if (fromAmount && parseFloat(fromAmount) > 0 && toToken) {
+                if (fromAmount && parseFloat(fromAmount) > 0 && toToken && executeCalculationRef.current) {
                     console.log('🔄 USER_INPUT_FROM: Performing forward calculation');
-                    executeCalculation('FORWARD');
+                    executeCalculationRef.current('FORWARD');
                 }
                 break;
 
             case 'USER_INPUT_TO':
                 // User typed in Get field - perform REVERSE calculation
-                if (toAmount && parseFloat(toAmount) > 0 && fromToken) {
+                if (toAmount && parseFloat(toAmount) > 0 && fromToken && executeCalculationRef.current) {
                     console.log('🔄 USER_INPUT_TO: Performing reverse calculation');
-                    executeCalculation('REVERSE');
+                    executeCalculationRef.current('REVERSE');
                 }
                 break;
 
             case 'TOKEN_CHANGE_FROM':
                 // User changed Send token - recalculate based on current amounts
-                if (toAmount && parseFloat(toAmount) > 0) {
+                if (toAmount && parseFloat(toAmount) > 0 && executeCalculationRef.current) {
                     console.log('🔄 TOKEN_CHANGE_FROM: Performing reverse calculation');
-                    executeCalculation('REVERSE');
-                } else if (fromAmount && parseFloat(fromAmount) > 0) {
+                    executeCalculationRef.current('REVERSE');
+                } else if (fromAmount && parseFloat(fromAmount) > 0 && executeCalculationRef.current) {
                     console.log('🔄 TOKEN_CHANGE_FROM: Performing forward calculation');
-                    executeCalculation('FORWARD');
+                    executeCalculationRef.current('FORWARD');
                 }
                 break;
 
             case 'TOKEN_CHANGE_TO':
                 // User changed Get token - recalculate based on current amounts
-                if (fromAmount && parseFloat(fromAmount) > 0) {
+                if (fromAmount && parseFloat(fromAmount) > 0 && executeCalculationRef.current) {
                     console.log('🔄 TOKEN_CHANGE_TO: Performing forward calculation');
-                    executeCalculation('FORWARD');
-                } else if (toAmount && parseFloat(toAmount) > 0) {
+                    executeCalculationRef.current('FORWARD');
+                } else if (toAmount && parseFloat(toAmount) > 0 && executeCalculationRef.current) {
                     console.log('🔄 TOKEN_CHANGE_TO: Performing reverse calculation');
-                    executeCalculation('REVERSE');
+                    executeCalculationRef.current('REVERSE');
                 }
                 break;
 
-            case 'FOCUS_CHANGE':
-                // User focused different field - no calculation needed
-                console.log('🔄 FOCUS_CHANGE: No calculation needed');
-                break;
 
             case 'NONE':
                 // No action detected - no calculation needed
@@ -307,8 +287,6 @@ export function useSwapCalculation({
     // Smart calculation type determination logic
     const determineCalculationType = useCallback((): CalculationType => {
         console.log('🎯 Determining calculation type', {
-            isFromAmountFocused,
-            isToAmountFocused,
             fromAmount: parseFloat(fromAmount || '0'),
             toAmount: parseFloat(toAmount || '0'),
             hasFromToken: !!fromToken,
@@ -319,13 +297,13 @@ export function useSwapCalculation({
         });
 
         // Priority 1: User is actively typing in Send field
-        if (isFromAmountFocused && fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0) {
+        if (fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0) {
             console.log('🎯 Priority 1: User typing in Send field - FORWARD calculation');
             return 'FORWARD';
         }
         
         // Priority 2: User is actively typing in Get field  
-        if (isToAmountFocused && toAmount && fromToken && toToken && parseFloat(toAmount) > 0 && isUserTypingToAmount) {
+        if (toAmount && fromToken && toToken && parseFloat(toAmount) > 0 && isUserTypingToAmount) {
             console.log('🎯 Priority 2: User typing in Get field - REVERSE calculation');
             return 'REVERSE';
         }
@@ -338,15 +316,14 @@ export function useSwapCalculation({
         
         // Priority 4: Initial load with Send field value
         if (fromAmount && fromToken && toToken && parseFloat(fromAmount) > 0 && 
-            inputSourceTracking.current.fromAmount === 'initial' && 
-            !isFromAmountFocused && !isToAmountFocused) {
+            inputSourceTracking.current.fromAmount === 'initial') {
             console.log('🎯 Priority 4: Initial load with Send field - FORWARD calculation');
             return 'FORWARD';
         }
         
         console.log('🎯 No calculation needed');
         return null;
-    }, [isFromAmountFocused, isToAmountFocused, fromAmount, toAmount, fromToken, toToken]);
+    }, [fromAmount, toAmount, fromToken, toToken, isUserTypingToAmount, userInputRef]);
 
     // Check if calculation should be skipped due to debouncing or duplicates
     const shouldSkipCalculation = useCallback((calculationType: CalculationType): boolean => {
@@ -360,8 +337,7 @@ export function useSwapCalculation({
             isCalculating: state.isCalculating,
             lastCalculationType: state.lastCalculationType,
             fromAmountChanged,
-            toAmountChanged,
-            isToAmountFocused
+            toAmountChanged
         });
         
         // Skip if already calculating the same type
@@ -370,9 +346,9 @@ export function useSwapCalculation({
             return true;
         }
         
-        // Skip if this is a reverse calculation triggered by fromAmount change while Get field is focused
+        // Skip if this is a reverse calculation triggered by fromAmount change
         // This happens when a reverse calculation updates fromAmount, triggering another reverse calculation
-        if (calculationType === 'REVERSE' && isToAmountFocused && state.lastCalculationType === 'REVERSE' && fromAmountChanged && !toAmountChanged) {
+        if (calculationType === 'REVERSE' && state.lastCalculationType === 'REVERSE' && fromAmountChanged && !toAmountChanged) {
             console.log('⏭️ Skipping calculation - fromAmount change from previous reverse calculation');
             return true;
         }
@@ -381,21 +357,18 @@ export function useSwapCalculation({
         lastValuesRef.current = { fromAmount, toAmount };
         
         return false;
-    }, [fromAmount, toAmount, isToAmountFocused]);
+    }, [fromAmount, toAmount]);
 
     // Update input source tracking when values change
     const updateInputSourceTracking = useCallback(() => {
         // Track user input when fields are focused
-        if (isFromAmountFocused) {
-            inputSourceTracking.current.fromAmount = 'user';
-        }
-        if (isToAmountFocused) {
-            inputSourceTracking.current.toAmount = 'user';
-        }
+        // Track user input source
+        inputSourceTracking.current.fromAmount = 'user';
+        inputSourceTracking.current.toAmount = 'user';
         
         // Don't reset calculation results - preserve them
         // The executeCalculation function will set these to 'calculation' when needed
-    }, [isFromAmountFocused, isToAmountFocused]);
+    }, []);
 
     // Debouncing system for rapid typing
     const debouncedCalculation = useCallback((calculationType: CalculationType, executeCalculation: () => void) => {
@@ -408,7 +381,7 @@ export function useSwapCalculation({
         
         // For rapid typing, debounce by 300ms
         // For token changes and initial load, execute immediately
-        const shouldDebounce = (isFromAmountFocused || isToAmountFocused) && 
+        const shouldDebounce = true && 
                               (calculationType === 'FORWARD' || calculationType === 'REVERSE');
         
         if (shouldDebounce) {
@@ -422,7 +395,7 @@ export function useSwapCalculation({
             console.log('⚡ Executing calculation immediately (no debounce)', calculationType);
             executeCalculation();
         }
-    }, [isFromAmountFocused, isToAmountFocused]);
+    }, []);
 
 
     // Convert token to ApiTokenAddress format
@@ -670,7 +643,10 @@ export function useSwapCalculation({
         } finally {
             state.isCalculating = false;
         }
-    }, [fromToken, toToken, fromAmount, toAmount, calculateSwap]);
+    }, [fromToken, toToken, fromAmount, toAmount, calculateSwap, trackCalculationResult]);
+
+    // Assign executeCalculation to ref for use in handleAction
+    executeCalculationRef.current = executeCalculation;
 
     // Action-based calculation manager - replaces all reactive useEffect hooks
     useEffect(() => {
@@ -678,9 +654,7 @@ export function useSwapCalculation({
             fromAmount,
             toAmount,
             fromToken: fromToken?.symbol,
-            toToken: toToken?.symbol,
-            isFromAmountFocused,
-            isToAmountFocused
+            toToken: toToken?.symbol
         });
 
         // Detect what action was performed
@@ -699,9 +673,7 @@ export function useSwapCalculation({
             fromAmount,
             toAmount,
             fromToken,
-            toToken,
-            isFromAmountFocused,
-            isToAmountFocused
+            toToken
         };
 
     }, [
@@ -709,8 +681,7 @@ export function useSwapCalculation({
         toAmount, 
         fromToken, 
         toToken,
-        isFromAmountFocused, 
-        isToAmountFocused,
+        isUserTypingToAmount,
         detectAction,
         handleAction
     ]);
