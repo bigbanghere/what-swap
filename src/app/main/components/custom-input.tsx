@@ -201,7 +201,22 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
                            target?.closest('[role="button"]') !== null ||
                            target?.closest('.cursor-pointer') !== null;
       
-      if (!isInputClick && !isKeyboardClick && !isButtonClick) {
+      // Allow blurring when clicking on the Swap button specifically
+      const isSwapButton = target?.closest('button')?.textContent?.includes('Обменять') || 
+                          target?.closest('[role="button"]')?.textContent?.includes('Обменять');
+      
+      console.log('🔍 CustomInput handleClickOutside:', {
+        isFocused,
+        target: target?.tagName,
+        isInputClick,
+        isKeyboardClick,
+        isButtonClick,
+        isSwapButton,
+        shouldBlur: !isInputClick && !isKeyboardClick && (!isButtonClick || isSwapButton)
+      });
+      
+      if (!isInputClick && !isKeyboardClick && (!isButtonClick || isSwapButton)) {
+        console.log('🔍 CustomInput: Blurring input due to click outside');
         shouldBeFocusedRef.current = false;
         setIsFocused(false);
       }

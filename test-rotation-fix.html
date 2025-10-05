@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotation Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-case {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .test-steps {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .step {
+            margin: 5px 0;
+            padding: 5px 0;
+        }
+        .expected {
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #28a745;
+        }
+        .note {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rotation Fix Test Cases</h1>
+    
+    <div class="test-case">
+        <div class="test-title">Test Case 1: User enters "11" in Send field, then rotates</div>
+        <div class="test-steps">
+            <div class="step">1. Navigate to http://localhost:3002</div>
+            <div class="step">2. Enter "11" in the Send amount field</div>
+            <div class="step">3. Click the rotation button (circular arrow icon)</div>
+            <div class="step">4. Verify that "11" is preserved in the Get field after rotation</div>
+            <div class="step">5. Verify that the Send field shows the calculated amount for the swapped tokens</div>
+        </div>
+        <div class="expected">
+            <strong>Expected Result:</strong> The value "11" should be preserved in the Get field, and the Send field should show the calculated equivalent amount for the swapped token pair.
+        </div>
+    </div>
+
+    <div class="test-case">
+        <div class="test-title">Test Case 2: User enters "5.5" in Get field, then rotates</div>
+        <div class="test-steps">
+            <div class="step">1. Navigate to http://localhost:3002</div>
+            <div class="step">2. Enter "5.5" in the Get amount field</div>
+            <div class="step">3. Click the rotation button</div>
+            <div class="step">4. Verify that "5.5" is preserved in the Send field after rotation</div>
+            <div class="step">5. Verify that the Get field shows the calculated amount for the swapped tokens</div>
+        </div>
+        <div class="expected">
+            <strong>Expected Result:</strong> The value "5.5" should be preserved in the Send field, and the Get field should show the calculated equivalent amount for the swapped token pair.
+        </div>
+    </div>
+
+    <div class="test-case">
+        <div class="test-title">Test Case 3: Multiple rotations preserve the original user value</div>
+        <div class="test-steps">
+            <div class="step">1. Navigate to http://localhost:3002</div>
+            <div class="step">2. Enter "100" in the Send amount field</div>
+            <div class="step">3. Click the rotation button (first rotation)</div>
+            <div class="step">4. Click the rotation button again (second rotation)</div>
+            <div class="step">5. Click the rotation button again (third rotation)</div>
+            <div class="step">6. Verify that "100" is always preserved in the appropriate field</div>
+        </div>
+        <div class="expected">
+            <strong>Expected Result:</strong> The value "100" should be preserved through all rotations, alternating between Send and Get fields as the basis value.
+        </div>
+    </div>
+
+    <div class="note">
+        <strong>Note:</strong> The fix ensures that <code>originalBasisValueRef.current</code> is updated whenever the user enters a custom value in either the Send or Get field. This value is then used during rotation to preserve the user's input instead of always defaulting to "1".
+    </div>
+
+    <div class="test-case">
+        <div class="test-title">Technical Details of the Fix</div>
+        <div class="test-steps">
+            <div class="step">• Added <code>originalBasisValueRef.current = value;</code> in <code>handleFromAmountChange</code></div>
+            <div class="step">• Added <code>originalBasisValueRef.current = value;</code> in <code>handleToAmountChange</code></div>
+            <div class="step">• The rotation logic already uses <code>originalBasisValueRef.current</code> when available</div>
+            <div class="step">• This ensures user-entered values are preserved during rotation instead of defaulting to "1"</div>
+        </div>
+    </div>
+</body>
+</html>

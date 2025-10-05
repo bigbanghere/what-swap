@@ -3,15 +3,15 @@ async function testStormTpetCalculation() {
     console.log('🧪 Testing Storm > TPet calculation via app proxy');
     console.log('📊 Testing: 111 STORM → ? TPET');
     
-    // Token addresses from the app logs
+    // Token addresses from the working test file
     const stormToken = {
         blockchain: "ton",
-        address: "0:6ca2c99c66b0fa1478a303ba9618bc39c28fda1f"
+        address: "0:6ca2c99c66b0fa1478a303ba9618bc39c28fda1fc50de37e618bddf98c9fd24c"
     };
     
     const tpetToken = {
         blockchain: "ton", 
-        address: "0:264068a5b84d6ae76b2d3be7c73da4f5f43c4adf"
+        address: "0:264068a6291ad21c32e596f75475e0ec5f50accc6cbf48f80d34df301368a123"
     };
     
     try {
@@ -105,3 +105,4 @@ async function testStormTpetCalculation() {
 
 // Run the test
 testStormTpetCalculation();
+

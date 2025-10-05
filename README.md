@@ -1,4 +1,4 @@
-+ fix recalculation on focus of the opposite field after input - focus changes completely ignored, only value changes trigger calculations, removed focus parameters from useSwapCalculation call, added refs for immediate focus state tracking, fixed Get field editing by preventing forward calculations from overriding user input when Get field is focused
++ rotation (non-default)
 + amount minimization
 + Swap button states: Connect Wallet, Insufficient balance, Price impact too high
 + assets-page scrolling

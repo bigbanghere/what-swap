@@ -18,6 +18,7 @@ interface UseSwapCalculationProps {
     hasUserEnteredCustomValue: boolean;
     isUserTypingToAmount?: boolean;
     userInputRef?: string | null;
+    isRestoringDefaults?: boolean;
 }
 
 // New interfaces for robust calculation strategy
@@ -31,6 +32,8 @@ interface CalculationState {
     lastUserInput: UserInputType;
     activeCalculations: Set<string>;
     debounceTimer: NodeJS.Timeout | null;
+    calculationInProgress: boolean;
+    lastCalculationTimestamp: number;
 }
 
 interface InputSourceTracking {
@@ -38,6 +41,8 @@ interface InputSourceTracking {
     toAmount: InputSource;
     fromToken: InputSource;
     toToken: InputSource;
+    lastUserAction: 'from' | 'to' | null;
+    lastUserActionTimestamp: number;
 }
 
 export function useSwapCalculation({
@@ -47,7 +52,8 @@ export function useSwapCalculation({
     toAmount,
     hasUserEnteredCustomValue,
     isUserTypingToAmount = false,
-    userInputRef = null
+    userInputRef = null,
+    isRestoringDefaults = false
 }: UseSwapCalculationProps) {
     const [result, setResult] = useState<SwapCalculationResult>({
         outputAmount: null,
@@ -62,14 +68,18 @@ export function useSwapCalculation({
         lastCalculationType: null,
         lastUserInput: null,
         activeCalculations: new Set(),
-        debounceTimer: null
+        debounceTimer: null,
+        calculationInProgress: false,
+        lastCalculationTimestamp: 0
     });
 
     const inputSourceTracking = useRef<InputSourceTracking>({
         fromAmount: 'initial',
         toAmount: 'initial',
         fromToken: 'initial',
-        toToken: 'initial'
+        toToken: 'initial',
+        lastUserAction: null,
+        lastUserActionTimestamp: 0
     });
 
     // Legacy refs for backward compatibility
@@ -133,8 +143,8 @@ export function useSwapCalculation({
             const result = lastCalculationResult.current;
             const timeSinceCalculation = Date.now() - result.timestamp;
             
-            // If this change matches the last calculation result and it's recent (< 200ms), skip
-            if (timeSinceCalculation < 200) {
+            // If this change matches the last calculation result and it's recent (< 500ms), skip
+            if (timeSinceCalculation < 500) {
                 // Check if the current state matches what we expect after the calculation
                 const isFromCalculation = (
                     (result.calculationType === 'FORWARD' && 
@@ -168,27 +178,101 @@ export function useSwapCalculation({
         // Focus changes should NEVER trigger calculations - only value changes should
         // We don't need to detect focus changes at all, just ignore them
 
-        // Check for amount changes
+        // Check for amount changes - use source tracking instead of timing
         if (fromAmount !== previous.fromAmount && toAmount !== previous.toAmount) {
-            // Both amounts changed - prioritize based on which field user is currently typing in
-            console.log('🎯 Both amounts changed - isUserTypingToAmount:', isUserTypingToAmount);
-            if (isUserTypingToAmount) {
-                // User is typing in Get field - this is USER_INPUT_TO
-                console.log('🎯 Detected USER_INPUT_TO based on isUserTypingToAmount');
-                return 'USER_INPUT_TO';
-            } else {
-                // User is typing in Send field - this is USER_INPUT_FROM
-                console.log('🎯 Detected USER_INPUT_FROM based on isUserTypingToAmount');
-                return 'USER_INPUT_FROM';
+            // Both amounts changed - use source tracking to determine if this is user input
+            const now = Date.now();
+            const timeSinceLastUserAction = now - inputSourceTracking.current.lastUserActionTimestamp;
+            const timeSinceLastCalculation = now - calculationState.current.lastCalculationTimestamp;
+            
+            // If we're currently calculating, skip to avoid infinite loops
+            if (calculationState.current.calculationInProgress) {
+                console.log('🎯 Both amounts changed - calculation in progress, skipping');
+                return 'NONE';
             }
+            
+            // If user action was recent (< 100ms), prioritize user input
+            if (timeSinceLastUserAction < 100 && inputSourceTracking.current.lastUserAction) {
+                console.log('🎯 Both amounts changed - recent user action detected:', inputSourceTracking.current.lastUserAction);
+                return inputSourceTracking.current.lastUserAction === 'to' ? 'USER_INPUT_TO' : 'USER_INPUT_FROM';
+            }
+            
+            // If user is actively typing, prioritize user input
+            if (isUserTypingToAmount) {
+                console.log('🎯 Both amounts changed - user actively typing TO field, treating as USER_INPUT_TO');
+                return 'USER_INPUT_TO';
+            }
+            
+            // If calculation was recent (< 200ms), likely from calculation result
+            if (timeSinceLastCalculation < 200) {
+                console.log('🎯 Both amounts changed - recent calculation detected, skipping');
+                return 'NONE';
+            }
+            
+            // Default to treating as user input if we can't determine the source
+            console.log('🎯 Both amounts changed - treating as user input (fallback)');
+            return 'USER_INPUT_FROM';
+            
         } else if (fromAmount !== previous.fromAmount) {
+            // Only fromAmount changed - this is likely user input
+            console.log('🎯 fromAmount changed - treating as user input');
             return 'USER_INPUT_FROM';
         } else if (toAmount !== previous.toAmount) {
+            // Only toAmount changed - this is likely user input
+            console.log('🎯 toAmount changed - treating as user input');
             return 'USER_INPUT_TO';
         }
 
         return 'NONE';
     }, [fromAmount, toAmount, fromToken, toToken, isUserTypingToAmount]);
+
+    // Debouncing system for rapid typing
+    const debouncedCalculation = useCallback((calculationType: CalculationType, executeCalculation: () => void) => {
+        const state = calculationState.current;
+        
+        // Clear existing timer
+        if (state.debounceTimer) {
+            clearTimeout(state.debounceTimer);
+        }
+        
+        // For rapid typing, debounce by 500ms to prevent cursor position issues
+        // For token changes and initial load, execute immediately
+        const shouldDebounce = true && 
+                              (calculationType === 'FORWARD' || calculationType === 'REVERSE');
+        
+        if (shouldDebounce) {
+            console.log('⏱️ Debouncing calculation for rapid typing', calculationType);
+            state.debounceTimer = setTimeout(() => {
+                console.log('⏱️ Debounce timer expired, executing calculation', calculationType);
+                executeCalculation();
+                state.debounceTimer = null;
+            }, 300);
+        } else {
+            console.log('⚡ Executing calculation immediately (no debounce)', calculationType);
+            executeCalculation();
+        }
+    }, []);
+
+    // Helper functions for tracking user actions and calculation state
+    const trackUserAction = useCallback((actionType: 'from' | 'to') => {
+        const now = Date.now();
+        inputSourceTracking.current.lastUserAction = actionType;
+        inputSourceTracking.current.lastUserActionTimestamp = now;
+        console.log('🎯 Tracked user action:', actionType, 'at', now);
+    }, []);
+
+    const startCalculation = useCallback((calculationType: CalculationType) => {
+        const now = Date.now();
+        calculationState.current.calculationInProgress = true;
+        calculationState.current.lastCalculationTimestamp = now;
+        calculationState.current.lastCalculationType = calculationType;
+        console.log('🔄 Started calculation:', calculationType, 'at', now);
+    }, []);
+
+    const endCalculation = useCallback(() => {
+        calculationState.current.calculationInProgress = false;
+        console.log('✅ Ended calculation at', Date.now());
+    }, []);
 
     // Handle specific actions with strict algorithms
     const handleAction = useCallback((actionType: ActionType) => {
@@ -196,18 +280,30 @@ export function useSwapCalculation({
         
         switch (actionType) {
             case 'USER_INPUT_FROM':
-                // User typed in Send field - perform FORWARD calculation
+                // User typed in Send field - perform FORWARD calculation or clear Get field
+                trackUserAction('from');
                 if (fromAmount && parseFloat(fromAmount) > 0 && toToken && executeCalculationRef.current) {
                     console.log('🔄 USER_INPUT_FROM: Performing forward calculation');
-                    executeCalculationRef.current('FORWARD');
+                    // Use debounced calculation to handle rapid typing
+                    debouncedCalculation('FORWARD', () => executeCalculationRef.current!('FORWARD'));
+                } else if (!fromAmount || fromAmount.trim() === '') {
+                    // Send field was cleared - clear the Get field as well
+                    console.log('🔄 USER_INPUT_FROM: Send field cleared, clearing Get field');
+                    setResult({ outputAmount: null, calcKey: null, isLoading: false, error: null });
                 }
                 break;
 
             case 'USER_INPUT_TO':
-                // User typed in Get field - perform REVERSE calculation
+                // User typed in Get field - perform REVERSE calculation or clear Send field
+                trackUserAction('to');
                 if (toAmount && parseFloat(toAmount) > 0 && fromToken && executeCalculationRef.current) {
                     console.log('🔄 USER_INPUT_TO: Performing reverse calculation');
-                    executeCalculationRef.current('REVERSE');
+                    // Use debounced calculation to handle rapid typing
+                    debouncedCalculation('REVERSE', () => executeCalculationRef.current!('REVERSE'));
+                } else if (!toAmount || toAmount.trim() === '') {
+                    // Get field was cleared - clear the Send field as well
+                    console.log('🔄 USER_INPUT_TO: Get field cleared, clearing Send field');
+                    setResult({ outputAmount: null, calcKey: null, isLoading: false, error: null });
                 }
                 break;
 
@@ -239,13 +335,13 @@ export function useSwapCalculation({
                 console.log('🔄 NONE: No calculation needed');
                 break;
         }
-    }, [fromAmount, toAmount, fromToken, toToken]);
+    }, [fromAmount, toAmount, fromToken, toToken, debouncedCalculation, trackUserAction]);
 
     // Track calculation results to prevent loops
-    const trackCalculationResult = useCallback((calculationType: CalculationType, resultAmount: string) => {
+    const trackCalculationResult = useCallback((calculationType: CalculationType, resultAmount: string, actualFromAmount?: string, actualToAmount?: string) => {
         // Calculate the expected state after the calculation
-        let expectedFromAmount = fromAmount;
-        let expectedToAmount = toAmount;
+        let expectedFromAmount = actualFromAmount || fromAmount;
+        let expectedToAmount = actualToAmount || toAmount;
         
         if (calculationType === 'FORWARD') {
             // Forward calculation: fromAmount stays the same, toAmount gets updated
@@ -370,32 +466,6 @@ export function useSwapCalculation({
         // The executeCalculation function will set these to 'calculation' when needed
     }, []);
 
-    // Debouncing system for rapid typing
-    const debouncedCalculation = useCallback((calculationType: CalculationType, executeCalculation: () => void) => {
-        const state = calculationState.current;
-        
-        // Clear existing timer
-        if (state.debounceTimer) {
-            clearTimeout(state.debounceTimer);
-        }
-        
-        // For rapid typing, debounce by 300ms
-        // For token changes and initial load, execute immediately
-        const shouldDebounce = true && 
-                              (calculationType === 'FORWARD' || calculationType === 'REVERSE');
-        
-        if (shouldDebounce) {
-            console.log('⏱️ Debouncing calculation for rapid typing', calculationType);
-            state.debounceTimer = setTimeout(() => {
-                console.log('⏱️ Debounce timer expired, executing calculation', calculationType);
-                executeCalculation();
-                state.debounceTimer = null;
-            }, 300);
-        } else {
-            console.log('⚡ Executing calculation immediately (no debounce)', calculationType);
-            executeCalculation();
-        }
-    }, []);
 
 
     // Convert token to ApiTokenAddress format
@@ -579,12 +649,13 @@ export function useSwapCalculation({
     }, [convertToApiTokenAddress, isCurrentCalculation]);
 
     // Execute calculation with proper state management
-    const executeCalculation = useCallback(async (calculationType: CalculationType) => {
+    const executeCalculation = useCallback(async (calculationType: CalculationType, overrideAmount?: string) => {
         const state = calculationState.current;
         
-        // Mark as calculating
+        // Mark as calculating and track calculation state
         state.isCalculating = true;
         state.lastCalculationType = calculationType;
+        startCalculation(calculationType);
         
         // Determine calculation parameters
         let inputToken, outputToken, amount, isReverse;
@@ -592,13 +663,13 @@ export function useSwapCalculation({
         if (calculationType === 'FORWARD') {
             inputToken = fromToken;
             outputToken = toToken;
-            amount = fromAmount;
+            amount = overrideAmount || fromAmount;
             isReverse = false;
             state.lastUserInput = 'from';
         } else if (calculationType === 'REVERSE') {
             inputToken = fromToken;
             outputToken = toToken;
-            amount = toAmount;
+            amount = overrideAmount || toAmount;
             isReverse = true;
             state.lastUserInput = 'to';
         } else {
@@ -624,7 +695,7 @@ export function useSwapCalculation({
                     console.log('✅ Setting calculation result', result.amount);
                     
                     // Track this calculation result to prevent loops
-                    trackCalculationResult(calculationType, result.amount.toString());
+                    trackCalculationResult(calculationType, result.amount.toString(), amount, isReverse ? toAmount : amount);
                     
                     setResult(prev => ({ ...prev, outputAmount: result.amount, calcKey: result.key }));
                     
@@ -642,8 +713,9 @@ export function useSwapCalculation({
             console.error('❌ Calculation failed', error);
         } finally {
             state.isCalculating = false;
+            endCalculation();
         }
-    }, [fromToken, toToken, fromAmount, toAmount, calculateSwap, trackCalculationResult]);
+    }, [fromToken, toToken, fromAmount, toAmount, calculateSwap, trackCalculationResult, startCalculation, endCalculation]);
 
     // Assign executeCalculation to ref for use in handleAction
     executeCalculationRef.current = executeCalculation;
@@ -654,8 +726,18 @@ export function useSwapCalculation({
             fromAmount,
             toAmount,
             fromToken: fromToken?.symbol,
-            toToken: toToken?.symbol
+            toToken: toToken?.symbol,
+            isRestoringDefaults
         });
+
+        // Skip processing if we're restoring defaults to prevent interference
+        if (isRestoringDefaults) {
+            console.log('🎯 Skipping action-based calculation - restoring defaults');
+            return;
+        }
+        
+        
+        
 
         // Detect what action was performed
         const actionType = detectAction();
@@ -682,12 +764,14 @@ export function useSwapCalculation({
         fromToken, 
         toToken,
         isUserTypingToAmount,
+        isRestoringDefaults,
         detectAction,
         handleAction
     ]);
 
     return {
         ...result,
-        trackCalculationResult
+        trackCalculationResult,
+        executeCalculation
     };
 }
