@@ -1,3 +1,4 @@
++ token selection
 + rotation (non-default)
 + amount minimization
 + Swap button states: Connect Wallet, Insufficient balance, Price impact too high
