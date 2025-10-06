@@ -18,6 +18,9 @@ interface CustomInputRef {
   blur: () => void;
   focus: () => void;
   canAddMoreCharacters: (key: string) => boolean;
+  setCursorToEnd: () => void;
+  getCursorPosition: () => number;
+  setCursorPosition: (position: number) => void;
 }
 
 const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function CustomInput({
@@ -148,6 +151,18 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
       const result = canAddMoreCharacters(testValue, containerWidth);
       console.log('🔍 CustomInput canAddMoreCharacters result:', result);
       return result;
+    },
+    setCursorToEnd: () => {
+      console.log('🔍 CustomInput setCursorToEnd() called - setting cursor to end of value:', value);
+      setCursorPosition(value.length);
+    },
+    getCursorPosition: () => {
+      console.log('🔍 CustomInput getCursorPosition() called - current position:', cursorPosition);
+      return cursorPosition;
+    },
+    setCursorPosition: (position: number) => {
+      console.log('🔍 CustomInput setCursorPosition() called - setting position to:', position, 'for value:', value);
+      setCursorPosition(Math.max(0, Math.min(position, value.length)));
     }
   }), [setFocusWithProtection, isFocused, value, cursorPosition, canAddMoreCharacters]);
 

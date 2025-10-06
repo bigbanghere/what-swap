@@ -51,7 +51,7 @@ export function CustomKeyboard() {
       const allInputs = document.querySelectorAll('[data-custom-input="true"]');
       for (const input of allInputs) {
         const element = input as HTMLElement;
-        if (element.style.cursor === 'text' || element.getAttribute('tabindex') !== null) {
+        if (element && (element.style?.cursor === 'text' || element.getAttribute('tabindex') !== null)) {
           focusedInput = element;
           break;
         }
