@@ -17,8 +17,8 @@ import './_assets/globals.css';
 import './tailwind.css';
 
 export const metadata: Metadata = {
-  title: 'Big Bang \\ Whatever Swap',
-  description: 'This one is the best.',
+  title: 'Big Bang – Whatever Swap',
+  description: 'Our whole multiverse is in a hot, dense state.',
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {

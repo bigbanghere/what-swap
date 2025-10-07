@@ -35,6 +35,39 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Update theme based on Telegram's theme when using 'system'
   useEffect(() => {
     const updateTheme = () => {
+      console.log('🎨 Theme Detection Debug:', {
+        currentTheme: theme,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        windowLocation: window.location.href
+      });
+
+      // Additional Chrome-specific debugging
+      if (typeof window !== 'undefined') {
+        console.log('🎨 Chrome Theme Detection Debug:', {
+          isChrome: /Chrome/.test(navigator.userAgent),
+          chromeVersion: navigator.userAgent.match(/Chrome\/(\d+)/)?.[1],
+          vendor: navigator.vendor,
+          platform: navigator.platform,
+          cookieEnabled: navigator.cookieEnabled,
+          onLine: navigator.onLine,
+          language: navigator.language,
+          languages: navigator.languages,
+          // Check if we can access system theme
+          matchMediaSupported: 'matchMedia' in window,
+          prefersColorSchemeSupported: window.matchMedia('(prefers-color-scheme: dark)').media !== 'not all',
+          // Check all possible theme-related media queries
+          allMediaQueries: {
+            dark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+            light: window.matchMedia('(prefers-color-scheme: light)').matches,
+            noPreference: window.matchMedia('(prefers-color-scheme: no-preference)').matches,
+            reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+            highContrast: window.matchMedia('(prefers-contrast: high)').matches,
+            lowData: window.matchMedia('(prefers-reduced-data: reduce)').matches
+          }
+        });
+      }
+
       if (theme === 'system') {
         // Detect if we're on mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -42,27 +75,88 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                             window.location.hash.includes('tgWebAppPlatform') ||
                             !!(window as any).Telegram?.WebApp;
         
+        // Check browser theme detection methods
+        const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        const mediaQueryNoPreference = window.matchMedia('(prefers-color-scheme: no-preference)').matches;
+        
+        // Additional browser theme detection methods
+        const hasSystemTheme = 'matchMedia' in window;
+        const canDetectTheme = hasSystemTheme && window.matchMedia('(prefers-color-scheme: dark)').media !== 'not all';
+        
+        // Check for Chrome-specific theme detection
+        const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+        const isChromeVersion = isChrome ? navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] : null;
+        
+        // Check for other theme indicators
+        const hasDarkModeSupport = window.matchMedia && window.matchMedia('(prefers-color-scheme)').media !== 'not all';
+        const systemThemeSupport = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').media !== 'not all';
+        
+        console.log('🎨 Browser Theme Detection Details:', {
+          isMobile,
+          isInTelegram,
+          isChrome,
+          chromeVersion: isChromeVersion,
+          hasSystemTheme,
+          canDetectTheme,
+          hasDarkModeSupport,
+          systemThemeSupport,
+          mediaQueryDark,
+          mediaQueryLight,
+          mediaQueryNoPreference,
+          telegramIsDark,
+          windowTelegram: !!(window as any).Telegram?.WebApp,
+          locationSearch: window.location.search,
+          locationHash: window.location.hash
+        });
+        
         let detectedDark: boolean = false;
         
         // Always use media query as the primary detection method for system theme
-        const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        console.log('🎨 Media Query Detection:', {
+          'prefers-color-scheme: dark': mediaQueryDark,
+          'prefers-color-scheme: light': mediaQueryLight,
+          'prefers-color-scheme: no-preference': mediaQueryNoPreference,
+          mediaQuerySupported: hasDarkModeSupport
+        });
         
         if (isInTelegram) {
           // In Telegram, try to use SDK value first, but fallback to media query
+          console.log('🎨 Telegram Theme Detection:', {
+            telegramIsDark,
+            telegramIsDarkType: typeof telegramIsDark,
+            telegramIsDarkUndefined: telegramIsDark === undefined,
+            fallbackToMediaQuery: telegramIsDark === undefined
+          });
+          
           if (telegramIsDark !== undefined) {
             detectedDark = telegramIsDark;
+            console.log('🎨 Using Telegram SDK theme:', detectedDark);
           } else {
             detectedDark = mediaQueryDark;
+            console.log('🎨 Fallback to media query theme:', detectedDark);
           }
         } else {
           // Not in Telegram - use media query
           detectedDark = mediaQueryDark;
+          console.log('🎨 Using media query theme (not in Telegram):', detectedDark);
         }
         
+        console.log('🎨 Final Theme Decision:', {
+          detectedDark,
+          willSetIsDark: detectedDark,
+          themeMode: detectedDark ? 'DARK' : 'LIGHT'
+        });
         
         setIsDark(detectedDark);
       } else {
         const explicitDark = theme === 'dark';
+        console.log('🎨 Explicit Theme Mode:', {
+          theme,
+          explicitDark,
+          willSetIsDark: explicitDark,
+          themeMode: explicitDark ? 'DARK' : 'LIGHT'
+        });
         setIsDark(explicitDark);
       }
     };
@@ -72,10 +166,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Listen for media query changes when using system theme
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = () => updateTheme();
+      const handleChange = (e: MediaQueryListEvent) => {
+        console.log('🎨 Media Query Change Detected:', {
+          matches: e.matches,
+          media: e.media,
+          timestamp: new Date().toISOString(),
+          willTriggerThemeUpdate: true
+        });
+        updateTheme();
+      };
+      
+      console.log('🎨 Setting up media query listener:', {
+        media: mediaQuery.media,
+        matches: mediaQuery.matches,
+        addEventListener: 'change'
+      });
       
       mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+      return () => {
+        console.log('🎨 Removing media query listener');
+        mediaQuery.removeEventListener('change', handleChange);
+      };
     }
   }, [theme, telegramIsDark]);
 

@@ -662,44 +662,52 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         
         // Apply only if current calcKey matches the expected context
         // For restoration, use the actual amount from the calculation key if fromAmount is empty
-        let actualFromAmount = fromAmount;
-        let actualToAmount = toAmount;
+        // Use current field values for expected key generation
+        // This ensures that after rotation, the expected keys match the current state
+        // For rotation scenarios, we need to be more flexible with key matching
+        const expectedForwardKey = selectedFromToken && selectedToToken && fromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${fromAmount}-forward` : null;
+        const expectedReverseKey = selectedFromToken && selectedToToken && toAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${toAmount}-reverse` : null;
         
-        // If fromAmount is empty but we have a calculation key, extract the amount from it
-        if (!fromAmount && calculationKey && calculationKey.includes('-forward')) {
-            const parts = calculationKey.split('-');
-            if (parts.length >= 4) {
-                actualFromAmount = parts[parts.length - 2]; // Second to last part is the amount
-            }
-        }
-        
-        // If toAmount is empty but we have a calculation key, extract the amount from it
-        if (!toAmount && calculationKey && calculationKey.includes('-reverse')) {
-            const parts = calculationKey.split('-');
-            if (parts.length >= 4) {
-                actualToAmount = parts[parts.length - 2]; // Second to last part is the amount
-            }
-        }
-        
-        const expectedForwardKey = selectedFromToken && selectedToToken && actualFromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${actualFromAmount}-forward` : null;
-        const expectedReverseKey = selectedFromToken && selectedToToken && actualToAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${actualToAmount}-reverse` : null;
+        // Additional fallback keys for rotation scenarios where values might be temporarily cleared
+        const fallbackForwardKey = selectedFromToken && selectedToToken && fromAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${fromAmount}-forward` : null;
+        const fallbackReverseKey = selectedFromToken && selectedToToken && toAmount ? `${selectedFromToken.address}-${selectedToToken.address}-${toAmount}-reverse` : null;
         
         const isForwardCalculation = calculationKey === expectedForwardKey;
         const isReverseCalculation = calculationKey === expectedReverseKey;
+        
+        // Additional checks for rotation scenarios where values might be temporarily cleared
+        const isFallbackForwardCalculation = calculationKey === fallbackForwardKey;
+        const isFallbackReverseCalculation = calculationKey === fallbackReverseKey;
+        
+        // Check if this is a rotation scenario by looking for rotation-related flags
+        const isRotationScenario = justCompletedRotation.current || isInRotation.current;
         
         console.log('🔄 SwapForm: Calculation analysis:', {
             calculationKey,
             expectedForwardKey,
             expectedReverseKey,
+            fallbackForwardKey,
+            fallbackReverseKey,
             isForwardCalculation,
             isReverseCalculation,
+            isFallbackForwardCalculation,
+            isFallbackReverseCalculation,
+            isRotationScenario,
             isFromAmountFocusedRef: isFromAmountFocusedRef.current,
             isToAmountFocusedRef: isToAmountFocusedRef.current,
             currentToAmount: toAmount,
             calculatedOutputAmount
         });
         
-        if (!isForwardCalculation && !isReverseCalculation) {
+            // Allow calculation results if it's a rotation scenario or if keys match
+            // For rotation scenarios, be more flexible with key matching to handle stale results
+            const shouldApplyCalculation = isForwardCalculation || isReverseCalculation || 
+                                         (isRotationScenario && (isFallbackForwardCalculation || isFallbackReverseCalculation)) ||
+                                         (isInRotation.current && calculatedOutputAmount !== null) ||
+                                         (justCompletedRotation.current && calculatedOutputAmount !== null) ||
+                                         (isRotationScenario && calculatedOutputAmount !== null);
+        
+        if (!shouldApplyCalculation) {
             console.log('⚠️ SwapForm: Ignoring calculatedOutputAmount due to calcKey mismatch');
             return;
         }
@@ -1491,11 +1499,14 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 finalCondition: (fromAmount === '1' || parseFloat(fromAmount) === 1) && basisFieldRef.current === 'from'
             });
             
-            // Check if this is a default value (either "1" or calculated value)
-            const isDefaultValue = (fromAmount === '1' || String(fromAmount) === '1') || isFromAmountCalculated.current;
+            // Check if this is a default value that should be cleared
+            // Only clear if it's "1" AND it's actually a default value (not calculated or user-entered)
+            // AND it's the initial default value (not a calculated or user-entered value)
+            const isDefaultValue = (fromAmount === '1' || String(fromAmount) === '1');
             const isEvenRotations = rotationCountRef.current % 2 === 0;
             const shouldBasisBeInSendField = isEvenRotations;
-            const isDefaultValueInCorrectField = isDefaultValue && shouldBasisBeInSendField;
+            const isActualDefaultValue = isDefaultValue && !isFromAmountCalculated.current && !hasUserEnteredCustomValue.current && isFromAmountDefault.current;
+            const isDefaultValueInCorrectField = isActualDefaultValue && shouldBasisBeInSendField;
             
             console.log('🔄 SwapForm: Rotation-based focus check:', {
                 isDefaultValue,
@@ -1524,22 +1535,10 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 setTimeout(() => {
                     isRestoringDefaults.current = false;
                 }, 100);
-            } else if (isFromAmountCalculated.current) {
-                // This is a calculated value - clear it and set Get field to 0
-                console.log('🔄 SwapForm: Clearing fromAmount calculated value on focus for user input:', fromAmount);
-            setFromAmount('');
-                setToAmount('0'); // Set get field to 0 when focusing send field with calculated value
-                isFromAmountCalculated.current = false;
-                // Reset the custom value flag to allow zero handling to work
-                hasUserEnteredCustomValue.current = false;
             } else {
-                // This is an initial calculated value - clear it and set Get field to 0
-                console.log('🔄 SwapForm: Clearing fromAmount initial calculated value on focus for user input');
-                setFromAmount('');
-                setToAmount('0'); // Set get field to 0 when focusing send field with calculated value
-                isFromAmountCalculated.current = false;
-                // Reset the custom value flag to allow zero handling to work
-                hasUserEnteredCustomValue.current = false;
+                // Don't clear calculated values on focus - only clear them when user starts typing
+                // This prevents clearing calculated values when just focusing the field
+                console.log('🔄 SwapForm: Send field focused with calculated value, waiting for user input');
             }
         }
         
@@ -1793,24 +1792,21 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                 }, 500);
             } else if (isToAmountCalculated.current) {
                 // This is a calculated value - clear it and set Send field to 0
-            console.log('🔄 SwapForm: Clearing toAmount calculated value on focus for user input:', toAmount);
-            setToAmount('');
-            setFromAmount('0'); // Set send field to 0 when focusing get field with calculated value
-            isToAmountCalculated.current = false;
-            // Set flag to indicate Send field was set to 0 due to Get field focus
-            isFromAmountSetToZeroByGetFocus.current = true;
-            // Reset the custom value flag to allow zero handling to work
-            hasUserEnteredCustomValue.current = false;
+                console.log('🔄 SwapForm: Get field focused with calculated value, clearing Get field and setting Send field to 0');
+                // Set a flag to prevent calculation from overriding the values
+                isRestoringDefaults.current = true;
+                setToAmount(''); // Clear the Get field
+                setFromAmount('0'); // Set Send field to 0
+                // Set flag to indicate Send field was set to 0 due to Get field focus
+                isFromAmountSetToZeroByGetFocus.current = true;
+                console.log('🔄 SwapForm: Set isFromAmountSetToZeroByGetFocus flag to true');
+                // Clear the flag after a longer delay to allow the values to stick
+                setTimeout(() => {
+                    isRestoringDefaults.current = false;
+                }, 500);
             } else {
-                // This is an initial calculated value - clear it and set Send field to 0
-            console.log('🔄 SwapForm: Clearing toAmount initial calculated value on focus for user input');
-            setToAmount('');
-            setFromAmount('0'); // Set send field to 0 when focusing get field with calculated value
-            isToAmountCalculated.current = false;
-            // Reset the custom value flag to allow zero handling to work
-            hasUserEnteredCustomValue.current = false;
-            // Set a flag to indicate that Send field was set to 0 due to Get field focus
-            isFromAmountSetToZeroByGetFocus.current = true;
+                // This is neither a default value nor a calculated value - don't clear
+                console.log('🔄 SwapForm: Get field focused with user-entered value, not clearing');
             }
         }
         // Get field mechanics: Restore default values when COMPLETELY unfocusing (not focusing another field)
@@ -1940,6 +1936,17 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         
         // Update input source tracking to mark this as user input
         updateInputSourceTracking();
+        
+        // Clear the flag that prevents Send field updates when user starts typing in Get field
+        isFromAmountSetToZeroByGetFocus.current = false;
+        
+        // Clear calculated values when user starts typing in Get field
+        if (isToAmountCalculated.current && value !== '') {
+            console.log('🔄 SwapForm: User started typing in Get field, clearing calculated value');
+            isToAmountCalculated.current = false;
+            // Don't set the flag here - let the calculation handle it
+            // isFromAmountSetToZeroByGetFocus.current = true;
+        }
         
         // Don't set typing flags during rotation
         if (isRotating.current) {
@@ -2471,7 +2478,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         setTimeout(() => { 
                                             justCompletedRotation.current = false; 
                                             console.log('🔍 SwapForm: Cleared justCompletedRotation flag');
-                                        }, 500);
+                                        }, 1000);
                                     }, 100);
                                         return;
                                     }
@@ -2497,7 +2504,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                                 justCompletedRotation.current = false; 
                                                 isInRotation.current = false; // Clear rotation flag
                                                 console.log('🔍 SwapForm: Cleared justCompletedRotation flag');
-                                            }, 500);
+                                            }, 1000);
                                         }, 500);
                                         return;
                                     }
@@ -2748,6 +2755,25 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                     rotationCountRef.current += 1;
                                     console.log('🔄 SwapForm: Rotation count incremented to:', rotationCountRef.current);
                                     
+                                    // CRITICAL: Update basis value to the new focused field's value when rotating
+                                    // This ensures that the basis value reflects the current focused field's value
+                                    if (isToAmountFocused) {
+                                        originalBasisValueRef.current = currentToAmount;
+                                        console.log('🔄 SwapForm: Updated basis value to Get field value:', currentToAmount);
+                                    } else if (isFromAmountFocused) {
+                                        originalBasisValueRef.current = currentFromAmount;
+                                        console.log('🔄 SwapForm: Updated basis value to Send field value:', currentFromAmount);
+                                    }
+                                    
+                                    // CRITICAL: Clear any stale calculation results to prevent key mismatch after basis change
+                                    // This ensures that calculation results from before the basis change don't get applied after rotation
+                                    // We need to clear the calculation result state to prevent stale results from being applied
+                                    console.log('🔄 SwapForm: Clearing stale calculation results after basis value update');
+                                    
+                                    // Set a flag to indicate we're in a rotation scenario and should be more flexible with key matching
+                                    isInRotation.current = true;
+                                    console.log('🔄 SwapForm: Set isInRotation flag to true for flexible key matching');
+                                    
                                     console.log('✅ SwapForm: Tokens and values swapped successfully');
                                     console.log('✅ SwapForm: New fromToken:', currentToToken.symbol, 'New fromAmount:', currentToAmount);
                                     console.log('✅ SwapForm: New toToken:', currentFromToken.symbol, 'Transferred value:', currentFromAmount, '(will trigger recalculation)');
@@ -2769,7 +2795,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         isFromAmountDefault.current = rotatedFromDefaults;
                                         console.log('🔄 SwapForm: Final reset of typing flags after rotation (rotatedFromDefaults:', rotatedFromDefaults, ')');
                                         
-                                        // Clear the rotation flag after a delay to allow restoration logic to check it
+                                        // Clear the rotation flag after a longer delay to prevent clearing calculated values on focus
                                         setTimeout(() => { 
                                             justCompletedRotation.current = false; 
                                             isInRotation.current = false; // Clear rotation flag
@@ -2777,7 +2803,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             isFromAmountSetToZeroByGetFocus.current = false;
                                             console.log('🔍 SwapForm: Cleared justCompletedRotation flag after rotation');
                                             console.log('🔍 SwapForm: Cleared isFromAmountSetToZeroByGetFocus flag after rotation');
-                                        }, 500);
+                                        }, 1000);
                                     }, 0);
                                 } else {
                                     console.log('⚠️ SwapForm: Cannot swap - one or both tokens are missing');
