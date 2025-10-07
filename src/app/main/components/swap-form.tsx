@@ -1966,7 +1966,9 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             console.log('🔄 SwapForm: User completely erased toAmount, setting send field to 0');
             // Set send field to 0 when get field is empty
             setFromAmount('0');
-            // Don't set hasUserEnteredCustomValue to true here - we want zero handling to work
+            // Reset the custom value flag so zero handling can work
+            hasUserEnteredCustomValue.current = false;
+            console.log('🔄 SwapForm: Reset hasUserEnteredCustomValue flag to allow zero handling');
         } else {
             // Only mark as custom value when user enters a non-empty value AND we're not in rotation
             // AND the value is not a calculated value
