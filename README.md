@@ -1,3 +1,13 @@
+## Development
+
+To run the project in development mode:
+
+```bash
+pnpm run dev
+```
+
+## Features
+
 + token selection
 + rotation (non-default)
 + amount minimization
