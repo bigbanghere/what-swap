@@ -34,41 +34,48 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Update theme based on Telegram's theme when using 'system'
   useEffect(() => {
-    if (theme === 'system') {
-      // Detect if we're on mobile
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const isInTelegram = window.location.search.includes('tgWebAppPlatform') || 
-                          window.location.hash.includes('tgWebAppPlatform') ||
-                          !!(window as any).Telegram?.WebApp;
-      
-      let detectedDark: boolean | undefined = undefined;
-      
-      // Mobile-specific theme detection
-      if (isMobile && isInTelegram) {
-        // For mobile Telegram, use media query detection as primary method
-        // Mobile Telegram apps often don't provide reliable theme info through SDK
-        const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        detectedDark = mediaQueryDark;
-      } else if (isInTelegram) {
-        // Desktop Telegram - use SDK value as primary method
-        detectedDark = telegramIsDark;
+    const updateTheme = () => {
+      if (theme === 'system') {
+        // Detect if we're on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isInTelegram = window.location.search.includes('tgWebAppPlatform') || 
+                            window.location.hash.includes('tgWebAppPlatform') ||
+                            !!(window as any).Telegram?.WebApp;
         
-        // Fallback to media query if SDK value is undefined
-        if (detectedDark === undefined) {
-          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        let detectedDark: boolean = false;
+        
+        // Always use media query as the primary detection method for system theme
+        const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (isInTelegram) {
+          // In Telegram, try to use SDK value first, but fallback to media query
+          if (telegramIsDark !== undefined) {
+            detectedDark = telegramIsDark;
+          } else {
+            detectedDark = mediaQueryDark;
+          }
+        } else {
+          // Not in Telegram - use media query
           detectedDark = mediaQueryDark;
         }
+        
+        
+        setIsDark(detectedDark);
       } else {
-        // Not in Telegram - use media query
-        const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        detectedDark = mediaQueryDark;
+        const explicitDark = theme === 'dark';
+        setIsDark(explicitDark);
       }
+    };
+
+    updateTheme();
+
+    // Listen for media query changes when using system theme
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => updateTheme();
       
-      // Ensure we have a boolean value
-      const finalDark = !!detectedDark;
-      setIsDark(finalDark);
-    } else {
-      setIsDark(theme === 'dark');
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     }
   }, [theme, telegramIsDark]);
 

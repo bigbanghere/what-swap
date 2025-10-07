@@ -155,4 +155,4 @@ export const themes = {
   dark: darkTheme,
 } as const;
 
-export const defaultTheme: Theme = 'dark';
+export const defaultTheme: Theme = 'system';

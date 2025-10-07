@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/core/theme/provider';
 import { ValidationProvider } from '@/contexts/validation-context';
 import { QueryProvider } from '@/providers/query-provider';
 import { TokenCacheInitializer } from '@/components/TokenCacheInitializer';
+import { DynamicFavicon } from '@/components/DynamicFavicon';
 
 import '@telegram-apps/telegram-ui/dist/styles.css';
 import 'normalize.css/normalize.css';
@@ -16,8 +17,8 @@ import './_assets/globals.css';
 import './tailwind.css';
 
 export const metadata: Metadata = {
-  title: 'Your Application Title Goes Here',
-  description: 'Your application description goes here',
+  title: 'Big Bang \\ Whatever Swap',
+  description: 'This one is the best.',
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {
@@ -27,6 +28,10 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        {/* Default favicon - will be overridden by DynamicFavicon component */}
+        <link rel="icon" href="/favicon-dark.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/favicon-dark.png" />
+        
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link 
@@ -55,6 +60,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
             <QueryProvider>
               <ValidationProvider>
                 <TokenCacheInitializer />
+                <DynamicFavicon />
                 <Root>{children}<Analytics /></Root>
               </ValidationProvider>
             </QueryProvider>

@@ -2411,7 +2411,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         window.dispatchEvent(new CustomEvent('tokenSelected', { detail: { token: currentToToken, type: 'from' } }));
                                         window.dispatchEvent(new CustomEvent('tokenSelected', { detail: { token: currentFromToken, type: 'to' } }));
                                         
-                                        // Transfer the value to the appropriate field
+                                        // Transfer the value to the appropriate field and focus
                                         if (isFromAmountFocused) {
                                             // Get field was focused, so put the value in the new Get field (which is now Send field)
                                             setFromAmount(valueToTransfer);
@@ -2420,6 +2420,23 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             // Mark the transferred value as calculated
                                             isFromAmountCalculated.current = true;
                                             isToAmountCalculated.current = false;
+                                            
+                                            // Transfer focus to Send field (where the value was moved)
+                                            console.log('🔄 SwapForm: Transferring focus to Send field (empty field rotation)');
+                                            setIsFromAmountFocused(true);
+                                            setIsToAmountFocused(false);
+                                            isToAmountFocusedRef.current = false;
+                                            
+                                            // Focus the Send field input and set cursor position
+                                            setTimeout(() => {
+                                                if (fromAmountRef.current?.focus) {
+                                                    fromAmountRef.current.focus();
+                                                    if (fromAmountRef.current?.setCursorPosition) {
+                                                        fromAmountRef.current.setCursorPosition(capturedCursorPosition);
+                                                    }
+                                                    console.log('🔄 SwapForm: Focused Send field and set cursor to position:', capturedCursorPosition, '(empty field rotation)');
+                                                }
+                                            }, 0);
                                         } else {
                                             // Send field was focused, so put the value in the new Send field (which is now Get field)
                                             setFromAmount('');
@@ -2428,12 +2445,24 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             // Mark the transferred value as calculated
                                             isFromAmountCalculated.current = false;
                                             isToAmountCalculated.current = true;
+                                            
+                                            // Transfer focus to Get field (where the value was moved)
+                                            console.log('🔄 SwapForm: Transferring focus to Get field (empty field rotation)');
+                                            setIsFromAmountFocused(false);
+                                            setIsToAmountFocused(true);
+                                            isToAmountFocusedRef.current = true;
+                                            
+                                            // Focus the Get field input and set cursor position
+                                            setTimeout(() => {
+                                                if (toAmountRef.current?.focus) {
+                                                    toAmountRef.current.focus();
+                                                    if (toAmountRef.current?.setCursorPosition) {
+                                                        toAmountRef.current.setCursorPosition(capturedCursorPosition);
+                                                    }
+                                                    console.log('🔄 SwapForm: Focused Get field and set cursor to position:', capturedCursorPosition, '(empty field rotation)');
+                                                }
+                                            }, 0);
                                         }
-                                        
-                                    // Reset focus states after rotation
-                                    setIsFromAmountFocused(false);
-                                    setIsToAmountFocused(false);
-                                    isToAmountFocusedRef.current = false;
                                     
                                     // Set rotation flags and prevent calculation
                                     setTimeout(() => {
@@ -2546,7 +2575,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                     // Preserve the calculated state from the source field before clearing
                                     const sourceWasCalculated = sourceField === 'from' ? isFromAmountCalculated.current : isToAmountCalculated.current;
                                     
-                                    // Move the value to the opposite field
+                                    // Move the value to the opposite field and transfer focus
                                     if (sourceField === 'from') {
                                         // Value came from Send field, move it to Get field
                                         setFromAmount(''); // Clear send field to allow calculation
@@ -2556,6 +2585,24 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         isFromAmountCalculated.current = false;
                                         isToAmountCalculated.current = sourceWasCalculated;
                                         console.log('🔄 SwapForm: Moved value from Send field to Get field');
+                                        
+                                        // Transfer focus to Get field (where the value was moved)
+                                        console.log('🔄 SwapForm: Transferring focus to Get field');
+                                        setIsFromAmountFocused(false);
+                                        setIsToAmountFocused(true);
+                                        isToAmountFocusedRef.current = true;
+                                        
+                                        // Focus the Get field input and set cursor position
+                                        setTimeout(() => {
+                                            if (toAmountRef.current?.focus) {
+                                                toAmountRef.current.focus();
+                                                // Set cursor to the captured position
+                                                if (toAmountRef.current?.setCursorPosition) {
+                                                    toAmountRef.current.setCursorPosition(capturedCursorPosition);
+                                                }
+                                                console.log('🔄 SwapForm: Focused Get field and set cursor to position:', capturedCursorPosition);
+                                            }
+                                        }, 0);
                                     } else {
                                         // Value came from Get field, move it to Send field
                                         setFromAmount(valueToTransfer); // Put basis value in Send field
@@ -2565,6 +2612,24 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         isFromAmountCalculated.current = sourceWasCalculated;
                                         isToAmountCalculated.current = false;
                                         console.log('🔄 SwapForm: Moved value from Get field to Send field');
+                                        
+                                        // Transfer focus to Send field (where the value was moved)
+                                        console.log('🔄 SwapForm: Transferring focus to Send field');
+                                        setIsFromAmountFocused(true);
+                                        setIsToAmountFocused(false);
+                                        isToAmountFocusedRef.current = false;
+                                        
+                                        // Focus the Send field input and set cursor position
+                                        setTimeout(() => {
+                                            if (fromAmountRef.current?.focus) {
+                                                fromAmountRef.current.focus();
+                                                // Set cursor to the captured position
+                                                if (fromAmountRef.current?.setCursorPosition) {
+                                                    fromAmountRef.current.setCursorPosition(capturedCursorPosition);
+                                                }
+                                                console.log('🔄 SwapForm: Focused Send field and set cursor to position:', capturedCursorPosition);
+                                            }
+                                        }, 0);
                                     }
                                     
                                     // Update default send reference to match new context (so unfocus restores this)
@@ -2670,10 +2735,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                         // Ensure typing flags are cleared
                                         setIsUserTypingToAmount(false);
                                         userFinishedTypingToAmount.current = false;
-                                        // Reset focus states after rotation (after focus transfer has completed)
-                                        setIsFromAmountFocused(false);
-                                        setIsToAmountFocused(false);
-                                        isToAmountFocusedRef.current = false;
+                                        // Focus states are already properly set during rotation - no need to reset
                                         // Preserve whether this rotation came from defaults
                                         // Only mark as user-entered if it's actually a user-entered value, not a calculated one
                                         hasUserEnteredCustomValue.current = !rotatedFromDefaults && !isTransferredValueCalculated;

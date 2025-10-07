@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SVG to ICO Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        canvas { border: 1px solid #ccc; margin: 10px 0; }
+        button { padding: 10px 20px; background: #007cba; color: white; border: none; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .instructions { background: #f0f0f0; padding: 15px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SVG to ICO Converter</h1>
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Right-click on the image below</li>
+                <li>Select "Save image as..." or "Save picture as..."</li>
+                <li>Save as "Group22.ico" in the src/app/ folder</li>
+                <li>If your browser doesn't support ICO, save as PNG and use an online converter</li>
+            </ol>
+        </div>
+        
+        <div id="svg-container"></div>
+        
+        <button onclick="downloadAsICO()">Download as ICO</button>
+        <button onclick="downloadAsPNG()">Download as PNG</button>
+        
+        <div class="instructions">
+            <h3>Alternative Methods:</h3>
+            <ul>
+                <li><strong>Online Converters:</strong>
+                    <ul>
+                        <li><a href="https://convertio.co/svg-ico/" target="_blank">Convertio.co</a></li>
+                        <li><a href="https://cloudconvert.com/svg-to-ico" target="_blank">CloudConvert</a></li>
+                        <li><a href="https://www.favicon-generator.org/" target="_blank">Favicon Generator</a></li>
+                    </ul>
+                </li>
+                <li><strong>Command Line (if tools installed):</strong>
+                    <ul>
+                        <li>ImageMagick: <code>magick convert src/app/Group22.svg -resize 256x256 src/app/Group22.ico</code></li>
+                        <li>Inkscape: <code>inkscape --export-type=ico --export-filename=Group22.ico src/app/Group22.svg</code></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Load and display the SVG
+        fetch('src/app/Group22.svg')
+            .then(response => response.text())
+            .then(svgContent => {
+                document.getElementById('svg-container').innerHTML = svgContent;
+                
+                // Resize the SVG to 256x256
+                const svg = document.querySelector('svg');
+                if (svg) {
+                    svg.setAttribute('width', '256');
+                    svg.setAttribute('height', '256');
+                    svg.style.border = '1px solid #ccc';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading SVG:', error);
+                document.getElementById('svg-container').innerHTML = '<p>Error loading SVG file. Please check the file path.</p>';
+            });
+            
+        function downloadAsICO() {
+            const svg = document.querySelector('svg');
+            if (!svg) return;
+            
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 256;
+            
+            // Convert SVG to canvas
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const img = new Image();
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+            
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, 256, 256);
+                
+                // Convert to ICO (simplified - browsers don't natively support ICO)
+                canvas.toBlob(function(blob) {
+                    const link = document.createElement('a');
+                    link.download = 'Group22.ico';
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                }, 'image/png'); // Fallback to PNG since browsers don't support ICO
+                
+                URL.revokeObjectURL(url);
+            };
+            
+            img.src = url;
+        }
+        
+        function downloadAsPNG() {
+            const svg = document.querySelector('svg');
+            if (!svg) return;
+            
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 256;
+            
+            // Convert SVG to canvas
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const img = new Image();
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+            
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, 256, 256);
+                
+                // Download as PNG
+                canvas.toBlob(function(blob) {
+                    const link = document.createElement('a');
+                    link.download = 'Group22-256.png';
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                }, 'image/png');
+                
+                URL.revokeObjectURL(url);
+            };
+            
+            img.src = url;
+        }
+    </script>
+</body>
+</html>
