@@ -19,7 +19,7 @@ export function SwapButton({
   className = "",
   children
 }: SwapButtonProps) {
-  const isDisabled = disabled || (error && error.includes('No liquidity pools'));
+  const isDisabled = Boolean(disabled || (error && error.includes('No liquidity pools')));
   
   return (
     <button

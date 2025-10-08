@@ -44,7 +44,7 @@ export function Page({ children, back = true }: PropsWithChildren<{
     } catch (error) {
       console.error('❌ Page: Error setting up backButton onClick:', error);
     }
-  }, [router]);
+  }, [router, setNavigationFlags]);
 
   return <>
     {children}

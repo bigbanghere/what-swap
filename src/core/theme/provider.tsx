@@ -212,7 +212,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       applyThemeColors(colors);
     }
-  }, []);
+  }, [colors]);
 
   const value: ThemeContextType = {
     theme,

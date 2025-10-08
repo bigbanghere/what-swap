@@ -141,7 +141,7 @@ export function CustomKeyboard() {
       setPressedKeyIndex(null);
       setIsInputNotAllowed(false);
     }, 22);
-  }, []);
+  }, [shouldBeCompact]);
 
   // Start continuous deletion
   const startContinuousDeletion = useCallback(() => {
