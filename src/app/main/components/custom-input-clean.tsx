@@ -583,7 +583,7 @@ const CustomInput = memo(function CustomInput({
                 transform: 'translateY(-50%)',
                 width: '1px',
                 height: '33px',
-                backgroundColor: '#1ABCFF',
+                backgroundColor: '#007AFF',
                 animation: 'blink 1s infinite',
                 pointerEvents: 'none',
                 zIndex: 1000

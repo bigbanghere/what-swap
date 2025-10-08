@@ -12,7 +12,7 @@ export function percentToHexAlpha(percentage: number): string {
 
 /**
  * Convert hex color to RGBA
- * @param hex - Hex color (e.g., #1ABCFF)
+ * @param hex - Hex color (e.g., #007AFF)
  * @param alpha - Alpha value (0-1)
  * @returns RGBA string
  */

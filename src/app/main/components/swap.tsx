@@ -21,7 +21,7 @@ export function Swap({ onErrorChange }: { onErrorChange?: (error: string | null)
                 ${!shouldBeCompact ? 'flex-1' : ''}
             `}
             style={{ 
-                backgroundColor: shouldBeCompact ? 'transparent' : 'rgba(26, 188, 255, 0.22)',
+                backgroundColor: shouldBeCompact ? 'transparent' : 'rgba(0, 122, 255, 0.22)',
                 transition: 'background-color 0.2s ease'
             }}
         >

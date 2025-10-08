@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useDefaultTokens } from '@/hooks/use-default-tokens';
 import { useTokensCache } from '@/hooks/use-tokens-cache';
 import { useSwapCalculation } from '@/hooks/use-swap-calculation';
+import { SwapButton } from '@/components/SwapButton';
 
 export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | null) => void }) {
     const router = useRouter();
@@ -2009,8 +2010,8 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             {/* Main form container */}
             <div 
                 style={{ 
-                    border: shouldBeCompact ? '' : '1px solid rgba(26, 188, 255, 1)', 
-                    borderRadius: '15px', 
+                    border: shouldBeCompact ? '' : '1px solid rgba(0, 122, 255, 1)', 
+                    borderRadius: '', // 15px
                     backgroundColor: colors.background,
                 }}
                 className="w-full"
@@ -2039,7 +2040,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             )}
                             {t('send')}
                         </div>
-                        {walletAddress ? <div className='text-[#1ABCFF]'>
+                        {walletAddress ? <div className='text-[#007AFF]'>
                             {t('max')}
                         </div> : null}
                         <div className='w-full flex justify-end gap-[5px]'>
@@ -2150,7 +2151,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             }
                                         }
                                     }}
-                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] cursor-pointer'
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#007AFF] cursor-pointer'
                                 >
                                     <Image
                                         src={token.image_url || ''}
@@ -2178,7 +2179,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             ref={fromAmountRef}
                             value={fromAmount}
                             onChange={handleFromAmountChange}
-                            className='w-full text-[#1ABCFF] text-[33px]'
+                            className='w-full text-[#007AFF] text-[33px]'
                             type='number'
                             placeholder='0'
                             onFocusChange={handleFocusChange}
@@ -2200,7 +2201,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                     window.location.href = '/tokens-fast?type=from';
                 }
                             }}
-                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] cursor-pointer select-none'
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#007AFF] rounded-[15px] cursor-pointer select-none'
                             style={{ 
                                 userSelect: 'none',
                                 WebkitUserSelect: 'none',
@@ -2248,7 +2249,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             borderRadius: '50%',
                                         }}
                                     />
-                                    <span className='text-[#1ABCFF]'>
+                                    <span className='text-[#007AFF]'>
                                         {selectedFromToken?.symbol || defaultUsdt?.symbol}
                                     </span>
                                 </>
@@ -2257,7 +2258,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                 style={{
                                     width: '20px',
                                     height: '20px',
-                                    color: '#1ABCFF',
+                                    color: '#007AFF',
                                 }}
                             />
                         </div>
@@ -2286,7 +2287,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                         </div>
                     </div>
                     <div className='flex flex-row items-center gap-[5px] mt-[5px] mb-[5px]'>
-                        <div className='h-[1px] w-full bg-[#1ABCFF]'></div>
+                        <div className='h-[1px] w-full bg-[#007AFF]'></div>
                         <div 
                             className='w-[30px] h-[30px] flex items-center justify-center cursor-pointer'
                             onClick={(e) => {
@@ -2829,7 +2830,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                 }}
                             />
                         </div>
-                        <div className='h-[1px] w-full bg-[#1ABCFF]'></div>
+                        <div className='h-[1px] w-full bg-[#007AFF]'></div>
                     </div>
                     <div className='flex flex-row items-center justify-between'>
                         {t('get')}
@@ -2941,7 +2942,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             }
                                         }
                                     }}
-                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#1ABCFF] cursor-pointer'
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#007AFF] cursor-pointer'
                                 >
                                     <Image
                                         src={token.image_url || ''}
@@ -2969,7 +2970,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             ref={toAmountRef}
                             value={toAmount}
                             onChange={handleToAmountChange}
-                            className='w-full text-[#1ABCFF] text-[33px]'
+                            className='w-full text-[#007AFF] text-[33px]'
                             type='number'
                             placeholder='0'
                             onFocusChange={handleToAmountFocusChange}
@@ -2991,7 +2992,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                     window.location.href = '/tokens-fast?type=to';
                                 }
                             }}
-                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#1ABCFF] rounded-[15px] cursor-pointer select-none'
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#007AFF] rounded-[15px] cursor-pointer select-none'
                             style={{ 
                                 userSelect: 'none',
                                 WebkitUserSelect: 'none',
@@ -3039,7 +3040,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             borderRadius: '50%',
                                         }}
                                     />
-                                    <span className='text-[#1ABCFF]'>
+                                    <span className='text-[#007AFF]'>
                                         {selectedToToken?.symbol || defaultTon?.symbol}
                                     </span>
                                 </>
@@ -3048,7 +3049,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                 style={{
                                     width: '20px',
                                     height: '20px',
-                                    color: '#1ABCFF',
+                                    color: '#007AFF',
                                 }}
                             />
                         </div>
@@ -3100,6 +3101,12 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                     </div>
                 </div>
             </div>
+            {/* <SwapButton
+                className=''
+                shouldBeCompact={shouldBeCompact}
+            >
+                Обменять
+            </SwapButton> */}
         </div>
     );
 }

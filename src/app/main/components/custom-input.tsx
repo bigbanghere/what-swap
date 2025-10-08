@@ -36,7 +36,17 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
 }, ref) {
   const [isFocused, setIsFocused] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
+  
+  console.log('🎯 CustomInput: Component rendered', {
+    value,
+    valueLength: value.length,
+    isFocused,
+    cursorPosition
+  });
   const [currentFontSize, setCurrentFontSize] = useState(33);
+  const [showCursor, setShowCursor] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLSpanElement>(null);
   const justFocusedRef = useRef(false);
@@ -44,6 +54,7 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   const lastFocusClickTargetRef = useRef<Element | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
   const shouldBeFocusedRef = useRef(false);
+  const cursorBlinkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const [cursorLeftPosition, setCursorLeftPosition] = useState(0);
@@ -255,9 +266,22 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isFocused) return;
 
+    // Handle text selection with Shift key
+    const hasSelection = selectionStart !== null && selectionEnd !== null && selectionStart !== selectionEnd;
+    const isShiftPressed = e.shiftKey;
+
     switch (e.key) {
       case 'Backspace':
-        if (cursorPosition > 0) {
+        if (hasSelection) {
+          // Delete selected text
+          const start = Math.min(selectionStart!, selectionEnd!);
+          const end = Math.max(selectionStart!, selectionEnd!);
+          const newValue = value.slice(0, start) + value.slice(end);
+          onChange(newValue);
+          setCursorPosition(start);
+          setSelectionStart(null);
+          setSelectionEnd(null);
+        } else if (cursorPosition > 0) {
           const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
           onChange(newValue);
           setCursorPosition(Math.max(0, cursorPosition - 1));
@@ -270,24 +294,79 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
         }
         break;
       case 'ArrowLeft':
-        setCursorPosition(Math.max(0, cursorPosition - 1));
+        if (isShiftPressed) {
+          // Extend selection
+          if (selectionStart === null) {
+            setSelectionStart(cursorPosition);
+          }
+          const newPos = Math.max(0, cursorPosition - 1);
+          setCursorPosition(newPos);
+          setSelectionEnd(newPos);
+        } else {
+          // Clear selection and move cursor
+          setSelectionStart(null);
+          setSelectionEnd(null);
+          setCursorPosition(Math.max(0, cursorPosition - 1));
+        }
         break;
       case 'ArrowRight':
-        setCursorPosition(Math.min(value.length, cursorPosition + 1));
+        if (isShiftPressed) {
+          // Extend selection
+          if (selectionStart === null) {
+            setSelectionStart(cursorPosition);
+          }
+          const newPos = Math.min(value.length, cursorPosition + 1);
+          setCursorPosition(newPos);
+          setSelectionEnd(newPos);
+        } else {
+          // Clear selection and move cursor
+          setSelectionStart(null);
+          setSelectionEnd(null);
+          setCursorPosition(Math.min(value.length, cursorPosition + 1));
+        }
         break;
       case 'Home':
-        setCursorPosition(0);
+        if (isShiftPressed) {
+          if (selectionStart === null) {
+            setSelectionStart(cursorPosition);
+          }
+          setCursorPosition(0);
+          setSelectionEnd(0);
+        } else {
+          setSelectionStart(null);
+          setSelectionEnd(null);
+          setCursorPosition(0);
+        }
         break;
       case 'End':
-        setCursorPosition(value.length);
+        if (isShiftPressed) {
+          if (selectionStart === null) {
+            setSelectionStart(cursorPosition);
+          }
+          setCursorPosition(value.length);
+          setSelectionEnd(value.length);
+        } else {
+          setSelectionStart(null);
+          setSelectionEnd(null);
+          setCursorPosition(value.length);
+        }
         break;
       case 'Escape':
         shouldBeFocusedRef.current = false;
         setIsFocused(false);
         break;
+      case 'a':
+        if (e.ctrlKey || e.metaKey) {
+          // Select all
+          e.preventDefault();
+          setSelectionStart(0);
+          setSelectionEnd(value.length);
+          setCursorPosition(value.length);
+        }
+        break;
       default:
         if (e.key.length === 1) {
-          if (maxLength && value.length >= maxLength) return;
+          if (maxLength && value.length >= maxLength && !hasSelection) return;
           
           if (type === 'number') {
             if (!/^[0-9.]$/.test(e.key)) return;
@@ -297,6 +376,8 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
               const newValue = '0.';
               onChange(newValue);
               setCursorPosition(2);
+              setSelectionStart(null);
+              setSelectionEnd(null);
               return;
             }
           }
@@ -304,19 +385,42 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
           // Check if adding this character would make the font size too small
           if (inputRef.current) {
             const containerWidth = inputRef.current.getBoundingClientRect().width;
-            const testValue = value.slice(0, cursorPosition) + e.key + value.slice(cursorPosition);
+            let testValue;
+            if (hasSelection) {
+              const start = Math.min(selectionStart!, selectionEnd!);
+              const end = Math.max(selectionStart!, selectionEnd!);
+              testValue = value.slice(0, start) + e.key + value.slice(end);
+            } else {
+              testValue = value.slice(0, cursorPosition) + e.key + value.slice(cursorPosition);
+            }
             if (!canAddMoreCharacters(testValue, containerWidth)) {
               return; // Don't add the character if it would make font size too small
             }
           }
           
-          const newValue = value.slice(0, cursorPosition) + e.key + value.slice(cursorPosition);
+          let newValue: string;
+          let newCursorPosition: number;
+          
+          if (hasSelection) {
+            // Replace selected text
+            const start = Math.min(selectionStart!, selectionEnd!);
+            const end = Math.max(selectionStart!, selectionEnd!);
+            newValue = value.slice(0, start) + e.key + value.slice(end);
+            newCursorPosition = start + 1;
+          } else {
+            // Insert at cursor position
+            newValue = value.slice(0, cursorPosition) + e.key + value.slice(cursorPosition);
+            newCursorPosition = cursorPosition + 1;
+          }
+          
           onChange(newValue);
-          setCursorPosition(cursorPosition + 1);
+          setCursorPosition(newCursorPosition);
+          setSelectionStart(null);
+          setSelectionEnd(null);
         }
         break;
     }
-  }, [isFocused, cursorPosition, value, onChange, maxLength, type, canAddMoreCharacters]);
+  }, [isFocused, cursorPosition, value, onChange, maxLength, type, canAddMoreCharacters, selectionStart, selectionEnd]);
 
   // Listen for synthetic keyboard events from CustomKeyboard
   useEffect(() => {
@@ -360,9 +464,50 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
   // Update cursor position when value changes
   useEffect(() => {
     if (cursorPosition > value.length) {
+      console.log('🎯 CustomInput: Cursor position adjusted due to value change', {
+        oldCursorPosition: cursorPosition,
+        newCursorPosition: value.length,
+        value,
+        valueLength: value.length
+      });
       setCursorPosition(value.length);
     }
   }, [value, cursorPosition]);
+
+  // Log cursor position changes
+  useEffect(() => {
+    console.log('🎯 CustomInput: Cursor position changed', {
+      cursorPosition,
+      value,
+      valueLength: value.length,
+      isFocused
+    });
+  }, [cursorPosition, value, isFocused]);
+
+  // Handle cursor blinking
+  useEffect(() => {
+    if (isFocused) {
+      setShowCursor(true);
+      
+      // Start blinking
+      cursorBlinkIntervalRef.current = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 530); // Slightly slower than typical 500ms for better visibility
+    } else {
+      setShowCursor(false);
+      if (cursorBlinkIntervalRef.current) {
+        clearInterval(cursorBlinkIntervalRef.current);
+        cursorBlinkIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (cursorBlinkIntervalRef.current) {
+        clearInterval(cursorBlinkIntervalRef.current);
+        cursorBlinkIntervalRef.current = null;
+      }
+    };
+  }, [isFocused]);
 
   // Update font size when value changes
   useEffect(() => {
@@ -420,28 +565,60 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
     setCursorLeftPosition(finalPosition);
   }, [cursorPosition, value, currentFontSize]);
 
-  // Handle click to focus
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFocusWithProtection(e.target as Element);
-    setCursorPosition(value.length);
-  };
 
   // Handle click to position cursor
   const handleTextClick = (e: React.MouseEvent) => {
+    console.log('🎯 CustomInput: handleTextClick triggered', {
+      target: e.target,
+      targetTagName: (e.target as Element)?.tagName,
+      targetTextContent: (e.target as Element)?.textContent,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      isFocused,
+      currentValue: value,
+      currentCursorPosition: cursorPosition
+    });
+
     e.preventDefault();
+    e.stopPropagation(); // Prevent outer div onClick from running
     
-    if (!inputRef.current) return;
+    if (!inputRef.current) {
+      console.log('🎯 CustomInput: handleTextClick - inputRef.current is null');
+      return;
+    }
     
     const rect = inputRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     
+    console.log('🎯 CustomInput: handleTextClick cursor calculation', {
+      inputRect: {
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        top: rect.top,
+        bottom: rect.bottom,
+        height: rect.height
+      },
+      clickX,
+      clientX: e.clientX,
+      relativeClickX: clickX,
+      valueLength: value.length,
+      currentValue: value
+    });
+    
     const bestPosition = calculateCursorPosition(clickX);
+    
+    console.log('🎯 CustomInput: handleTextClick cursor position calculated', {
+      bestPosition,
+      previousCursorPosition: cursorPosition,
+      value: value,
+      willSetCursorTo: bestPosition
+    });
     
     setCursorPosition(bestPosition);
     
     if (!isFocused) {
+      console.log('🎯 CustomInput: Setting focus from handleTextClick');
       setFocusWithProtection(e.target as Element);
     }
   };
@@ -470,19 +647,57 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
 
   // Calculate cursor position based on X coordinate
   const calculateCursorPosition = useCallback((clickX: number): number => {
-    if (!inputRef.current) return 0;
+    console.log('🎯 CustomInput: calculateCursorPosition called', {
+      clickX,
+      value,
+      valueLength: value.length,
+      currentFontSize,
+      inputRefExists: !!inputRef.current
+    });
+
+    if (!inputRef.current) {
+      console.log('🎯 CustomInput: calculateCursorPosition - inputRef.current is null, returning 0');
+      return 0;
+    }
     
     const rect = inputRef.current.getBoundingClientRect();
     const textElement = inputRef.current.querySelector('span');
     
+    console.log('🎯 CustomInput: calculateCursorPosition - element details', {
+      rect: {
+        width: rect.width,
+        left: rect.left,
+        right: rect.right
+      },
+      textElementExists: !!textElement,
+      textElementTagName: textElement?.tagName,
+      textElementTextContent: textElement?.textContent
+    });
+    
     if (!textElement) {
       const charWidth = rect.width / Math.max(value.length || 1, 1);
       const approximatePosition = Math.round(clickX / charWidth);
-      return Math.max(0, Math.min(value.length, approximatePosition));
+      const result = Math.max(0, Math.min(value.length, approximatePosition));
+      
+      console.log('🎯 CustomInput: calculateCursorPosition - fallback calculation', {
+        charWidth,
+        approximatePosition,
+        result,
+        clickX,
+        rectWidth: rect.width,
+        valueLength: value.length
+      });
+      
+      return result;
     }
     
     let bestPosition = 0;
     let minDistance = Infinity;
+    
+    console.log('🎯 CustomInput: calculateCursorPosition - starting precise calculation', {
+      valueLength: value.length,
+      currentFontSize
+    });
     
     for (let i = 0; i <= value.length; i++) {
       const testText = value.slice(0, i);
@@ -508,7 +723,25 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
         minDistance = distance;
         bestPosition = i;
       }
+      
+      if (i <= 3 || i >= value.length - 1) { // Log first few and last few iterations
+        console.log('🎯 CustomInput: calculateCursorPosition - iteration', {
+          i,
+          testText,
+          textWidth,
+          distance,
+          minDistance,
+          bestPosition
+        });
+      }
     }
+    
+    console.log('🎯 CustomInput: calculateCursorPosition - final result', {
+      bestPosition,
+      minDistance,
+      clickX,
+      value
+    });
     
     return bestPosition;
   }, [value, currentFontSize]);
@@ -678,18 +911,79 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
           position: 'relative'
         }}
         onMouseDown={(e) => {
+          console.log('🎯 CustomInput: onMouseDown triggered', {
+            target: e.target,
+            targetTagName: (e.target as Element)?.tagName,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            isFocused,
+            currentValue: value
+          });
+          
           if (e.target === inputRef.current) {
             e.preventDefault();
           }
+          
+          // Calculate cursor position based on click location
+          if (inputRef.current) {
+            const inputRect = inputRef.current.getBoundingClientRect();
+            const clickX = e.clientX - inputRect.left;
+            
+            console.log('🎯 CustomInput: onMouseDown cursor calculation', {
+              inputRect: {
+                left: inputRect.left,
+                right: inputRect.right,
+                width: inputRect.width,
+                top: inputRect.top,
+                bottom: inputRect.bottom,
+                height: inputRect.height
+              },
+              clickX,
+              clientX: e.clientX,
+              relativeClickX: clickX,
+              valueLength: value.length,
+              currentValue: value
+            });
+            
+            const bestPosition = calculateCursorPosition(clickX);
+            
+            console.log('🎯 CustomInput: onMouseDown cursor position calculated', {
+              bestPosition,
+              previousCursorPosition: cursorPosition,
+              value: value,
+              willSetCursorTo: bestPosition
+            });
+            
+            setCursorPosition(bestPosition);
+            // Clear selection on click
+            setSelectionStart(null);
+            setSelectionEnd(null);
+          }
+          
           if (!isFocused) {
             setFocusWithProtection(e.target as Element);
           }
         }}
         onClick={(e) => {
+          console.log('🎯 CustomInput: Outer div onClick triggered', {
+            target: e.target,
+            targetTagName: (e.target as Element)?.tagName,
+            targetTextContent: (e.target as Element)?.textContent,
+            isInputRef: e.target === inputRef.current,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            isFocused,
+            currentValue: value,
+            currentCursorPosition: cursorPosition
+          });
+
           if (e.target === inputRef.current) {
             e.preventDefault();
           }
+          
+          // Only handle focus setting here - cursor positioning is handled by handleTextClick
           if (!isFocused) {
+            console.log('🎯 CustomInput: Setting focus from outer div click');
             setFocusWithProtection(e.target as Element);
           }
         }}
@@ -706,7 +1000,6 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
         }}
       >
         <div 
-          onClick={handleTextClick} 
           style={{ 
             position: 'relative',
             display: 'flex',
@@ -717,8 +1010,43 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
             lineHeight: '1'
           }}
         >
-          <span style={{ fontSize: `${currentFontSize}px`, lineHeight: '1' }}>{value}</span>
-          {isFocused && (
+          {/* Text with selection highlighting */}
+          <span 
+            onClick={handleTextClick}
+            style={{ fontSize: `${currentFontSize}px`, lineHeight: '1', position: 'relative' }}
+          >
+            {(() => {
+              const hasSelection = selectionStart !== null && selectionEnd !== null && selectionStart !== selectionEnd;
+              if (!hasSelection) {
+                return value;
+              }
+              
+              const start = Math.min(selectionStart!, selectionEnd!);
+              const end = Math.max(selectionStart!, selectionEnd!);
+              const beforeSelection = value.slice(0, start);
+              const selectedText = value.slice(start, end);
+              const afterSelection = value.slice(end);
+              
+              return (
+                <>
+                  {beforeSelection}
+                  <span
+                    style={{
+                      backgroundColor: '#007AFF',
+                      color: 'white',
+                      borderRadius: '2px'
+                    }}
+                  >
+                    {selectedText}
+                  </span>
+                  {afterSelection}
+                </>
+              );
+            })()}
+          </span>
+          
+          {/* Visual cursor */}
+          {isFocused && showCursor && (
             <span
               ref={cursorRef}
               style={{
@@ -726,9 +1054,9 @@ const CustomInput = memo(forwardRef<CustomInputRef, CustomInputProps>(function C
                 left: `${cursorLeftPosition - 1}px`,
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: '1px',
+                width: '0.5px',
                 height: `${currentFontSize}px`,
-                backgroundColor: '#1ABCFF',
+                backgroundColor: '#007AFF',
                 animation: 'blink 1s infinite',
                 pointerEvents: 'none',
                 zIndex: 1000

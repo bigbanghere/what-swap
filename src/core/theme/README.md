@@ -73,7 +73,7 @@ function Header() {
 ## Color Palette
 
 ### Primary Colors
-- `primary`: Main brand color (#1ABCFF)
+- `primary`: Main brand color (#007AFF)
 - `primaryHover`: Hover state
 - `primaryActive`: Active/pressed state
 
@@ -141,7 +141,7 @@ All theme colors are automatically available as CSS custom properties:
 
 ```css
 :root {
-  --whatever-primary: #1ABCFF;
+  --whatever-primary: #007AFF;
   --whatever-background: #FFFFFF;
   --whatever-text: #212529;
   /* ... all other colors */
@@ -169,7 +169,7 @@ import { percentToHexAlpha, hexToRgba } from '@/core/theme/utils';
 const alpha = percentToHexAlpha(50); // "80"
 
 // Convert hex to RGBA
-const rgba = hexToRgba('#1ABCFF', 0.5); // "rgba(26, 188, 255, 0.5)"
+const rgba = hexToRgba('#007AFF', 0.5); // "rgba(0, 122, 255, 0.5)"
 ```
 
 ### CSS Variable Helpers

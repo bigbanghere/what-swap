@@ -379,13 +379,13 @@ export default function TokensPageFast() {
           <div 
             className="relative flex items-center rounded-[15px] border gap-[5px] p-[15px]"
             style={{ 
-              borderColor: '#1ABCFF',
+              borderColor: '#007AFF',
               height: '50px',
             }}
           >
             <IoSearchSharp 
               style={{ 
-                color: '#1ABCFF',
+                color: '#007AFF',
                 width: 20,
                 height: 20,
               }}
@@ -395,7 +395,7 @@ export default function TokensPageFast() {
               placeholder={`Search from ${TOTAL_TOKENS.toLocaleString()} tokens`}
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 placeholder-[#1ABCFF]"
+              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 placeholder-[#007AFF]"
               style={{ color: colors.text }}
             />
           </div>

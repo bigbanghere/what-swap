@@ -335,11 +335,11 @@ export default function TokensPage() {
         <div className="p-[15px] flex-shrink-0">
         <div 
           className="relative flex items-center rounded-[15px] p-[15px]"
-          style={{ border: '1px solid #1ABCFF' }}
+          style={{ border: '1px solid #007AFF' }}
         >
           <IoSearchOutline 
             className="absolute left-4 w-5 h-5"
-            style={{ color: '#1ABCFF' }}
+            style={{ color: '#007AFF' }}
           />
           <input
             type="text"

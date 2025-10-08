@@ -56,13 +56,13 @@ export function CustomTonConnectButton() {
       return (
         <div 
           data-custom-keyboard
-          className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px] cursor-pointer"
+          className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[] cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             tonConnectUI.openModal();
           }}
           style={{
-            backgroundColor: "#1ABCFF",
+            backgroundColor: "#007AFF",
             color: "#FFFFFF",
             zIndex: 1001,
             position: 'relative'
@@ -78,7 +78,7 @@ export function CustomTonConnectButton() {
         data-custom-keyboard
         className="flex flex-row items-center gap-[5px] cursor-pointer"
         style={{
-          color: "#1ABCFF",
+          color: "#007AFF",
           zIndex: 1001,
           position: 'relative'
         }}
@@ -120,7 +120,7 @@ export function CustomTonConnectButton() {
           data-custom-keyboard
           className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
           style={{
-            backgroundColor: "#1ABCFF",
+            backgroundColor: "#007AFF",
             color: "#FFFFFF",
             zIndex: 1001,
             position: 'relative'

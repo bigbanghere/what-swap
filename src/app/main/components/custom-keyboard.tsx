@@ -234,8 +234,8 @@ export function CustomKeyboard() {
   return (
     <div className='flex flex-1 justify-center'
       style={{ 
-        backgroundColor: 'rgba(26, 188, 255, 0.22)',
-        borderTop: `1px solid #1ABCFF`,
+        backgroundColor: 'rgba(0, 122, 255, 0.22)',
+        borderTop: `1px solid #007AFF`,
       }}
     >
       <div 
@@ -313,8 +313,8 @@ export function CustomKeyboard() {
                 className='flex items-center justify-center text-[22px] rounded-[15px] border z-10 focus:outline-none active:bg-transparent hover:bg-transparent relative'
                 style={{
                   backgroundColor: colors.background,
-                  borderColor: "#1ABCFF",
-                  color: "#1ABCFF",
+                  borderColor: "#007AFF",
+                  color: "#007AFF",
                   outline: 'none',
                   boxShadow: 'none',
                 }}
@@ -327,7 +327,7 @@ export function CustomKeyboard() {
                     style={{
                       backgroundColor: isInputNotAllowed 
                         ? 'rgba(255, 17, 17, 0.22)' // Red (#FF1111) with 11% opacity when input not allowed
-                        : 'rgba(26, 188, 255, 0.11)', // Blue (#1ABCFF) with 11% opacity when input allowed
+                        : 'rgba(0, 122, 255, 0.11)', // Blue (#007AFF) with 11% opacity when input allowed
                       transition: 'opacity 0.011s ease-in-out'
                     }}
                   />
