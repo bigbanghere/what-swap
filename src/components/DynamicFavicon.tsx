@@ -11,7 +11,7 @@ export function DynamicFavicon() {
       isDark,
       theme,
       timestamp: new Date().toISOString(),
-      willUseFavicon: isDark ? 'favicon-dark.png' : 'favicon-light.png'
+      willUseFavicon: isDark ? 'ws-favicon-dark.png' : 'ws-favicon-light.png'
     });
 
     // Function to update favicon
@@ -73,9 +73,9 @@ export function DynamicFavicon() {
       console.log('🎨 DynamicFavicon: Timeout triggered, updating favicon');
       // Update favicon based on theme
       if (isDark) {
-        updateFavicon('/favicon-dark.png');
+        updateFavicon('/ws-favicon-dark.png');
       } else {
-        updateFavicon('/favicon-light.png');
+        updateFavicon('/ws-favicon-light.png');
       }
     }, 100);
 

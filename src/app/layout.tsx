@@ -17,7 +17,7 @@ import './_assets/globals.css';
 import './tailwind.css';
 
 export const metadata: Metadata = {
-  title: 'Big Bang – Whatever Swap',
+  title: 'What Swap – Big Bang',
   description: 'Our whole multiverse is in a hot, dense state.',
 };
 

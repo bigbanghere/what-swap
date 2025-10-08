@@ -25,10 +25,10 @@ export function Header() {
       {/* Logo */}
       <div className="flex items-center">
         <Image
-          src={isDark ? '/whatever_dark.svg' : '/whatever_light.svg'}
+          src={isDark ? '/what-swap-dark.svg' : '/what-swap-light.svg'}
           alt="Whatever"
-          width={73}
-          height={40}
+          width={81}
+          height={91}
           priority
         />
       </div>
