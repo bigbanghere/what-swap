@@ -35,10 +35,14 @@ export function Swap({ onErrorChange }: { onErrorChange?: (error: string | null)
                 <Image
                     src={isDark ? '/decor_dark.svg' : '/decor_light.svg'}
                     alt="Decorative pattern"
-                    width={1012}
-                    height={952}
+                    width={8096}
+                    height={7616}
                     className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
-                    style={{ minWidth: '1012px', minHeight: '952px' }}
+                    style={{ 
+                        minWidth: '8096px', 
+                        minHeight: '7616px',
+                        border: '1px solid rgba(0, 122, 255, 0.22)'
+                    }}
                 />
             </div>
             

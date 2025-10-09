@@ -1998,25 +1998,30 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             }}
         >
             {/* Title - only visible in expanded mode */}
-            <span 
-                className="text-[33px] mb-[20px] text-center"
-                style={{
-                    display: shouldBeCompact ? 'none' : 'block'
-                }}
-            >
-                {t('swap_tokens')}
-            </span>
             
             {/* Main form container */}
             <div 
                 style={{ 
-                    border: shouldBeCompact ? '' : '1px solid rgba(0, 122, 255, 1)', 
-                    borderRadius: '', // 15px
+                    border: shouldBeCompact ? '' : '1px solid rgba(0, 122, 255, 0.22)', 
+                    borderRadius: '15px', // 0px
                     backgroundColor: colors.background,
                 }}
                 className="w-full"
             >
-                <div className='z-20 w-full p-[15px] flex flex-col'>
+                <div className='z-20 w-full flex flex-col'>
+                    <div className='flex flex-row items-center justify-center pt-[15px] pb-[15px] text-[22px]'
+                        style={{
+                            display: shouldBeCompact ? 'none' : 'flex'
+                        }}
+                    >
+                        {t('crypto-exchange')}
+                    </div>
+                    <div className='h-[1px] w-full'
+                        style={{
+                            display: shouldBeCompact ? 'none' : 'block',
+                            backgroundColor: 'rgba(0, 122, 255, 0.22)'
+                        }}
+                    ></div>
                     <div className='flex flex-row gap-[15px] items-center justify-between'>
                         <div className='flex flex-row w-full items-center gap-[5px]'>
                             {shouldBeCompact && (
