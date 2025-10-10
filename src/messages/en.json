@@ -8,6 +8,7 @@
     "send": "Send",
     "max": "MAX",
     "swap": "Swap",
-    "crypto-exchange": "Crypto exchange"
+    "crypto-exchange": "Swap coins",
+    "on": "On"
   }
 }

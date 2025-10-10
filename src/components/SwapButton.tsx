@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 
 interface SwapButtonProps {
   error?: string | null;
@@ -9,6 +10,8 @@ interface SwapButtonProps {
   disabled?: boolean;
   className?: string;
   children?: React.ReactNode;
+  toAmount?: string;
+  toTokenSymbol?: string;
 }
 
 export function SwapButton({ 
@@ -17,21 +20,55 @@ export function SwapButton({
   onClick,
   disabled = false,
   className = "",
-  children
+  children,
+  toAmount,
+  toTokenSymbol = 'TON'
 }: SwapButtonProps) {
+  const walletAddress = useTonAddress();
+  const [tonConnectUI] = useTonConnectUI();
+  
+  const isWalletConnected = Boolean(walletAddress);
   const isDisabled = Boolean(disabled || (error && error.includes('No liquidity pools')));
+  
+  const handleClick = () => {
+    if (!isWalletConnected) {
+      // Open wallet connection modal
+      tonConnectUI.openModal();
+    } else if (onClick) {
+      // Execute swap functionality
+      onClick();
+    }
+  };
+  
+  const getButtonText = () => {
+    if (children) return children;
+    
+    if (!isWalletConnected) {
+      return 'Connect wallet';
+    }
+    
+    if (error && error.includes('No liquidity pools')) {
+      return 'No pools';
+    }
+    
+    if (toAmount && toAmount !== '') {
+      return `Get ${toAmount} ${toTokenSymbol}`;
+    }
+    
+    return 'Swap';
+  };
   
   return (
     <button
-      className={`w-full rounded-[] font-semibold transition-all duration-200 shadow-lg text-[18px] ${
-        !shouldBeCompact ? 'h-[60px]' : 'h-[40px]'
+      className={`rounded-[15px] font-semibold transition-all duration-200 shadow-lg text-[14px] ${
+        !shouldBeCompact ? 'h-[50px]' : 'h-[50px]'
       } ${className}`}
       style={{ 
         backgroundColor: '#007AFF',
         color: "#FFFFFF",
         opacity: isDisabled ? 0.66 : 1,
       }}
-      onClick={onClick}
+      onClick={handleClick}
       disabled={isDisabled}
       onMouseEnter={(e) => {
         if (!isDisabled) {
@@ -52,7 +89,7 @@ export function SwapButton({
         e.currentTarget.style.opacity = isDisabled ? '0.66' : '1';
       }}
     >
-      {children || (error && error.includes('No liquidity pools') ? 'No pools' : 'Swap')}
+      {getButtonText()}
     </button>
   );
 }

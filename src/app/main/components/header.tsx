@@ -24,8 +24,8 @@ export function Header() {
         isWalletConnected ? 'justify-between' : 'justify-center'
       }`}
       style={{ 
-        borderTop: `1px solid #007AFF`,
-        borderBottom: `1px solid #007AFF`
+        borderTop: ``, // 1px solid #007AFF
+        borderBottom: `1px solid rgba(0, 122, 255, 0.22)`
       }}
     >
       {/* Logo */}

@@ -14,6 +14,7 @@ export default function Home() {
   const { colors } = useTheme();
   const { shouldBeCompact, isInputFocused } = useKeyboardDetection();
   const [swapError, setSwapError] = useState<string | null>(null);
+  const [swapData, setSwapData] = useState<{ toAmount: string; toTokenSymbol: string }>({ toAmount: '', toTokenSymbol: 'TON' });
 
   return (
     <Page back={false}>
@@ -24,8 +25,8 @@ export default function Home() {
         style={{ backgroundColor: colors.background, color: colors.text }}
       >
         <Header />
-        <Swap onErrorChange={setSwapError} />
-        <Footer error={swapError} />
+        <Swap onErrorChange={setSwapError} onSwapDataChange={setSwapData} />
+        {isInputFocused ? null : <Footer error={swapError} toAmount={swapData.toAmount} toTokenSymbol={swapData.toTokenSymbol} />}
         {isInputFocused ? <CustomKeyboard /> : null}
         <BackgroundLoadingIndicator />
       </div>

@@ -17,7 +17,7 @@ interface UseSwapCalculationProps {
     toAmount: string;
     hasUserEnteredCustomValue: boolean;
     isUserTypingToAmount?: boolean;
-    userInputRef?: string | null;
+    userInputRef?: 'from' | 'to' | null;
     isRestoringDefaults?: boolean;
     isFromAmountFocused?: boolean;
     isToAmountFocused?: boolean;
@@ -135,15 +135,28 @@ export function useSwapCalculation({
     } | null>(null);
 
     // Update input source tracking when values change
-    const updateInputSourceTracking = useCallback(() => {
-        // Track user input when fields are focused
-        // Track user input source
-        inputSourceTracking.current.fromAmount = 'user';
-        inputSourceTracking.current.toAmount = 'user';
+    const updateInputSourceTracking = useCallback((field?: 'from' | 'to') => {
+        // Track user input for the specific field that changed
+        if (field === 'from') {
+            inputSourceTracking.current.fromAmount = 'user';
+        } else if (field === 'to') {
+            inputSourceTracking.current.toAmount = 'user';
+        } else {
+            // If no field specified, determine based on userInputRef
+            if (userInputRef === 'from') {
+                inputSourceTracking.current.fromAmount = 'user';
+            } else if (userInputRef === 'to') {
+                inputSourceTracking.current.toAmount = 'user';
+            }
+        }
+        
+        // Update timestamp for user action
+        inputSourceTracking.current.lastUserActionTimestamp = Date.now();
+        inputSourceTracking.current.lastUserAction = field || userInputRef;
         
         // Don't reset calculation results - preserve them
         // The executeCalculation function will set these to 'calculation' when needed
-    }, []);
+    }, [userInputRef]);
 
     // Detect what action was performed
     const detectAction = useCallback((): ActionType => {
@@ -266,7 +279,7 @@ export function useSwapCalculation({
             }
             console.log('🎯 fromAmount changed - treating as user input');
             // Update input source tracking to mark this as user input
-            updateInputSourceTracking();
+            updateInputSourceTracking('from');
             return 'USER_INPUT_FROM';
         } else if (toAmount !== previous.toAmount) {
             // Only toAmount changed - check if it's user input or calculation result
@@ -276,7 +289,7 @@ export function useSwapCalculation({
             }
             console.log('🎯 toAmount changed - treating as user input');
             // Update input source tracking to mark this as user input
-            updateInputSourceTracking();
+            updateInputSourceTracking('to');
             return 'USER_INPUT_TO';
         }
 

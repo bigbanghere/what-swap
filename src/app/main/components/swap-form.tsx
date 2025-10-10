@@ -18,7 +18,7 @@ import { useTokensCache } from '@/hooks/use-tokens-cache';
 import { useSwapCalculation } from '@/hooks/use-swap-calculation';
 import { SwapButton } from '@/components/SwapButton';
 
-export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | null) => void }) {
+export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: (error: string | null) => void; onSwapDataChange?: (data: { toAmount: string; toTokenSymbol: string }) => void }) {
     const router = useRouter();
     const walletAddress = useTonAddress();
     const { colors } = useTheme();
@@ -138,6 +138,16 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
             onErrorChange(calculationError);
         }
     }, [calculationError, onErrorChange]);
+
+    // Notify parent component of swap data changes
+    useEffect(() => {
+        if (onSwapDataChange) {
+            onSwapDataChange({
+                toAmount: toAmount,
+                toTokenSymbol: selectedToToken?.symbol || 'TON'
+            });
+        }
+    }, [toAmount, selectedToToken, onSwapDataChange]);
 
     // Function to get full token data with market stats
     const getFullTokenData = useCallback((token: any) => {
@@ -1674,7 +1684,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         isFromAmountCalculated.current = false; // Reset calculated flag when user types
         
         // Update input source tracking to mark this as user input
-        updateInputSourceTracking();
+        updateInputSourceTracking('from');
         
         // Clear the flag that prevents calculation override when user starts typing
         isFromAmountSetToZeroByGetFocus.current = false;
@@ -1936,7 +1946,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
         setToAmount(value);
         
         // Update input source tracking to mark this as user input
-        updateInputSourceTracking();
+        updateInputSourceTracking('to');
         
         // Clear the flag that prevents Send field updates when user starts typing in Get field
         isFromAmountSetToZeroByGetFocus.current = false;
@@ -1989,9 +1999,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
 
     return (
         <div 
-            className={`w-full relative z-10 flex flex-col items-center justify-center mx-auto 
-                ${shouldBeCompact ? '' : 'mb-[22px]'}
-            `}
+            className={`w-full relative z-10 flex flex-col items-center justify-center mx-auto`}
             style={{
                 maxWidth: '460px',
                 padding: shouldBeCompact ? '0' : '20px'
@@ -2016,13 +2024,13 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                     >
                         {t('crypto-exchange')}
                     </div>
-                    <div className='h-[1px] w-full'
+                    <div className='h-[1px]'
                         style={{
                             display: shouldBeCompact ? 'none' : 'block',
                             backgroundColor: 'rgba(0, 122, 255, 0.22)'
                         }}
                     ></div>
-                    <div className='flex flex-row gap-[15px] items-center justify-between'>
+                    <div className='pt-[15px] pr-[15px] pl-[15px] flex flex-row gap-[15px] items-center justify-between'>
                         <div className='flex flex-row w-full items-center gap-[5px]'>
                             {shouldBeCompact && (
                                 <div style={{ width: '25px', height: '20px', overflow: 'hidden', transition: 'width 0.2s ease' }}>
@@ -2156,7 +2164,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             }
                                         }
                                     }}
-                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#007AFF] cursor-pointer'
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[rgba(0,122,255,0.22)] cursor-pointer'
                                 >
                                     <Image
                                         src={token.image_url || ''}
@@ -2178,7 +2186,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             ))}
                         </div>
                     </div>
-                    <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
+                    <div data-custom-keyboard className='pr-[15px] pl-[15px] flex flex-row items-center gap-[5px] my-[5px]'>
                         <CustomInput
                             key="from-amount-input"
                             ref={fromAmountRef}
@@ -2206,7 +2214,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                     window.location.href = '/tokens-fast?type=from';
                 }
                             }}
-                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#007AFF] rounded-[15px] cursor-pointer select-none'
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[rgba(0,122,255,0.22)] rounded-[15px] cursor-pointer select-none'
                             style={{ 
                                 userSelect: 'none',
                                 WebkitUserSelect: 'none',
@@ -2263,12 +2271,12 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                 style={{
                                     width: '20px',
                                     height: '20px',
-                                    color: '#007AFF',
+                                    color: 'rgba(0, 122, 255, 0.44)',
                                 }}
                             />
                         </div>
                     </div>
-                    <div className='flex flex-row justify-between items-center gap-[15px]'>
+                    <div className='pr-[15px] pl-[15px] flex flex-row justify-between items-center gap-[15px]'>
                         <div className='w-full' style={{ opacity: 0.66 }}>
                             {fromTokenUSDValue}
                         </div>
@@ -2288,11 +2296,11 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             </span>
                         </div> : null}
                         <div className='flex flex-row w-full justify-end text-nowrap' style={{ opacity: 0.66 }}>
-                            On TON
+                            {t('on')} TON
                         </div>
                     </div>
-                    <div className='flex flex-row items-center gap-[5px] mt-[5px] mb-[5px]'>
-                        <div className='h-[1px] w-full bg-[#007AFF]'></div>
+                    <div className='pr-[15px] pl-[15px] flex flex-row items-center gap-[5px] mt-[5px] mb-[5px]'>
+                        <div className='h-[1px] w-full bg-[rgba(0,122,255,0.22)]'></div>
                         <div 
                             className='w-[30px] h-[30px] flex items-center justify-center cursor-pointer'
                             onClick={(e) => {
@@ -2835,9 +2843,9 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                 }}
                             />
                         </div>
-                        <div className='h-[1px] w-full bg-[#007AFF]'></div>
+                        <div className='h-[1px] w-full bg-[rgba(0,122,255,0.22)]'></div>
                     </div>
-                    <div className='flex flex-row items-center justify-between'>
+                    <div className='pr-[15px] pl-[15px] flex flex-row items-center justify-between'>
                         {t('get')}
                         <div className='w-full flex justify-end gap-[5px]'>
                             {getTop5TokensExcludingBoth().map((token, index) => (
@@ -2947,7 +2955,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                             }
                                         }
                                     }}
-                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[#007AFF] cursor-pointer'
+                                    className='p-[2.5px] rounded-[15px] border-[1px] border-[rgba(0,122,255,0.22)] cursor-pointer'
                                 >
                                     <Image
                                         src={token.image_url || ''}
@@ -2969,7 +2977,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             ))}
                         </div>
                     </div>
-                    <div data-custom-keyboard className='flex flex-row items-center gap-[5px] my-[5px]'>
+                    <div data-custom-keyboard className='pr-[15px] pl-[15px] flex flex-row items-center gap-[5px] my-[5px]'>
                         <CustomInput
                             key="to-amount-input"
                             ref={toAmountRef}
@@ -2997,7 +3005,7 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                     window.location.href = '/tokens-fast?type=to';
                                 }
                             }}
-                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[#007AFF] rounded-[15px] cursor-pointer select-none'
+                            className='flex flex-row items-center gap-[5px] p-[5px] border-[1px] border-[rgba(0,122,255,0.22)] rounded-[15px] cursor-pointer select-none'
                             style={{ 
                                 userSelect: 'none',
                                 WebkitUserSelect: 'none',
@@ -3054,12 +3062,12 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                                 style={{
                                     width: '20px',
                                     height: '20px',
-                                    color: '#007AFF',
+                                    color: 'rgba(0, 122, 255, 0.44)',
                                 }}
                             />
                         </div>
                     </div>
-                    <div className='flex flex-row justify-between items-center'>
+                    <div className='pr-[15px] pl-[15px] pb-[15px] flex flex-row justify-between items-center'>
                         <div className='w-full' style={{ opacity: 0.66 }}>
                             {isCalculating ? (
                                 <span style={{ }}>
@@ -3104,14 +3112,20 @@ export function SwapForm({ onErrorChange }: { onErrorChange?: (error: string | n
                             On TON
                         </div>
                     </div>
+                    <div className='h-[1px]'
+                        style={{
+                            backgroundColor: 'rgba(0, 122, 255, 0.22)'
+                        }}
+                    ></div>
+                    <SwapButton
+                        className='m-[15px]'
+                        shouldBeCompact={shouldBeCompact}
+                        error={calculationError}
+                        toAmount={toAmount}
+                        toTokenSymbol={selectedToToken?.symbol || 'TON'}
+                    />
                 </div>
             </div>
-            {/* <SwapButton
-                className=''
-                shouldBeCompact={shouldBeCompact}
-            >
-                Обменять
-            </SwapButton> */}
         </div>
     );
 }

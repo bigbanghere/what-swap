@@ -17,7 +17,7 @@ import './_assets/globals.css';
 import './tailwind.css';
 
 export const metadata: Metadata = {
-  title: 'WhatSwap – Crypto exchange',
+  title: 'What Swap – Best price',
   description: 'Crypto exchange with best rates.',
 };
 

@@ -6,7 +6,7 @@ import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 import { SwapButton } from '@/components/SwapButton';
 
-export function Footer({ error }: { error?: string | null }) {
+export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | null; toAmount?: string; toTokenSymbol?: string }) {
   const t = useTranslations('translations');
   const { colors } = useTheme();
   const { shouldBeCompact } = useKeyboardDetection();
@@ -14,25 +14,27 @@ export function Footer({ error }: { error?: string | null }) {
   return (
     <footer 
       className={`z-20 flex-shrink-0 transition-all duration-300 flex justify-center ${
-        !shouldBeCompact ? 'p-[20px] mb-[1px] border-b-[1px] border-[#007AFF]' : 'p-[15px]'
+        !shouldBeCompact ? 'pt-[15px] pb-[15px]' : 'p-[15px]'
       }`}
-      style={{ 
+      style={{
         backgroundColor: colors.background,
         color: colors.background,
-        borderTop: `1px solid #007AFF`,
+        borderTop: `1px solid rgba(0, 122, 255, 0.22)`,
       }}
     >
       <div 
-        className="w-full max-w-[420px]"
+        className="w-full max-w-[420px] flex flex-row items-center justify-center gap-[15px]"
         style={{
         }}
       >
-        <SwapButton
-          error={error}
-          shouldBeCompact={shouldBeCompact}
-        >
-          {error && error.includes('No liquidity pools') ? 'No pools' : t('swap')}
-        </SwapButton>
+        <img src="/Big_Bang.svg" alt="0" className="w-[66px] h-[30px]" />
+        <div className='w-[1px] h-[30px]'
+          style={{
+              backgroundColor: 'rgba(0, 122, 255, 0.11)'
+          }}
+        ></div>
+        <img src="/GitHub.svg" alt="1" className="w-[20px] h-[20px]" />
+        <img src="/Telegram.svg" alt="2" className="w-[20px] h-[20px]" />
       </div>
     </footer>
   );

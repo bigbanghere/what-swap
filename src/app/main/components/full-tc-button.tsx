@@ -62,7 +62,7 @@ export function CustomTonConnectButton() {
             tonConnectUI.openModal();
           }}
           style={{
-            backgroundColor: "#007AFF",
+            backgroundColor: "",
             color: "#FFFFFF",
             zIndex: 1001,
             position: 'relative'
@@ -120,17 +120,32 @@ export function CustomTonConnectButton() {
           data-custom-keyboard
           className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
           style={{
-            backgroundColor: "#007AFF",
-            color: "#FFFFFF",
+            border: `1px solid rgba(0, 122, 255, 0.22)`,
+            color: `1px solid rgba(0, 122, 255, 1)`,
             zIndex: 1001,
             position: 'relative'
           }}
         >
-          <IoWalletSharp className="" />
-          <span className="">
+          <IoWalletSharp 
+            className="" 
+            style={{
+              color: 'rgba(0, 122, 255, 0.44)',
+            }}
+          />
+          <span 
+            className=""
+            style={{
+              color: "rgba(0, 122, 255, 1)",
+            }}
+          >
             {walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : ''}
           </span>
-          <IoChevronDownSharp className={`!w-[16px] !h-[16px] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          <IoChevronDownSharp 
+            className={`!w-[16px] !h-[16px] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            style={{
+              color: 'rgba(0, 122, 255, 0.22)',
+            }}
+          />
         </div>
       </PopoverTrigger>
       <PopoverContent 
