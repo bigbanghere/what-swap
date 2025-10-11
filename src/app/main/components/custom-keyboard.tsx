@@ -235,7 +235,7 @@ export function CustomKeyboard() {
     <div className='flex flex-1 justify-center'
       style={{ 
         backgroundColor: 'rgba(0, 122, 255, 0.22)',
-        borderTop: `1px solid #007AFF`,
+        borderTop: `1px solid rgba(0, 122, 255, 0.22)`,
       }}
     >
       <div 
@@ -310,10 +310,10 @@ export function CustomKeyboard() {
                     stopContinuousDeletion();
                   }
                 }}
-                className='flex items-center justify-center text-[22px] rounded-[15px] border z-10 focus:outline-none active:bg-transparent hover:bg-transparent relative'
+                className='flex items-center justify-center text-[22px] rounded-[15px] border border-solid z-10 focus:outline-none active:bg-transparent hover:bg-transparent relative'
                 style={{
                   backgroundColor: colors.background,
-                  borderColor: "#007AFF",
+                  borderColor: 'rgba(0, 122, 255, 0.22)',
                   color: "#007AFF",
                   outline: 'none',
                   boxShadow: 'none',
@@ -325,6 +325,7 @@ export function CustomKeyboard() {
                   <div 
                     className="absolute inset-0 rounded-[15px] pointer-events-none"
                     style={{
+                      borderColor: 'rgba(0, 122, 255, 0.22)',
                       backgroundColor: isInputNotAllowed 
                         ? 'rgba(255, 17, 17, 0.22)' // Red (#FF1111) with 11% opacity when input not allowed
                         : 'rgba(0, 122, 255, 0.11)', // Blue (#007AFF) with 11% opacity when input allowed

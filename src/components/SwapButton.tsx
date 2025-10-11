@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
+import { useTranslations } from 'next-intl';
 
 interface SwapButtonProps {
   error?: string | null;
@@ -26,9 +27,11 @@ export function SwapButton({
 }: SwapButtonProps) {
   const walletAddress = useTonAddress();
   const [tonConnectUI] = useTonConnectUI();
+  const t = useTranslations('translations');
   
   const isWalletConnected = Boolean(walletAddress);
   const isDisabled = Boolean(disabled || (error && error.includes('No liquidity pools')));
+  const isEmptyAmount = !toAmount || toAmount === '' || parseFloat(toAmount) === 0;
   
   const handleClick = () => {
     if (!isWalletConnected) {
@@ -51,11 +54,11 @@ export function SwapButton({
       return 'No pools';
     }
     
-    if (toAmount && toAmount !== '') {
-      return `Get ${toAmount} ${toTokenSymbol}`;
+    if (toAmount && toAmount !== '' && parseFloat(toAmount) > 0) {
+      return `${t('get')} ${toAmount} ${toTokenSymbol}`;
     }
     
-    return 'Swap';
+    return 'Enter amount';
   };
   
   return (
@@ -66,27 +69,27 @@ export function SwapButton({
       style={{ 
         backgroundColor: '#007AFF',
         color: "#FFFFFF",
-        opacity: isDisabled ? 0.66 : 1,
+        opacity: isDisabled ? 0.66 : (!isWalletConnected ? 1 : (isEmptyAmount ? 0.44 : 1)),
       }}
       onClick={handleClick}
       disabled={isDisabled}
       onMouseEnter={(e) => {
-        if (!isDisabled) {
+        if (!isDisabled && !isEmptyAmount) {
           e.currentTarget.style.opacity = '0.8';
         }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.backgroundColor = '#007AFF';
-        e.currentTarget.style.opacity = isDisabled ? '0.66' : '1';
+        e.currentTarget.style.opacity = isDisabled ? '0.66' : (!isWalletConnected ? '1' : (isEmptyAmount ? '0.44' : '1'));
       }}
       onMouseDown={(e) => {
-        if (!isDisabled) {
+        if (!isDisabled && !isEmptyAmount) {
           e.currentTarget.style.opacity = '0.8';
         }
       }}
       onMouseUp={(e) => {
         e.currentTarget.style.backgroundColor = '#007AFF';
-        e.currentTarget.style.opacity = isDisabled ? '0.66' : '1';
+        e.currentTarget.style.opacity = isDisabled ? '0.66' : (!isWalletConnected ? '1' : (isEmptyAmount ? '0.44' : '1'));
       }}
     >
       {getButtonText()}

@@ -363,7 +363,7 @@ export default function TokensPageFast() {
   return (
     <Page back={true}>
       <div 
-        className="min-h-screen"
+        className="min-h-screen flex flex-col items-center"
         style={{ 
           backgroundColor: colors.background,
           // Allow natural touch behavior for viewport expansion
@@ -375,11 +375,11 @@ export default function TokensPageFast() {
         onTouchEnd={handleTouchEnd}
       >
         {/* Search Bar */}
-        <div className="px-[20px] pt-[20px] pb-[10px]">
+        <div className="px-[20px] pt-[20px] pb-[10px] w-full max-w-[460px]">
           <div 
             className="relative flex items-center rounded-[15px] border gap-[5px] p-[15px]"
             style={{ 
-              borderColor: '#007AFF',
+              borderColor: 'rgba(0, 122, 255, 0.22)',
               height: '50px',
             }}
           >
@@ -403,7 +403,7 @@ export default function TokensPageFast() {
 
         {/* Tokens List */}
         <div 
-          className="flex-1 overflow-y-auto"
+          className="flex-1 overflow-y-auto max-w-[460px]"
           style={{
             // Allow natural Telegram WebApp viewport expansion and scrolling
             touchAction: 'pan-y',

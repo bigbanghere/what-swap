@@ -27,14 +27,32 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
         style={{
         }}
       >
-        <img src="/Big_Bang.svg" alt="0" className="w-[66px] h-[30px]" />
+        <a 
+          href="https://t.me/bigbangbusiness" 
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          <img src="/Big_Bang.svg" alt="Big Bang Business" className="w-[66px] h-[30px]" />
+        </a>
         <div className='w-[1px] h-[30px]'
           style={{
               backgroundColor: 'rgba(0, 122, 255, 0.11)'
           }}
         ></div>
-        <img src="/GitHub.svg" alt="1" className="w-[20px] h-[20px]" />
-        <img src="/Telegram.svg" alt="2" className="w-[20px] h-[20px]" />
+        <a 
+          href="https://t.me/bigbangbusiness" 
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          <img src="/GitHub.svg" alt="1" className="w-[20px] h-[20px]" />
+        </a>
+        <a 
+          href="https://t.me/WhatSwapChat" 
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          <img src="/Telegram.svg" alt="2" className="w-[20px] h-[20px]" />
+        </a>
       </div>
     </footer>
   );
