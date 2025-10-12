@@ -2271,7 +2271,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 style={{
                                     width: '20px',
                                     height: '20px',
-                                    color: 'rgba(0, 122, 255, 0.44)',
+                                    color: 'rgba(0, 122, 255, 0.55)',
                                 }}
                             />
                         </div>
@@ -3062,7 +3062,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 style={{
                                     width: '20px',
                                     height: '20px',
-                                    color: 'rgba(0, 122, 255, 0.44)',
+                                    color: 'rgba(0, 122, 255, 0.55)',
                                 }}
                             />
                         </div>

@@ -20,7 +20,7 @@ export function Header() {
 
   return (
     <header 
-      className={`z-20 flex items-center transition-all duration-300 ${shouldBeCompact ? 'p-[20px]' : 'p-[15px]'} ${
+      className={`z-20 flex items-center justify-center transition-all duration-300 ${shouldBeCompact ? 'p-[20px]' : 'p-[15px]'} ${
         isWalletConnected ? 'justify-between' : 'justify-center'
       }`}
       style={{ 
@@ -28,19 +28,19 @@ export function Header() {
         borderBottom: `1px solid rgba(0, 122, 255, 0.22)`
       }}
     >
-      {/* Logo */}
-      <div className="flex items-center">
-        <Image
-          src={isDark ? '/what-swap-dark.svg' : '/what-swap-light.svg'}
-          alt="Whatever"
-          width={81}
-          height={91}
-          priority
-        />
-      </div>
-      
-      {/* TON Connect Button - only show when wallet is connected */}
-      {isWalletConnected && <CustomTonConnectButton />}
+        {/* Logo */}
+        <div className="flex items-center">
+          <Image
+            src={isDark ? '/what-swap-dark.svg' : '/what-swap-light.svg'}
+            alt="Whatever"
+            width={81}
+            height={91}
+            priority
+          />
+        </div>
+        
+        {/* TON Connect Button - only show when wallet is connected */}
+        {isWalletConnected && <CustomTonConnectButton />}
     </header>
   );
 }

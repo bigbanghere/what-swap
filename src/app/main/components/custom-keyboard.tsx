@@ -310,10 +310,12 @@ export function CustomKeyboard() {
                     stopContinuousDeletion();
                   }
                 }}
-                className='flex items-center justify-center text-[22px] rounded-[15px] border border-solid z-10 focus:outline-none active:bg-transparent hover:bg-transparent relative'
+                className='flex items-center justify-center text-[22px] rounded-[15px] z-10 focus:outline-none active:bg-transparent hover:bg-transparent relative'
                 style={{
                   backgroundColor: colors.background,
-                  borderColor: 'rgba(0, 122, 255, 0.22)',
+                  borderColor: 'rgba(0, 122, 255, 0.44)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
                   color: "#007AFF",
                   outline: 'none',
                   boxShadow: 'none',

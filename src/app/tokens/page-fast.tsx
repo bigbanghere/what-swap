@@ -8,6 +8,8 @@ import { useTokensCache } from '@/hooks/use-tokens-cache';
 import { IoSearchOutline } from 'react-icons/io5';
 import { TOTAL_TOKENS } from '@/constants/tokens';
 import { IoSearchSharp } from "react-icons/io5";
+import { useTonAddress } from "@tonconnect/ui-react";
+import { swapCoffeeApiClient, UserJetton } from '@/lib/swap-coffee-api';
 
 // Skeleton component for loading state
 const TokenSkeleton = ({ colors }: { colors: any }) => (
@@ -57,10 +59,48 @@ const TokenItem = React.memo(({
   }, [token.symbol]);
 
   const formatTokenBalance = () => {
+    // If token has a balance (from user's wallet), format it
+    if (token.balance && token.decimals !== undefined) {
+      const balance = parseFloat(token.balance);
+      const decimals = token.decimals;
+      const formattedBalance = balance / Math.pow(10, decimals);
+      
+      // Format with appropriate decimal places
+      if (formattedBalance >= 1000000) {
+        return `${(formattedBalance / 1000000).toFixed(1)}M`;
+      } else if (formattedBalance >= 1000) {
+        return `${(formattedBalance / 1000).toFixed(1)}K`;
+      } else if (formattedBalance >= 1) {
+        return formattedBalance.toFixed(2);
+      } else if (formattedBalance > 0) {
+        return formattedBalance.toFixed(6);
+      } else {
+        return "0";
+      }
+    }
     return "0";
   };
 
   const formatUSDValue = () => {
+    // If token has balance and price, calculate USD value
+    if (token.balance && token.decimals !== undefined && token.market_stats?.price_usd) {
+      const balance = parseFloat(token.balance);
+      const decimals = token.decimals;
+      const formattedBalance = balance / Math.pow(10, decimals);
+      const usdValue = formattedBalance * token.market_stats.price_usd;
+      
+      if (usdValue >= 1000000) {
+        return `$${(usdValue / 1000000).toFixed(1)}M`;
+      } else if (usdValue >= 1000) {
+        return `$${(usdValue / 1000).toFixed(1)}K`;
+      } else if (usdValue >= 1) {
+        return `$${usdValue.toFixed(2)}`;
+      } else if (usdValue > 0) {
+        return `$${usdValue.toFixed(4)}`;
+      } else {
+        return "$0";
+      }
+    }
     return "$0";
   };
 
@@ -180,15 +220,28 @@ const TokenItem = React.memo(({
 
 TokenItem.displayName = 'TokenItem';
 
+// Helper function to convert UserJetton to token format
+const convertUserJettonToToken = (userJetton: UserJetton) => ({
+  ...userJetton.jetton,
+  balance: userJetton.balance,
+  jetton_wallet: userJetton.jetton_wallet,
+});
+
 export default function TokensPageFast() {
   const router = useRouter();
   const { colors } = useTheme();
+  const walletAddress = useTonAddress();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [tokenType, setTokenType] = useState<'from' | 'to'>('from');
   const [isNearBottom, setIsNearBottom] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const isNavigatingRef = useRef(false);
+  
+  // User-owned tokens state
+  const [userTokens, setUserTokens] = useState<UserJetton[]>([]);
+  const [isLoadingUserTokens, setIsLoadingUserTokens] = useState(false);
+  const [userTokensError, setUserTokensError] = useState<string | null>(null);
 
   // Debounce search query
   useEffect(() => {
@@ -198,6 +251,36 @@ export default function TokensPageFast() {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Fetch user-owned tokens when wallet is connected
+  useEffect(() => {
+    const fetchUserTokens = async () => {
+      if (!walletAddress) {
+        setUserTokens([]);
+        setIsLoadingUserTokens(false);
+        setUserTokensError(null);
+        return;
+      }
+
+      setIsLoadingUserTokens(true);
+      setUserTokensError(null);
+
+      try {
+        console.log('🔍 Fetching user tokens for wallet:', walletAddress);
+        const tokens = await swapCoffeeApiClient.getUserJettons(walletAddress);
+        setUserTokens(tokens);
+        console.log('✅ User tokens loaded:', tokens.length);
+      } catch (error) {
+        console.error('❌ Error fetching user tokens:', error);
+        setUserTokensError(error instanceof Error ? error.message : 'Failed to load user tokens');
+        setUserTokens([]);
+      } finally {
+        setIsLoadingUserTokens(false);
+      }
+    };
+
+    fetchUserTokens();
+  }, [walletAddress]);
 
   // Get token type from URL query params
   useEffect(() => {
@@ -230,6 +313,16 @@ export default function TokensPageFast() {
 
   // Use the cached tokens
   const { allTokens: allTokens = [], data: filteredTokens = [], isLoading, error, isFetching, isCacheFresh, hasMore } = useTokensCache(debouncedSearch);
+  
+  // Filter out user-owned tokens from the main list
+  const userTokenAddresses = new Set(userTokens.map(ut => ut.jetton_address));
+  const filteredUserTokens = userTokens.filter(ut => 
+    ut.jetton.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    ut.jetton.symbol.toLowerCase().includes(debouncedSearch.toLowerCase())
+  );
+  const filteredOtherTokens = filteredTokens.filter(token => 
+    !userTokenAddresses.has(token.address)
+  );
   
   // Debug logging
   console.log('🔍 TokensPageFast: Cache state', {
@@ -377,8 +470,9 @@ export default function TokensPageFast() {
         {/* Search Bar */}
         <div className="px-[20px] pt-[20px] pb-[10px] w-full max-w-[460px]">
           <div 
-            className="relative flex items-center rounded-[15px] border gap-[5px] p-[15px]"
+            className="relative flex items-center rounded-[15px] border border-solid gap-[5px] p-[15px]"
             style={{ 
+              backgroundColor: colors.background,
               borderColor: 'rgba(0, 122, 255, 0.22)',
               height: '50px',
             }}
@@ -400,7 +494,74 @@ export default function TokensPageFast() {
             />
           </div>
         </div>
-
+        {/* My Tokens Section - only show when wallet is connected */}
+        {walletAddress && (
+          <>
+            <div className='w-full max-w-[420px] p-[5px]'>My tokens</div>
+            <div
+              className='h-[1px] w-full my-[10px] max-w-[420px] mx-auto'
+              style={{
+                backgroundColor: 'rgba(0, 122, 255, 0.22)',
+              }}
+            ></div>
+            
+            {/* My Tokens List */}
+            <div 
+              className="w-full max-w-[460px]"
+              style={{
+                touchAction: 'pan-y',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'auto'
+              }}
+            >
+              {isLoadingUserTokens ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <TokenSkeleton key={`user-${index}`} colors={colors} />
+                ))
+              ) : userTokensError ? (
+                <div 
+                  className="text-center py-4"
+                  style={{ color: colors.text }}
+                >
+                  <div className="text-sm text-red-500 mb-1">Failed to load your tokens</div>
+                  <div className="text-xs" style={{ color: colors.secondaryText }}>
+                    {userTokensError}
+                  </div>
+                </div>
+              ) : filteredUserTokens.length > 0 ? (
+                filteredUserTokens.map((userJetton: UserJetton, index: number) => {
+                  const token = convertUserJettonToToken(userJetton);
+                  return (
+                    <TokenItem
+                      key={`user-${token.address}`}
+                      token={token}
+                      colors={colors}
+                      onSelect={handleTokenSelect}
+                    />
+                  );
+                })
+              ) : (
+                <div 
+                  className="text-center py-4"
+                  style={{ color: colors.secondaryText || '#6b7280' }}
+                >
+                  <div className="text-sm">No tokens in your wallet</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        
+        {/* All Tokens Section */}
+        <div className='w-full max-w-[420px] p-[5px]'>
+          {walletAddress ? 'All tokens' : 'Tokens'}
+        </div>
+        <div
+          className='h-[1px] w-full my-[10px] max-w-[420px] mx-auto'
+          style={{
+            backgroundColor: 'rgba(0, 122, 255, 0.22)',
+          }}
+        ></div>
         {/* Tokens List */}
         <div 
           className="flex-1 overflow-y-auto max-w-[460px]"
@@ -428,32 +589,41 @@ export default function TokensPageFast() {
                 {error instanceof Error ? error.message : 'Unknown error'}
               </div>
             </div>
-          ) : filteredTokens.length === 0 ? (
-            // No results
-            <div 
-              className="text-center py-8"
-              style={{ color: colors.secondaryText || '#6b7280' }}
-            >
-              {debouncedSearch ? (
-                `No tokens found matching "${debouncedSearch}"`
-              ) : (
-                "No tokens found"
-              )}
-            </div>
           ) : (
-            // Token list - show tokens as they're loaded
+            // Token list - show all tokens section
             <>
-              {filteredTokens.map((token: any, index: number) => {
-                console.log(`🔄 Tokens page: Rendering token ${index}:`, token.symbol);
-                return (
-                  <TokenItem
-                    key={token.address}
-                    token={token}
-                    colors={colors}
-                    onSelect={handleTokenSelect}
-                  />
-                );
-              })}
+              {/* All Tokens Section */}
+              {filteredOtherTokens.length > 0 ? (
+                filteredOtherTokens.map((token: any, index: number) => {
+                  console.log(`🔄 Tokens page: Rendering token ${index}:`, token.symbol);
+                  return (
+                    <TokenItem
+                      key={token.address}
+                      token={token}
+                      colors={colors}
+                      onSelect={handleTokenSelect}
+                    />
+                  );
+                })
+              ) : !walletAddress && filteredTokens.length === 0 ? (
+                <div 
+                  className="text-center py-8"
+                  style={{ color: colors.secondaryText || '#6b7280' }}
+                >
+                  {debouncedSearch ? (
+                    `No tokens found matching "${debouncedSearch}"`
+                  ) : (
+                    "No tokens found"
+                  )}
+                </div>
+              ) : walletAddress && filteredOtherTokens.length === 0 && !debouncedSearch ? (
+                <div 
+                  className="text-center py-4"
+                  style={{ color: colors.secondaryText || '#6b7280' }}
+                >
+                  <div className="text-sm">All your tokens are shown above</div>
+                </div>
+              ) : null}
               
               {/* Show loading indicator at bottom when more tokens are being loaded */}
         {(isLoading && filteredTokens.length > 0) && (

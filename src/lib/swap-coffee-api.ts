@@ -46,6 +46,17 @@ export interface JettonsParams {
   size?: number;
 }
 
+export interface UserJetton {
+  balance: string;
+  jetton_address: string;
+  jetton_wallet: string;
+  jetton: Jetton;
+}
+
+export interface UserJettonsResponse {
+  items: UserJetton[];
+}
+
 class SwapCoffeeApiClient {
   private baseURL = 'https://tokens.swap.coffee/api/v3';
   private apiKey?: string;
@@ -149,6 +160,16 @@ class SwapCoffeeApiClient {
     console.log(`✅ API Response: Received jetton data for ${jetton.symbol} (${jetton.name})`);
     
     return jetton;
+  }
+
+  async getUserJettons(walletAddress: string): Promise<UserJetton[]> {
+    console.log(`🌐 API Request: Fetching jettons owned by wallet ${walletAddress}`);
+    
+    const response = await this.request<UserJettonsResponse>(`/accounts/${walletAddress}/jettons`);
+    
+    console.log(`✅ API Response: Received ${response.items.length} user-owned tokens`);
+    
+    return response.items;
   }
 }
 

@@ -32,7 +32,7 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
           target="_blank" 
           rel="noopener noreferrer"
         >
-          <img src="/Big_Bang.svg" alt="Big Bang Business" className="w-[66px] h-[30px]" />
+          <img src="/1.svg" alt="Big Bang Business" className="w-[66px] h-[30px]" />
         </a>
         <div className='w-[1px] h-[30px]'
           style={{
@@ -40,18 +40,18 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
           }}
         ></div>
         <a 
-          href="https://t.me/bigbangbusiness" 
+          href="https://github.com/bigbanghere" 
           target="_blank" 
           rel="noopener noreferrer"
         >
-          <img src="/GitHub.svg" alt="1" className="w-[20px] h-[20px]" />
+          <img src="/2.svg" alt="1" className="w-[20px] h-[20px]" />
         </a>
         <a 
-          href="https://t.me/WhatSwapChat" 
+          href="https://t.me/WhatSwapChat"
           target="_blank" 
           rel="noopener noreferrer"
         >
-          <img src="/Telegram.svg" alt="2" className="w-[20px] h-[20px]" />
+          <img src="/3.svg" alt="2" className="w-[20px] h-[20px]" />
         </a>
       </div>
     </footer>

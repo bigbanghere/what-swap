@@ -129,7 +129,7 @@ export function CustomTonConnectButton() {
           <IoWalletSharp 
             className="" 
             style={{
-              color: 'rgba(0, 122, 255, 0.44)',
+              color: 'rgba(0, 122, 255, 0.55)',
             }}
           />
           <span 
@@ -143,7 +143,7 @@ export function CustomTonConnectButton() {
           <IoChevronDownSharp 
             className={`!w-[16px] !h-[16px] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
             style={{
-              color: 'rgba(0, 122, 255, 0.22)',
+              color: 'rgba(0, 122, 255, 0.55)',
             }}
           />
         </div>
