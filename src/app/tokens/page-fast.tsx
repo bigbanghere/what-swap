@@ -456,19 +456,24 @@ export default function TokensPageFast() {
   return (
     <Page back={true}>
       <div 
-        className="min-h-screen flex flex-col items-center"
+        className="min-h-screen flex flex-col"
         style={{ 
           backgroundColor: colors.background,
           // Allow natural touch behavior for viewport expansion
           touchAction: 'pan-y',
-          overscrollBehavior: 'auto'
+          overscrollBehavior: 'auto',
+          // Ensure container doesn't exceed viewport width
+          width: '100%',
+          maxWidth: '100vw'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Search Bar */}
-        <div className="px-[20px] pt-[20px] pb-[10px] w-full max-w-[460px]">
+        {/* Content Wrapper - centers content while respecting viewport width */}
+        <div className="flex flex-col items-center w-full">
+          {/* Search Bar */}
+          <div className="px-[20px] pt-[20px] pb-[10px]" style={{ width: '100%', maxWidth: 'min(460px, 100vw)' }}>
           <div 
             className="relative flex items-center rounded-[15px] border border-solid gap-[5px] p-[15px]"
             style={{ 
@@ -497,21 +502,25 @@ export default function TokensPageFast() {
         {/* My Tokens Section - only show when wallet is connected */}
         {walletAddress && (
           <>
-            <div className='w-full max-w-[420px] p-[5px]'>My tokens</div>
+            <div className='px-[20px] py-[10px]' style={{ width: '100%', maxWidth: 'min(420px, 100vw)' }}>My tokens</div>
             <div
-              className='h-[1px] w-full my-[10px] max-w-[420px] mx-auto'
+              className='h-[1px] my-[10px] mx-auto'
               style={{
                 backgroundColor: 'rgba(0, 122, 255, 0.22)',
+                width: 'calc(100% - 40px)',
+                maxWidth: 'min(420px, calc(100vw - 40px))'
               }}
             ></div>
             
             {/* My Tokens List */}
             <div 
-              className="w-full max-w-[460px]"
               style={{
                 touchAction: 'pan-y',
                 WebkitOverflowScrolling: 'touch',
-                overscrollBehavior: 'auto'
+                overscrollBehavior: 'auto',
+                // Ensure container doesn't exceed viewport width
+                width: '100%',
+                maxWidth: 'min(460px, 100vw)'
               }}
             >
               {isLoadingUserTokens ? (
@@ -553,24 +562,29 @@ export default function TokensPageFast() {
         )}
         
         {/* All Tokens Section */}
-        <div className='w-full max-w-[420px] p-[5px]'>
+        <div className='px-[20px] py-[10px]' style={{ width: '100%', maxWidth: 'min(420px, 100vw)' }}>
           {walletAddress ? 'All tokens' : 'Tokens'}
         </div>
         <div
-          className='h-[1px] w-full my-[10px] max-w-[420px] mx-auto'
+          className='h-[1px] my-[10px] mx-auto'
           style={{
             backgroundColor: 'rgba(0, 122, 255, 0.22)',
+            width: 'calc(100% - 40px)',
+            maxWidth: 'min(420px, calc(100vw - 40px))'
           }}
         ></div>
         {/* Tokens List */}
         <div 
-          className="flex-1 overflow-y-auto max-w-[460px]"
+          className="flex-1 overflow-y-auto"
           style={{
             // Allow natural Telegram WebApp viewport expansion and scrolling
             touchAction: 'pan-y',
             WebkitOverflowScrolling: 'touch',
             // Don't contain overscroll to allow viewport expansion
-            overscrollBehavior: 'auto'
+            overscrollBehavior: 'auto',
+            // Ensure container doesn't exceed viewport width
+            width: '100%',
+            maxWidth: 'min(460px, 100vw)'
           }}
         >
           {isLoading && filteredTokens.length === 0 ? (
@@ -655,6 +669,7 @@ export default function TokensPageFast() {
         )}
             </>
           )}
+        </div>
         </div>
       </div>
     </Page>
