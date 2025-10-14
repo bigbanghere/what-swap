@@ -43,6 +43,12 @@ const fetchUserTokens = async (walletAddress: string, retryCount = 0): Promise<U
 };
 
 const loadUserTokens = async (walletAddress: string) => {
+  // Prevent multiple simultaneous loads for the same wallet
+  if (userTokensCacheState.isLoading && userTokensCacheState.walletAddress === walletAddress) {
+    console.log('🚀 UserTokensCache: Already loading tokens for this wallet, skipping duplicate load');
+    return;
+  }
+
   try {
     userTokensCacheState.isLoading = true;
     userTokensCacheState.error = null;
@@ -134,11 +140,18 @@ export const useUserTokensCache = (walletAddress: string | null) => {
       return () => clearTimeout(timeoutId);
     }
 
-    // Always load user tokens immediately when wallet is connected
-    // Don't check cache freshness - always load fresh when wallet connects
-    if (!userTokensCacheState.isLoading) {
+    // Only load user tokens if we haven't loaded them yet for this wallet
+    // Check if we already have tokens for this wallet address
+    const hasTokensForWallet = userTokensCacheState.tokens.length > 0 && 
+      userTokensCacheState.walletAddress === walletAddress;
+    
+    if (!userTokensCacheState.isLoading && !hasTokensForWallet) {
       console.log('🚀 UserTokensCache: Loading user tokens for wallet:', walletAddress);
       loadUserTokens(walletAddress);
+    } else if (hasTokensForWallet) {
+      console.log('🚀 UserTokensCache: Already have tokens for wallet, skipping load');
+    } else if (userTokensCacheState.isLoading) {
+      console.log('🚀 UserTokensCache: Already loading tokens, skipping duplicate call');
     }
   }, [walletAddress]);
 

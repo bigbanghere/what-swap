@@ -353,13 +353,23 @@ export default function TokensPageFast() {
       localStorage.setItem(storageKey, JSON.stringify(tokenWithTimestamp));
       console.log('💾 Stored token in localStorage with key:', storageKey);
       
+      // Preserve the other token to prevent it from being cleared
+      const otherTokenKey = tokenType === 'from' ? 'selectedToToken' : 'selectedFromToken';
+      const otherToken = localStorage.getItem(otherTokenKey);
+      if (otherToken) {
+        console.log('💾 Preserving other token:', otherTokenKey);
+        // Re-store the other token to ensure it's not lost
+        localStorage.setItem(otherTokenKey, otherToken);
+      }
+      
       // Set navigation flags BEFORE dispatching events
       sessionStorage.setItem('fromTokensPage', 'true');
       console.log('🎯 Tokens page: Set fromTokensPage flag to true');
       
-      // Clear the asset selection flag since user completed selection
-      sessionStorage.removeItem('inAssetSelection');
-      console.log('🎯 Tokens page: Asset selection completed, clearing flag');
+      // Keep the asset selection flag until the token is actually loaded in the swap form
+      // This prevents the default token logic from running prematurely
+      sessionStorage.setItem('inAssetSelection', 'true');
+      console.log('🎯 Tokens page: Asset selection in progress, keeping flag');
       
       // Dispatch custom event for immediate update
       const customEvent = new CustomEvent('tokenSelected', {

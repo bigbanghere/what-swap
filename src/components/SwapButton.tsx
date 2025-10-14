@@ -30,7 +30,7 @@ export function SwapButton({
   const t = useTranslations('translations');
   
   const isWalletConnected = Boolean(walletAddress);
-  const isDisabled = Boolean(disabled || (error && error.includes('No liquidity pools')));
+  const isDisabled = Boolean(disabled || (error && error.includes('No liquidity pools')) || (error && error.includes('Insufficient amount')));
   const isEmptyAmount = !toAmount || toAmount === '' || parseFloat(toAmount) === 0;
   
   const handleClick = () => {
@@ -47,18 +47,22 @@ export function SwapButton({
     if (children) return children;
     
     if (!isWalletConnected) {
-      return 'Connect wallet';
+      return t('connect_wallet');
     }
     
     if (error && error.includes('No liquidity pools')) {
-      return 'No pools';
+      return t('no_pools');
+    }
+    
+    if (error && error.includes('Insufficient amount')) {
+      return t('insufficient_balance');
     }
     
     if (toAmount && toAmount !== '' && parseFloat(toAmount) > 0) {
       return `${t('get')} ${toAmount} ${toTokenSymbol}`;
     }
     
-    return 'Enter amount';
+    return t('enter_amount');
   };
   
   return (

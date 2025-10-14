@@ -17,8 +17,8 @@ import './_assets/globals.css';
 import './tailwind.css';
 
 export const metadata: Metadata = {
-  title: 'What Swap – Best price',
-  description: 'Crypto exchange with best rates.',
+  title: 'What Swap – Best Rate',
+  description: 'Swap any tokens at best rate',
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {

@@ -9,6 +9,10 @@
     "max": "MAX",
     "swap": "Swap",
     "crypto-exchange": "Swap – Best Rates",
-    "on": "On"
+    "on": "On",
+    "connect_wallet": "Connect wallet",
+    "no_pools": "No pools",
+    "insufficient_balance": "Insufficient balance",
+    "enter_amount": "Enter amount"
   }
 }

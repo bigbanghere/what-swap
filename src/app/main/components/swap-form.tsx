@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDefaultTokens } from '@/hooks/use-default-tokens';
 import { useTokensCache } from '@/hooks/use-tokens-cache';
+import { useUserTokensCache } from '@/hooks/use-user-tokens-cache';
 import { useSwapCalculation } from '@/hooks/use-swap-calculation';
 import { SwapButton } from '@/components/SwapButton';
 
@@ -38,6 +39,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         // For decimal numbers, remove trailing zeros
         return parseFloat(amount).toString();
     };
+
     
     const [fromAmount, setFromAmount] = useState<string>('1');
     const [toAmount, setToAmount] = useState<string>(''); // Start empty, will be calculated
@@ -54,6 +56,83 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const { setCanAddMoreCharacters } = useValidation();
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
     const { allTokens } = useTokensCache();
+    const { userTokens } = useUserTokensCache(walletAddress);
+
+    // Helper function to get the balance for the selected token
+    const getTokenBalance = useCallback((token: any): string => {
+        if (!token || !userTokens || userTokens.length === 0) {
+            return '0';
+        }
+
+        // Find the user token that matches the selected token
+        const userToken = userTokens.find((ut: any) => 
+            ut.jetton_address === token.address || 
+            ut.jetton.address === token.address
+        );
+
+        if (!userToken || !userToken.balance || !userToken.jetton.decimals) {
+            return '0';
+        }
+
+        // Convert balance from raw units to human-readable format
+        const balance = parseFloat(userToken.balance);
+        const decimals = userToken.jetton.decimals;
+        const formattedBalance = balance / Math.pow(10, decimals);
+        
+        // Format with proper decimal handling
+        if (formattedBalance === 0) {
+            return '0';
+        }
+        
+        // If it's a whole number, return without decimal places
+        if (formattedBalance % 1 === 0) {
+            return formattedBalance.toString();
+        }
+        
+        // For decimal numbers, remove trailing zeros
+        return parseFloat(formattedBalance.toString()).toString();
+    }, [userTokens]);
+
+    // Helper function to check if input amount exceeds available balance
+    const checkInsufficientAmount = useCallback((): string | null => {
+        console.log('🔍 checkInsufficientAmount called:', {
+            selectedFromToken: selectedFromToken?.symbol,
+            userTokensLength: userTokens?.length,
+            fromAmount,
+            userTokens: userTokens?.map(ut => ({ symbol: ut.jetton?.symbol, balance: ut.balance }))
+        });
+
+        if (!selectedFromToken || !userTokens || userTokens.length === 0) {
+            console.log('🔍 checkInsufficientAmount: No token or user tokens available');
+            return null;
+        }
+
+        const inputAmount = parseFloat(fromAmount);
+        if (isNaN(inputAmount) || inputAmount <= 0) {
+            console.log('🔍 checkInsufficientAmount: Invalid input amount:', inputAmount);
+            return null;
+        }
+
+        const availableBalance = parseFloat(getTokenBalance(selectedFromToken));
+        console.log('🔍 checkInsufficientAmount: Balance check:', {
+            inputAmount,
+            availableBalance,
+            isInsufficient: inputAmount > availableBalance
+        });
+
+        if (isNaN(availableBalance)) {
+            console.log('🔍 checkInsufficientAmount: Invalid available balance');
+            return null;
+        }
+
+        if (inputAmount > availableBalance) {
+            console.log('🔍 checkInsufficientAmount: INSUFFICIENT AMOUNT detected!');
+            return 'Insufficient amount';
+        }
+
+        console.log('🔍 checkInsufficientAmount: Amount is sufficient');
+        return null;
+    }, [selectedFromToken, userTokens, fromAmount, getTokenBalance]);
 
     // Track user input vs programmatic updates
     const userInputRef = useRef<'from' | 'to' | null>(null);
@@ -132,12 +211,21 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     } = swapCalculationResult;
     
 
+    // Combine calculation error with insufficient amount error
+    const combinedError = useMemo(() => {
+        const insufficientAmountError = checkInsufficientAmount();
+        if (insufficientAmountError) {
+            return insufficientAmountError;
+        }
+        return calculationError;
+    }, [calculationError, checkInsufficientAmount]);
+
     // Notify parent component of error changes
     useEffect(() => {
         if (onErrorChange) {
-            onErrorChange(calculationError);
+            onErrorChange(combinedError);
         }
-    }, [calculationError, onErrorChange]);
+    }, [combinedError, onErrorChange]);
 
     // Notify parent component of swap data changes
     useEffect(() => {
@@ -437,6 +525,10 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                     if (parsedToken && parsedToken.symbol && parsedToken.address) {
                         setSelectedFromToken(parsedToken);
                         console.log('✅ SwapForm: Loaded selectedFromToken from localStorage (skipped processing):', parsedToken.symbol);
+                        
+                        // Clear the asset selection flag since token is now loaded
+                        sessionStorage.removeItem('inAssetSelection');
+                        console.log('✅ SwapForm: Token loaded, cleared inAssetSelection flag');
                     }
                 } else {
                     console.log('🔄 SwapForm: No from token in localStorage (skipped processing)');
@@ -511,6 +603,10 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                     if (parsedToken && parsedToken.symbol && parsedToken.address) {
                         setSelectedFromToken(parsedToken);
                         console.log('✅ SwapForm: Loaded selectedFromToken from localStorage:', parsedToken.symbol);
+                        
+                        // Clear the asset selection flag since token is now loaded
+                        sessionStorage.removeItem('inAssetSelection');
+                        console.log('✅ SwapForm: Token loaded, cleared inAssetSelection flag');
                     }
                 } else {
                     console.log('🔄 SwapForm: No from token in localStorage');
@@ -585,6 +681,10 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             const { selectedAt, ...tokenWithoutTimestamp } = parsedToken;
             setSelectedFromToken(tokenWithoutTimestamp);
             console.log('✅ SwapForm: Fallback loaded selectedFromToken:', parsedToken.symbol);
+            
+            // Clear the asset selection flag since token is now loaded
+            sessionStorage.removeItem('inAssetSelection');
+            console.log('✅ SwapForm: Token loaded, cleared inAssetSelection flag');
           }
         } catch (error) {
           console.error('❌ SwapForm: Error parsing from token in fallback:', error);
@@ -1071,14 +1171,24 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         const toTokenInStorage = localStorage.getItem('selectedToToken');
         
         // Only set defaults if there are no tokens in localStorage AND no valid tokens in state
-        const needsFromDefault = !fromTokenInStorage && (!selectedFromToken || !selectedFromToken.symbol || !selectedFromToken.address);
-        const needsToDefault = !toTokenInStorage && (!selectedToToken || !selectedToToken.symbol || !selectedToToken.address);
+        // Also check if we're not in the middle of loading a token from localStorage
+        const isFromTokenPage = sessionStorage.getItem('fromTokensPage') === 'true';
+        const isInAssetSelection = sessionStorage.getItem('inAssetSelection') === 'true';
+        
+        // Check loading state for each token independently
+        const isLoadingFromToken = isFromTokenPage || isInAssetSelection;
+        const isLoadingToToken = isFromTokenPage || isInAssetSelection;
+        
+        const needsFromDefault = !fromTokenInStorage && (!selectedFromToken || !selectedFromToken.symbol || !selectedFromToken.address) && !isLoadingFromToken;
+        const needsToDefault = !toTokenInStorage && (!selectedToToken || !selectedToToken.symbol || !selectedToToken.address) && !isLoadingToToken;
 
         console.log('🔄 SwapForm: Default token check:', {
             fromTokenInStorage: !!fromTokenInStorage,
             toTokenInStorage: !!toTokenInStorage,
             selectedFromToken: selectedFromToken?.symbol || 'null',
             selectedToToken: selectedToToken?.symbol || 'null',
+            isLoadingFromToken,
+            isLoadingToToken,
             needsFromDefault,
             needsToDefault
         });
@@ -1087,21 +1197,29 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         // Always set TON as from token and USDT as to token for consistency
         if (needsFromDefault && defaultTon && (!selectedFromToken || !selectedFromToken.symbol || !selectedFromToken.address)) {
             console.log('🔄 SwapForm: Setting default from token (TON) from API - no token in localStorage');
-            setSelectedFromToken({
+            const defaultFromToken = {
                 symbol: defaultTon.symbol,
                 name: defaultTon.name,
                 image_url: defaultTon.image_url,
                 address: defaultTon.address
-            });
+            };
+            setSelectedFromToken(defaultFromToken);
+            // Store default token in localStorage for persistence
+            localStorage.setItem('selectedFromToken', JSON.stringify(defaultFromToken));
+            console.log('💾 Stored default from token in localStorage');
         }
         if (needsToDefault && defaultUsdt && (!selectedToToken || !selectedToToken.symbol || !selectedToToken.address)) {
             console.log('🔄 SwapForm: Setting default to token (USDT) from API - no token in localStorage');
-            setSelectedToToken({
+            const defaultToToken = {
                 symbol: defaultUsdt.symbol,
                 name: defaultUsdt.name,
                 image_url: defaultUsdt.image_url,
                 address: defaultUsdt.address
-            });
+            };
+            setSelectedToToken(defaultToToken);
+            // Store default token in localStorage for persistence
+            localStorage.setItem('selectedToToken', JSON.stringify(defaultToToken));
+            console.log('💾 Stored default to token in localStorage');
         }
         
         // Additional safety check: if both tokens are the same, fix it
@@ -1251,15 +1369,17 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     console.log('🔄 SwapForm: localStorage selectedFromToken:', localStorage.getItem('selectedFromToken'));
     console.log('🔄 SwapForm: localStorage selectedToToken:', localStorage.getItem('selectedToToken'));
     
-    // Check if this is a page reload (not navigation from tokens page)
-    const isPageReload = performance.navigation?.type === 1 || 
-                        (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload' ||
-                        document.referrer === '' || 
-                        (window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload';
-    
     // Check if we're returning from tokens page (don't clear localStorage in this case)
     const fromTokensPage = sessionStorage.getItem('fromTokensPage') === 'true';
     const inAssetSelection = sessionStorage.getItem('inAssetSelection') === 'true';
+    
+    // Only consider it a page reload if we're NOT coming from token selection
+    const isPageReload = !fromTokensPage && !inAssetSelection && (
+      performance.navigation?.type === 1 || 
+      (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload' ||
+      document.referrer === '' || 
+      (window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'reload'
+    );
     
     console.log('🔄 SwapForm: Navigation state:', { isPageReload, fromTokensPage, inAssetSelection });
     console.log('🔄 SwapForm: All sessionStorage flags:', {
@@ -1348,6 +1468,10 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             const { selectedAt, ...tokenWithoutTimestamp } = parsedToken;
             setSelectedFromToken(tokenWithoutTimestamp);
             console.log('✅ SwapForm: Loaded selectedFromToken from localStorage:', parsedToken.symbol);
+            
+            // Clear the asset selection flag since token is now loaded
+            sessionStorage.removeItem('inAssetSelection');
+            console.log('✅ SwapForm: Token loaded, cleared inAssetSelection flag');
           }
         } catch (error) {
           console.error('❌ SwapForm: Error parsing from token from localStorage:', error);
@@ -2283,7 +2407,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         {walletAddress ? <div className='flex flex-row gap-[5px]'>
                             <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
                             <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
-                                1111.00 {defaultTokensLoading ? (
+                                {getTokenBalance(selectedFromToken || defaultTon)} {defaultTokensLoading ? (
                                     <span style={{ 
                                         display: 'inline-block',
                                         width: '38.23px',
@@ -2291,7 +2415,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                         backgroundColor: 'transparent'
                                     }} />
                                 ) : (
-                                    selectedFromToken?.symbol || defaultUsdt?.symbol
+                                    selectedFromToken?.symbol || defaultTon?.symbol
                                 )}
                             </span>
                         </div> : null}
@@ -3095,7 +3219,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                             }}>
                                 <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
                                 <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
-                                    576.00 {defaultTokensLoading ? (
+                                    {getTokenBalance(selectedToToken || defaultTon)} {defaultTokensLoading ? (
                                         <span style={{ 
                                             display: 'inline-block',
                                             width: '30.04px',
@@ -3120,7 +3244,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                     <SwapButton
                         className='m-[15px]'
                         shouldBeCompact={shouldBeCompact}
-                        error={calculationError}
+                        error={combinedError}
                         toAmount={toAmount}
                         toTokenSymbol={selectedToToken?.symbol || 'TON'}
                     />

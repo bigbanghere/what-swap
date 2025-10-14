@@ -8,7 +8,11 @@
     "send": "Отправить",
     "max": "МАКС",
     "swap": "Обменять",
-    "crypto-exchange": "Свап – Лучший Курс",
-    "on": "Сеть"
+    "crypto-exchange": "Свап — Лучший Курс",
+    "on": "Сеть",
+    "connect_wallet": "Подключить кошелек",
+    "no_pools": "Нет пулов",
+    "insufficient_balance": "Недостаточно токенов",
+    "enter_amount": "Введите сумму"
   }
 }
