@@ -18,6 +18,7 @@ import { useTokensCache } from '@/hooks/use-tokens-cache';
 import { useUserTokensCache } from '@/hooks/use-user-tokens-cache';
 import { useSwapCalculation } from '@/hooks/use-swap-calculation';
 import { SwapButton } from '@/components/SwapButton';
+import { useToast } from '@/hooks/use-toast';
 
 export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: (error: string | null) => void; onSwapDataChange?: (data: { toAmount: string; toTokenSymbol: string }) => void }) {
     const router = useRouter();
@@ -57,6 +58,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
     const { allTokens } = useTokensCache();
     const { userTokens } = useUserTokensCache(walletAddress);
+    const { toast } = useToast();
 
     // Helper function to get the balance for the selected token
     const getTokenBalance = useCallback((token: any): string => {
@@ -3238,6 +3240,28 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         error={combinedError}
                         toAmount={toAmount}
                         toTokenSymbol={selectedToToken?.symbol || 'TON'}
+                        fromToken={selectedFromToken}
+                        toToken={selectedToToken}
+                        fromAmount={fromAmount}
+                        onSwapResult={(result) => {
+                            console.log('🔄 Swap result received:', result);
+                            if (result.success) {
+                                // Handle successful swap
+                                console.log('✅ Swap completed successfully!');
+                                toast({
+                                    title: "Swap Successful!",
+                                    description: `Successfully swapped ${fromAmount} ${selectedFromToken?.symbol} to ${toAmount} ${selectedToToken?.symbol}`,
+                                });
+                            } else {
+                                // Handle swap error
+                                console.error('❌ Swap failed:', result.error);
+                                toast({
+                                    title: "Swap Failed",
+                                    description: result.error || "An error occurred during the swap",
+                                    variant: "destructive",
+                                });
+                            }
+                        }}
                     />
                 </div>
             </div>

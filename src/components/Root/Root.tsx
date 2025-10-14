@@ -16,6 +16,7 @@ import { useSafeLaunchParams } from '@/hooks/use-safe-launch-params';
 import { useTheme } from '@/core/theme';
 import { useTelegramReady } from '@/hooks/use-telegram-ready';
 import { useLocaleReady } from '@/hooks/use-locale-ready';
+import { ToastProvider, ToastViewport } from '@/components/toast';
 
 import './styles.css';
 import '@/core/theme/styles.css';
@@ -46,7 +47,10 @@ function RootInner({ children }: PropsWithChildren) {
           ['macos', 'ios'].includes(lp.tgWebAppPlatform) ? 'ios' : 'base'
         }
       >
-        {children}
+        <ToastProvider>
+          {children}
+          <ToastViewport />
+        </ToastProvider>
       </AppRoot>
     </TonConnectUIProvider>
   );

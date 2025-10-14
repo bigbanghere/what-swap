@@ -8,11 +8,15 @@ pnpm run dev
 
 ## To Do
 
++ No TON in assets
++ calculation bug (doge after multiple selection)
++ swap button rest and balances update after swap
++ ticker priority on search
 + max
-+ actual swap functionality
 
 ## To Test 
 
++ actual swap functionality
 + token selection
 + $ rates
 + user's tokens shortlist

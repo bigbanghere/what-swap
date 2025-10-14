@@ -13,6 +13,7 @@
     "connect_wallet": "Connect wallet",
     "no_pools": "No pools",
     "insufficient_balance": "Insufficient balance",
-    "enter_amount": "Enter amount"
+    "enter_amount": "Enter amount",
+    "swapping": "Swapping..."
   }
 }

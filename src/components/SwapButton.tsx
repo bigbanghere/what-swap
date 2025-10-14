@@ -3,6 +3,7 @@
 import React from 'react';
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { useTranslations } from 'next-intl';
+import { useSwapExecution } from '@/hooks/use-swap-execution';
 
 interface SwapButtonProps {
   error?: string | null;
@@ -13,6 +14,11 @@ interface SwapButtonProps {
   children?: React.ReactNode;
   toAmount?: string;
   toTokenSymbol?: string;
+  // Swap execution props
+  fromToken?: any;
+  toToken?: any;
+  fromAmount?: string;
+  onSwapResult?: (result: any) => void;
 }
 
 export function SwapButton({ 
@@ -23,28 +29,60 @@ export function SwapButton({
   className = "",
   children,
   toAmount,
-  toTokenSymbol = 'TON'
+  toTokenSymbol = 'TON',
+  fromToken,
+  toToken,
+  fromAmount,
+  onSwapResult
 }: SwapButtonProps) {
   const walletAddress = useTonAddress();
   const [tonConnectUI] = useTonConnectUI();
   const t = useTranslations('translations');
+  const { isExecuting, executeSwap } = useSwapExecution();
   
   const isWalletConnected = Boolean(walletAddress);
-  const isDisabled = Boolean(disabled || (error && error.includes('No liquidity pools')) || (error && error.includes('Insufficient amount')));
+  const isDisabled = Boolean(disabled || isExecuting || (error && error.includes('No liquidity pools')) || (error && error.includes('Insufficient amount')));
   const isEmptyAmount = !toAmount || toAmount === '' || parseFloat(toAmount) === 0;
   
-  const handleClick = () => {
+  const handleClick = async () => {
     if (!isWalletConnected) {
       // Open wallet connection modal
       tonConnectUI.openModal();
     } else if (onClick) {
-      // Execute swap functionality
+      // Execute custom onClick handler if provided
       onClick();
+    } else if (fromToken && toToken && fromAmount && toAmount) {
+      // Execute swap if all required parameters are provided
+      try {
+        console.log('🚀 Executing swap from SwapButton');
+        const result = await executeSwap({
+          fromToken,
+          toToken,
+          fromAmount,
+          toAmount
+        });
+        
+        console.log('✅ Swap result:', result);
+        
+        // Call the result callback if provided
+        if (onSwapResult) {
+          onSwapResult(result);
+        }
+      } catch (error) {
+        console.error('❌ Swap execution error:', error);
+        if (onSwapResult) {
+          onSwapResult({ success: false, error: 'Swap execution failed' });
+        }
+      }
     }
   };
   
   const getButtonText = () => {
     if (children) return children;
+    
+    if (isExecuting) {
+      return t('swapping') || 'Swapping...';
+    }
     
     if (!isWalletConnected) {
       return t('connect_wallet');

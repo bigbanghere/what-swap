@@ -13,6 +13,7 @@
     "connect_wallet": "Подключить кошелек",
     "no_pools": "Нет пулов",
     "insufficient_balance": "Недостаточно токенов",
-    "enter_amount": "Введите сумму"
+    "enter_amount": "Введите сумму",
+    "swapping": "Обменяем..."
   }
 }
