@@ -2128,7 +2128,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             className={`w-full relative z-10 flex flex-col items-center justify-center mx-auto`}
             style={{
                 maxWidth: '460px',
-                padding: shouldBeCompact ? '0' : '20px'
+                padding: shouldBeCompact ? '0' : '15px'
             }}
         >
             {/* Title - only visible in expanded mode */}

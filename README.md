@@ -8,7 +8,7 @@ pnpm run dev
 
 ## To Do
 
-+ No TON in assets
++ No TON in "My assets"
 + calculation bug (doge after multiple selection)
 + swap button rest and balances update after swap
 + ticker priority on search
