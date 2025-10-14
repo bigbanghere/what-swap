@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/core/theme';
 import { Page } from '@/components/Page';
 import { useTokensCache } from '@/hooks/use-tokens-cache';
+import { useUserTokensCache } from '@/hooks/use-user-tokens-cache';
 import { IoSearchOutline } from 'react-icons/io5';
 import { TOTAL_TOKENS } from '@/constants/tokens';
 import { IoSearchSharp } from "react-icons/io5";
@@ -13,12 +14,12 @@ import { swapCoffeeApiClient, UserJetton } from '@/lib/swap-coffee-api';
 
 // Skeleton component for loading state
 const TokenSkeleton = ({ colors }: { colors: any }) => (
-  <div className="flex items-center gap-3 py-3">
+  <div className="flex items-center gap-[5px] py-[10px] px-[20px]">
     <div 
-      className="w-8 h-8 rounded-full animate-pulse"
+      className="w-[30px] h-[30px] rounded-full animate-pulse flex-shrink-0"
       style={{ backgroundColor: colors.secondaryBackground || '#f3f4f6' }}
     />
-    <div className="flex-1">
+    <div className="flex-1 min-w-0">
       <div 
         className="h-4 w-16 mb-1 animate-pulse rounded"
         style={{ backgroundColor: colors.secondaryBackground || '#f3f4f6' }}
@@ -28,7 +29,7 @@ const TokenSkeleton = ({ colors }: { colors: any }) => (
         style={{ backgroundColor: colors.secondaryBackground || '#f3f4f6' }}
       />
     </div>
-    <div className="text-right">
+    <div className="text-right flex-shrink-0">
       <div 
         className="h-4 w-8 mb-1 animate-pulse rounded"
         style={{ backgroundColor: colors.secondaryBackground || '#f3f4f6' }}
@@ -238,10 +239,8 @@ export default function TokensPageFast() {
   const [isNavigating, setIsNavigating] = useState(false);
   const isNavigatingRef = useRef(false);
   
-  // User-owned tokens state
-  const [userTokens, setUserTokens] = useState<UserJetton[]>([]);
-  const [isLoadingUserTokens, setIsLoadingUserTokens] = useState(false);
-  const [userTokensError, setUserTokensError] = useState<string | null>(null);
+  // Use user tokens cache hook
+  const { userTokens, isLoading: isLoadingUserTokens, error: userTokensError } = useUserTokensCache(walletAddress);
 
   // Debounce search query
   useEffect(() => {
@@ -252,35 +251,6 @@ export default function TokensPageFast() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch user-owned tokens when wallet is connected
-  useEffect(() => {
-    const fetchUserTokens = async () => {
-      if (!walletAddress) {
-        setUserTokens([]);
-        setIsLoadingUserTokens(false);
-        setUserTokensError(null);
-        return;
-      }
-
-      setIsLoadingUserTokens(true);
-      setUserTokensError(null);
-
-      try {
-        console.log('🔍 Fetching user tokens for wallet:', walletAddress);
-        const tokens = await swapCoffeeApiClient.getUserJettons(walletAddress);
-        setUserTokens(tokens);
-        console.log('✅ User tokens loaded:', tokens.length);
-      } catch (error) {
-        console.error('❌ Error fetching user tokens:', error);
-        setUserTokensError(error instanceof Error ? error.message : 'Failed to load user tokens');
-        setUserTokens([]);
-      } finally {
-        setIsLoadingUserTokens(false);
-      }
-    };
-
-    fetchUserTokens();
-  }, [walletAddress]);
 
   // Get token type from URL query params
   useEffect(() => {
@@ -311,7 +281,7 @@ export default function TokensPageFast() {
     };
   }, []);
 
-  // Use the cached tokens
+  // Use the cached tokens - delay all tokens loading if user tokens are loading
   const { allTokens: allTokens = [], data: filteredTokens = [], isLoading, error, isFetching, isCacheFresh, hasMore } = useTokensCache(debouncedSearch);
   
   // Filter out user-owned tokens from the main list
@@ -502,7 +472,17 @@ export default function TokensPageFast() {
         {/* My Tokens Section - only show when wallet is connected */}
         {walletAddress && (
           <>
-            <div className='px-[20px] py-[10px]' style={{ width: '100%', maxWidth: 'min(420px, 100vw)' }}>My tokens</div>
+            <div 
+              className='py-[10px]' 
+              style={{ 
+                width: 'calc(100% - 40px)', 
+                maxWidth: 'min(420px, calc(100vw - 40px))', 
+                margin: '0 auto',
+                color: colors.text
+              }}
+            >
+              My tokens
+            </div>
             <div
               className='h-[1px] my-[10px] mx-auto'
               style={{
@@ -534,7 +514,7 @@ export default function TokensPageFast() {
                 >
                   <div className="text-sm text-red-500 mb-1">Failed to load your tokens</div>
                   <div className="text-xs" style={{ color: colors.secondaryText }}>
-                    {userTokensError}
+                    {userTokensError?.message || 'Unknown error'}
                   </div>
                 </div>
               ) : filteredUserTokens.length > 0 ? (
@@ -561,18 +541,30 @@ export default function TokensPageFast() {
           </>
         )}
         
-        {/* All Tokens Section */}
-        <div className='px-[20px] py-[10px]' style={{ width: '100%', maxWidth: 'min(420px, 100vw)' }}>
-          {walletAddress ? 'All tokens' : 'Tokens'}
-        </div>
-        <div
-          className='h-[1px] my-[10px] mx-auto'
-          style={{
-            backgroundColor: 'rgba(0, 122, 255, 0.22)',
-            width: 'calc(100% - 40px)',
-            maxWidth: 'min(420px, calc(100vw - 40px))'
-          }}
-        ></div>
+        {/* All Tokens Section - only show when wallet is connected */}
+        {walletAddress && (
+          <>
+            <div 
+              className='py-[10px]' 
+              style={{ 
+                width: 'calc(100% - 40px)', 
+                maxWidth: 'min(420px, calc(100vw - 40px))', 
+                margin: '0 auto',
+                color: colors.text
+              }}
+            >
+              All tokens
+            </div>
+            <div
+              className='h-[1px] my-[10px] mx-auto'
+              style={{
+                backgroundColor: 'rgba(0, 122, 255, 0.22)',
+                width: 'calc(100% - 40px)',
+                maxWidth: 'min(420px, calc(100vw - 40px))'
+              }}
+            ></div>
+          </>
+        )}
         {/* Tokens List */}
         <div 
           className="flex-1 overflow-y-auto"

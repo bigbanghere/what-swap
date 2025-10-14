@@ -135,10 +135,17 @@ const loadTokensPage = async (page: number, isInitial = false) => {
 };
 
 // Start background loading immediately
-const startBackgroundLoading = () => {
+const startBackgroundLoading = (delay = 0) => {
   if (cacheState.tokens.length === 0 && !cacheState.isLoading && !cacheState.isFetching && !cacheState.error) {
-    console.log('🚀 Cache: Starting background token loading...');
-    loadAllTokens();
+    if (delay > 0) {
+      console.log(`🚀 Cache: Starting background token loading with ${delay}ms delay...`);
+      setTimeout(() => {
+        loadAllTokens();
+      }, delay);
+    } else {
+      console.log('🚀 Cache: Starting background token loading...');
+      loadAllTokens();
+    }
   } else {
     console.log('🚀 Cache: Skipping background loading - already in progress or completed');
   }
@@ -238,8 +245,8 @@ const isCacheFresh = (): boolean => {
 
 // Initialize cache on module load
 if (typeof window !== 'undefined') {
-  // Start loading ALL tokens immediately when the module is imported
-  startBackgroundLoading();
+  // Don't start loading immediately - wait for user tokens to load first
+  // startBackgroundLoading(); // Commented out - will be triggered by user tokens completion
 }
 
 export const useTokensCache = (searchQuery: string = '') => {
@@ -254,8 +261,8 @@ export const useTokensCache = (searchQuery: string = '') => {
     cacheListeners.add(updateState);
     updateState(); // Initial update
 
-    // Start background loading if not already started
-    startBackgroundLoading();
+    // Don't start background loading here - wait for user tokens to complete
+    // startBackgroundLoading(); // Removed - will be triggered by user tokens completion
 
     return () => {
       cacheListeners.delete(updateState);
@@ -289,6 +296,12 @@ export const useTokensCache = (searchQuery: string = '') => {
   };
 };
 
+// Function to start all tokens loading (can be called from user tokens cache)
+export const startAllTokensLoading = () => {
+  console.log('🚀 AllTokensCache: Starting loading triggered by user tokens completion');
+  startBackgroundLoading();
+};
+
 // Export cache utilities
 export const tokensCache = {
   getTokens: () => cacheState.tokens,
@@ -302,4 +315,5 @@ export const tokensCache = {
     loadAllTokens();
   },
   startLoading: startBackgroundLoading,
+  startAllTokensLoading,
 };
