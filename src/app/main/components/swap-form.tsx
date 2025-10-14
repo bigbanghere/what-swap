@@ -3203,15 +3203,6 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         </div>
                         <div className='flex flex-row gap-[5px]'>
                             <div style={{ 
-                                display: (!walletAddress && shouldBeCompact) ? 'block' : 'none',
-                                transition: 'display 0.2s ease',
-                                zIndex: 1002,
-                                position: 'relative',
-                                pointerEvents: 'auto'
-                            }}>
-                                <CustomTonConnectButton />
-                            </div>
-                            <div style={{ 
                                 display: walletAddress ? 'flex' : 'none',
                                 alignItems: 'center',
                                 gap: '5px',
