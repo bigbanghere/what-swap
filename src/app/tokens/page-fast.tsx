@@ -6,11 +6,22 @@ import { useTheme } from '@/core/theme';
 import { Page } from '@/components/Page';
 import { useTokensCache } from '@/hooks/use-tokens-cache';
 import { useUserTokensCache } from '@/hooks/use-user-tokens-cache';
+import { useDefaultTokens } from '@/hooks/use-default-tokens';
 import { IoSearchOutline } from 'react-icons/io5';
 import { TOTAL_TOKENS } from '@/constants/tokens';
 import { IoSearchSharp } from "react-icons/io5";
 import { useTonAddress } from "@tonconnect/ui-react";
 import { swapCoffeeApiClient, UserJetton } from '@/lib/swap-coffee-api';
+
+// Hardcoded TON token data for fallback
+const HARDCODED_TON_TOKEN = {
+  address: '0:0000000000000000000000000000000000000000000000000000000000000000',
+  symbol: 'TON',
+  name: 'Toncoin',
+  image_url: 'https://cdn.swap.coffee/p/G3PJbgH0FNOqD7kGPZaK9ZqyVqJFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c/image.png',
+  decimals: 9,
+  verification: 'WHITELISTED' as const,
+};
 
 // Skeleton component for loading state
 const TokenSkeleton = ({ colors }: { colors: any }) => (
@@ -64,7 +75,14 @@ const TokenItem = React.memo(({
     if (token.balance && token.decimals !== undefined) {
       const balance = parseFloat(token.balance);
       const decimals = token.decimals;
-      const formattedBalance = balance / Math.pow(10, decimals);
+      
+      // Check if balance is already formatted (contains decimal point)
+      // This happens for TON balance which is already converted from nanoTON to TON
+      const isAlreadyFormatted = token.balance.includes('.');
+      
+      const formattedBalance = isAlreadyFormatted 
+        ? balance  // Use balance as-is if already formatted
+        : balance / Math.pow(10, decimals);  // Convert from raw units if not formatted
       
       // Format with appropriate decimal places
       if (formattedBalance >= 1000000) {
@@ -87,7 +105,15 @@ const TokenItem = React.memo(({
     if (token.balance && token.decimals !== undefined && token.market_stats?.price_usd) {
       const balance = parseFloat(token.balance);
       const decimals = token.decimals;
-      const formattedBalance = balance / Math.pow(10, decimals);
+      
+      // Check if balance is already formatted (contains decimal point)
+      // This happens for TON balance which is already converted from nanoTON to TON
+      const isAlreadyFormatted = token.balance.includes('.');
+      
+      const formattedBalance = isAlreadyFormatted 
+        ? balance  // Use balance as-is if already formatted
+        : balance / Math.pow(10, decimals);  // Convert from raw units if not formatted
+      
       const usdValue = formattedBalance * token.market_stats.price_usd;
       
       if (usdValue >= 1000000) {
@@ -240,7 +266,10 @@ export default function TokensPageFast() {
   const isNavigatingRef = useRef(false);
   
   // Use user tokens cache hook
-  const { userTokens, isLoading: isLoadingUserTokens, error: userTokensError } = useUserTokensCache(walletAddress);
+  const { userTokens, tonBalance, isLoading: isLoadingUserTokens, error: userTokensError } = useUserTokensCache(walletAddress);
+  
+  // Use default tokens hook to get TON token data
+  const { ton: defaultTonToken } = useDefaultTokens();
 
   // Debounce search query
   useEffect(() => {
@@ -286,13 +315,76 @@ export default function TokensPageFast() {
   
   // Filter out user-owned tokens from the main list
   const userTokenAddresses = new Set(userTokens.map(ut => ut.jetton_address));
-  const filteredUserTokens = userTokens.filter(ut => 
-    ut.jetton.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    ut.jetton.symbol.toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
-  const filteredOtherTokens = filteredTokens.filter(token => 
-    !userTokenAddresses.has(token.address)
-  );
+  
+  // Create TON token for My Tokens section if wallet is connected
+  // Use default TON token data for consistent display (icon, name, etc.)
+  // Fallback to hardcoded data if defaultTonToken is not loaded yet
+  const tonTokenData = defaultTonToken || HARDCODED_TON_TOKEN;
+  const tonToken = tonBalance ? {
+    address: tonTokenData.address,
+    symbol: tonTokenData.symbol,
+    name: tonTokenData.name,
+    image_url: tonTokenData.image_url,
+    balance: tonBalance.balanceFormatted,
+    decimals: tonTokenData.decimals,
+    verification: tonTokenData.verification,
+    ...(tonTokenData.market_stats && { market_stats: tonTokenData.market_stats }), // Include market stats for USD price calculation
+  } : null;
+
+  // Combine user tokens with TON token
+  const allUserTokens = [
+    ...(tonToken ? [tonToken] : []),
+    ...userTokens
+  ];
+
+  // Debug logging
+  console.log('🔍 TokensPageFast Debug:', {
+    tonBalance: tonBalance,
+    tonBalanceFormatted: tonBalance?.balanceFormatted,
+    tonBalanceExists: !!tonBalance,
+    defaultTonToken: defaultTonToken?.symbol,
+    tonToken: tonToken,
+    tonTokenExists: !!tonToken,
+    userTokensLength: userTokens.length,
+    allUserTokensLength: allUserTokens.length,
+    walletAddress: walletAddress,
+    isLoadingUserTokens: isLoadingUserTokens,
+    userTokensError: userTokensError
+  });
+
+  const filteredUserTokens = allUserTokens.filter(token => {
+    // Handle TON token (has symbol property directly)
+    if ('symbol' in token && token.symbol === 'TON') {
+      return 'ton'.includes(debouncedSearch.toLowerCase()) || 
+             'toncoin'.includes(debouncedSearch.toLowerCase()) ||
+             token.name?.toLowerCase().includes(debouncedSearch.toLowerCase());
+    }
+    
+    // Handle UserJetton tokens
+    if ('jetton' in token) {
+      return token.jetton.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+             token.jetton.symbol.toLowerCase().includes(debouncedSearch.toLowerCase());
+    }
+    
+    return false;
+  });
+
+  // Exclude TON from "All tokens" if user has TON balance (it's already in "My tokens")
+  // Only show TON in "All tokens" if user has no balance
+  const filteredOtherTokens = filteredTokens.filter(token => {
+    // Exclude tokens that are already in user's jetton tokens
+    if (userTokenAddresses.has(token.address)) {
+      return false;
+    }
+    
+    // Exclude TON if user has TON balance (already shown in My tokens)
+    // Check both 'native' and the actual TON address
+    if (tonToken && (token.address === 'native' || token.address === tonTokenData.address)) {
+      return false;
+    }
+    
+    return true;
+  });
   
   // Debug logging
   console.log('🔍 TokensPageFast: Cache state', {
@@ -528,12 +620,24 @@ export default function TokensPageFast() {
                   </div>
                 </div>
               ) : filteredUserTokens.length > 0 ? (
-                filteredUserTokens.map((userJetton: UserJetton, index: number) => {
-                  const token = convertUserJettonToToken(userJetton);
+                filteredUserTokens.map((token: any, index: number) => {
+                  // Handle TON token (already in correct format)
+                  if (token.symbol === 'TON') {
+                    return (
+                      <TokenItem
+                        key={`user-${token.address}`}
+                        token={token}
+                        colors={colors}
+                        onSelect={handleTokenSelect}
+                      />
+                    );
+                  }
+                  // Handle UserJetton tokens
+                  const convertedToken = convertUserJettonToToken(token);
                   return (
                     <TokenItem
-                      key={`user-${token.address}`}
-                      token={token}
+                      key={`user-${convertedToken.address}`}
+                      token={convertedToken}
                       colors={colors}
                       onSelect={handleTokenSelect}
                     />

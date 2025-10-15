@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { swapCoffeeApiClient, UserJetton } from '@/lib/swap-coffee-api';
+import { TONBalanceService, TONBalance } from '@/lib/ton-balance-service';
 import { startAllTokensLoading } from './use-tokens-cache';
 
 interface UserTokensCacheState {
   tokens: UserJetton[];
+  tonBalance: TONBalance | null;
   isLoading: boolean;
   error: Error | null;
   lastFetchTime: number;
@@ -13,6 +15,7 @@ interface UserTokensCacheState {
 // Global cache state for user tokens
 let userTokensCacheState: UserTokensCacheState = {
   tokens: [],
+  tonBalance: null,
   isLoading: false,
   error: null,
   lastFetchTime: 0,
@@ -57,13 +60,19 @@ const loadUserTokens = async (walletAddress: string) => {
     // Notify listeners
     userTokensCacheListeners.forEach(listener => listener());
 
-    const tokens = await fetchUserTokens(walletAddress);
+    // Fetch both user tokens and TON balance in parallel
+    console.log('🚀 UserTokensCache: Fetching user tokens and TON balance...');
+    const [tokens, tonBalance] = await Promise.all([
+      fetchUserTokens(walletAddress),
+      TONBalanceService.getTONBalance(walletAddress)
+    ]);
     
     userTokensCacheState.tokens = tokens;
+    userTokensCacheState.tonBalance = tonBalance;
     userTokensCacheState.lastFetchTime = Date.now();
     userTokensCacheState.isLoading = false;
     
-    console.log(`✅ UserTokensCache: Loaded ${tokens.length} user tokens`);
+    console.log(`✅ UserTokensCache: Loaded ${tokens.length} user tokens and TON balance: ${tonBalance.balanceFormatted} TON`);
     
     // Notify listeners
     userTokensCacheListeners.forEach(listener => listener());
@@ -77,6 +86,7 @@ const loadUserTokens = async (walletAddress: string) => {
     userTokensCacheState.error = err instanceof Error ? err : new Error('Unknown error');
     userTokensCacheState.isLoading = false;
     userTokensCacheState.tokens = [];
+    userTokensCacheState.tonBalance = null;
     
     // Notify listeners even on error
     userTokensCacheListeners.forEach(listener => listener());
@@ -98,6 +108,7 @@ const isUserTokensCacheFresh = (walletAddress: string | null): boolean => {
 // Clear cache when wallet changes
 const clearUserTokensCache = () => {
   userTokensCacheState.tokens = [];
+  userTokensCacheState.tonBalance = null;
   userTokensCacheState.isLoading = false;
   userTokensCacheState.error = null;
   userTokensCacheState.lastFetchTime = 0;
@@ -168,6 +179,7 @@ export const useUserTokensCache = (walletAddress: string | null) => {
 
   return {
     userTokens: state.tokens,
+    tonBalance: state.tonBalance,
     isLoading: state.isLoading,
     error: state.error,
     isCacheFresh: isUserTokensCacheFresh(walletAddress),

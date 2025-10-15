@@ -8,11 +8,13 @@ pnpm run dev
 
 ## To Do
 
-+ No TON in "My assets"
++ Manifest
 + calculation bug (doge after multiple selection)
-+ swap button rest and balances update after swap
-+ ticker priority on search
 + max
++ swap button reset and balances update after swap
++ ticker priority on search
++ need X TON for swap on button (insufficient tokens, insufficients ton)
++ lines
 
 ## To Test 
 

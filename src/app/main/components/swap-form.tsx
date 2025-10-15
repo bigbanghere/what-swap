@@ -57,12 +57,25 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const { setCanAddMoreCharacters } = useValidation();
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
     const { allTokens } = useTokensCache();
-    const { userTokens } = useUserTokensCache(walletAddress);
+    const { userTokens, tonBalance } = useUserTokensCache(walletAddress);
     const { toast } = useToast();
 
     // Helper function to get the balance for the selected token
     const getTokenBalance = useCallback((token: any): string => {
-        if (!token || !userTokens || userTokens.length === 0) {
+        if (!token) {
+            return '0';
+        }
+
+        // Handle TON balance (native token)
+        if (token.symbol === 'TON' || token.address === 'native') {
+            if (!tonBalance) {
+                return '0';
+            }
+            return tonBalance.balanceFormatted;
+        }
+
+        // Handle jetton tokens
+        if (!userTokens || userTokens.length === 0) {
             return '0';
         }
 
@@ -93,7 +106,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         
         // For decimal numbers, remove trailing zeros
         return parseFloat(formattedBalance.toString()).toString();
-    }, [userTokens]);
+    }, [userTokens, tonBalance]);
 
     // Helper function to check if input amount exceeds available balance
     const checkInsufficientAmount = useCallback((): string | null => {

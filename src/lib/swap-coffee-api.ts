@@ -59,6 +59,7 @@ export interface UserJettonsResponse {
 
 class SwapCoffeeApiClient {
   private baseURL = 'https://tokens.swap.coffee/api/v3';
+  private tonBalanceBaseURL = 'https://backend.swap.coffee';
   private apiKey?: string;
 
   constructor(apiKey?: string) {
@@ -170,6 +171,37 @@ class SwapCoffeeApiClient {
     console.log(`✅ API Response: Received ${response.items.length} user-owned tokens`);
     
     return response.items;
+  }
+
+  async getTONBalance(walletAddress: string): Promise<string> {
+    console.log(`🌐 API Request: Fetching TON balance for wallet ${walletAddress}`);
+    
+    const url = new URL(`${this.tonBalanceBaseURL}/v1/ton/wallet/${walletAddress}/balance`);
+    
+    console.log(`🔗 Final TON Balance API URL: ${url.toString()}`);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (this.apiKey) {
+      headers['X-Api-Key'] = this.apiKey;
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const balance = await response.json();
+    
+    console.log(`✅ API Response: Received TON balance: ${balance} nanotons`);
+    
+    return balance;
   }
 }
 
