@@ -328,7 +328,7 @@ export default function TokensPageFast() {
     balance: tonBalance.balanceFormatted,
     decimals: tonTokenData.decimals,
     verification: tonTokenData.verification,
-    ...(tonTokenData.market_stats && { market_stats: tonTokenData.market_stats }), // Include market stats for USD price calculation
+    ...('market_stats' in tonTokenData && tonTokenData.market_stats && { market_stats: tonTokenData.market_stats }), // Include market stats for USD price calculation
   } : null;
 
   // Combine user tokens with TON token

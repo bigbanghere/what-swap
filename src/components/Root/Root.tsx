@@ -40,7 +40,7 @@ function RootInner({ children }: PropsWithChildren) {
   }, [isLocaleReady, detectedLocale, isInTelegram]);
 
   return (
-    <TonConnectUIProvider manifestUrl="https://whatever-zeta-two.vercel.app/tonconnect-manifest.json">
+    <TonConnectUIProvider manifestUrl="https://what-swap.vercel.app/tonconnect-manifest.json">
       <AppRoot
         appearance={isDark ? 'dark' : 'light'}
         platform={

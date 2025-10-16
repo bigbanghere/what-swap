@@ -61,7 +61,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
               <ValidationProvider>
                 <TokenCacheInitializer />
                 <DynamicFavicon />
-                <Root>{children}<Analytics /></Root>
+                <Root>{children}</Root>
+                <Analytics />
               </ValidationProvider>
             </QueryProvider>
           </ThemeProvider>

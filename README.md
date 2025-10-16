@@ -13,6 +13,7 @@ pnpm run dev
 + max
 + swap button reset and balances update after swap
 + ticker priority on search
+
 + need X TON for swap on button (insufficient tokens, insufficients ton)
 + lines
 

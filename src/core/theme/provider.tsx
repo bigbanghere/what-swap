@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Get theme from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('WHATEVER_THEME') as Theme;
+      const savedTheme = localStorage.getItem('WHAT_SWAP_THEME') as Theme;
       if (savedTheme && ['system', 'light', 'dark'].includes(savedTheme)) {
         setThemeState(savedTheme);
       }
@@ -193,7 +193,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('WHATEVER_THEME', newTheme);
+      localStorage.setItem('WHAT_SWAP_THEME', newTheme);
     }
   };
 

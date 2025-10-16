@@ -29,7 +29,7 @@ export function hexToRgba(hex: string, alpha: number = 1): string {
  * @returns CSS variable string
  */
 export function getThemeColorVar(colorKey: keyof ThemeColors): string {
-  return `var(--whatever-${colorKey.replace(/([A-Z])/g, '-$1').toLowerCase()})`;
+  return `var(--what-swap-${colorKey.replace(/([A-Z])/g, '-$1').toLowerCase()})`;
 }
 
 /**
@@ -42,7 +42,7 @@ export function getThemeColorVarWithFallback(
   colorKey: keyof ThemeColors, 
   fallback: string
 ): string {
-  return `var(--whatever-${colorKey.replace(/([A-Z])/g, '-$1').toLowerCase()}, ${fallback})`;
+  return `var(--what-swap-${colorKey.replace(/([A-Z])/g, '-$1').toLowerCase()}, ${fallback})`;
 }
 
 /**
@@ -53,7 +53,7 @@ export function getThemeColorVarWithFallback(
 export function generateThemeCSS(colors: ThemeColors): string {
   return Object.entries(colors)
     .map(([key, value]) => {
-      const cssVar = `--whatever-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+      const cssVar = `--what-swap-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
       return `${cssVar}: ${value};`;
     })
     .join('\n  ');

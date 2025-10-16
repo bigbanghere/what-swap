@@ -32,7 +32,7 @@ export function Header() {
         <div className="flex items-center">
           <Image
             src={isDark ? '/what-swap-dark.svg' : '/what-swap-light.svg'}
-            alt="Whatever"
+            alt="What Swap"
             width={81}
             height={91}
             priority
