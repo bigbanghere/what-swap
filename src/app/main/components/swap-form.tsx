@@ -1354,6 +1354,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         localStorage.setItem('selectedFromToken', JSON.stringify(token));
         console.log('✅ SwapForm: Updated selectedFromToken from custom event and localStorage');
         
+        
         // Force recalculation by triggering a state update
         console.log('🔄 SwapForm: Triggering recalculation after fromToken selection');
       }
@@ -1366,6 +1367,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         userInputRef.current = 'to';
         // Also store in localStorage for persistence
         localStorage.setItem('selectedToToken', JSON.stringify(token));
+        
         console.log('✅ SwapForm: Updated selectedToToken from custom event and localStorage');
         
         // Force recalculation by triggering a state update

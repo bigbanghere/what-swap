@@ -10,6 +10,7 @@ import { ValidationProvider } from '@/contexts/validation-context';
 import { QueryProvider } from '@/providers/query-provider';
 import { TokenCacheInitializer } from '@/components/TokenCacheInitializer';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
+import { TelegramAnalyticsInitializer } from '@/components/TelegramAnalyticsInitializer';
 
 import '@telegram-apps/telegram-ui/dist/styles.css';
 import 'normalize.css/normalize.css';
@@ -61,6 +62,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
               <ValidationProvider>
                 <TokenCacheInitializer />
                 <DynamicFavicon />
+                <TelegramAnalyticsInitializer />
                 <Root>{children}</Root>
                 <Analytics />
               </ValidationProvider>

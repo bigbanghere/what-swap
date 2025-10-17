@@ -8,11 +8,12 @@ pnpm run dev
 
 ## To Do
 
-+ Manifest
-+ calculation bug (doge after multiple selection)
 + max
++ calculation bug (doge after multiple selection)
 + swap button reset and balances update after swap
 + ticker priority on search
++ bugs
++ bot with users db and ca
 
 + need X TON for swap on button (insufficient tokens, insufficients ton)
 + lines

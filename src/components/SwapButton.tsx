@@ -70,6 +70,7 @@ export function SwapButton({
         }
       } catch (error) {
         console.error('❌ Swap execution error:', error);
+        
         if (onSwapResult) {
           onSwapResult({ success: false, error: 'Swap execution failed' });
         }

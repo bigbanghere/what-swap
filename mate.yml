@@ -1,0 +1,5 @@
+deploy:
+  projectId: 1028
+  directory: public
+  token: 46ea6365d3110ed29f975e61ee2f287c302c62f894d1b1b8b80f46e7bfc1f4c6
+  tag: latest
