@@ -108,6 +108,53 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         return parseFloat(formattedBalance.toString()).toString();
     }, [userTokens, tonBalance]);
 
+    // Helper function to calculate maximum amount considering fees
+    const getMaxAmount = useCallback((token: any): string => {
+        const balance = getTokenBalance(token);
+        const numericBalance = parseFloat(balance);
+        
+        if (numericBalance <= 0) {
+            return '0';
+        }
+
+        // For TON swaps, we need to reserve some amount for fees
+        if (token.symbol === 'TON' || token.address === 'native') {
+            // Reserve approximately 0.1 TON for fees (this is a conservative estimate)
+            // In a real implementation, you might want to calculate this more precisely
+            const feeReserve = 0.1;
+            const maxAmount = Math.max(0, numericBalance - feeReserve);
+            
+            // Format the result
+            if (maxAmount <= 0) {
+                return '0';
+            }
+            
+            // If it's a whole number, return without decimal places
+            if (maxAmount % 1 === 0) {
+                return maxAmount.toString();
+            }
+            
+            // For decimal numbers, remove trailing zeros
+            return parseFloat(maxAmount.toString()).toString();
+        }
+
+        // For other tokens, use the full balance
+        return balance;
+    }, [getTokenBalance]);
+
+    // Helper function to check if MAX button should be shown
+    const shouldShowMaxButton = useCallback((token: any): boolean => {
+        if (!token || !walletAddress) {
+            return false;
+        }
+        
+        const balance = getTokenBalance(token);
+        const numericBalance = parseFloat(balance);
+        
+        return numericBalance > 0;
+    }, [getTokenBalance, walletAddress]);
+
+
     // Helper function to check if input amount exceeds available balance
     const checkInsufficientAmount = useCallback((): string | null => {
         console.log('🔍 checkInsufficientAmount called:', {
@@ -224,6 +271,41 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         executeCalculation,
         updateInputSourceTracking
     } = swapCalculationResult;
+
+    // Handler for MAX button click
+    const handleMaxClick = useCallback(() => {
+        if (!selectedFromToken) {
+            return;
+        }
+
+        const maxAmount = getMaxAmount(selectedFromToken);
+        const numericMaxAmount = parseFloat(maxAmount);
+        
+        if (numericMaxAmount <= 0) {
+            toast({
+                title: 'Insufficient balance',
+                description: 'Not enough balance to perform this swap',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        // Set the from amount to the maximum available amount
+        setFromAmount(maxAmount);
+        
+        // Mark this as user input to trigger calculation
+        userInputRef.current = 'from';
+        hasUserEnteredCustomValue.current = true;
+        
+        // Update input source tracking
+        updateInputSourceTracking('from');
+        
+        console.log('🎯 MAX button clicked:', {
+            token: selectedFromToken.symbol,
+            maxAmount,
+            originalBalance: getTokenBalance(selectedFromToken)
+        });
+    }, [selectedFromToken, getMaxAmount, getTokenBalance, updateInputSourceTracking, toast]);
     
 
     // Combine calculation error with insufficient amount error
@@ -2194,9 +2276,18 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                             )}
                             {t('send')}
                         </div>
-                        {walletAddress ? <div className='text-[#007AFF]'>
-                            {t('max')}
-                        </div> : null}
+                        {walletAddress && shouldShowMaxButton(selectedFromToken) ? (
+                            <div 
+                                className='text-[#007AFF] cursor-pointer hover:opacity-80 transition-opacity'
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleMaxClick();
+                                }}
+                            >
+                                {t('max')}
+                            </div>
+                        ) : null}
                         <div className='w-full flex justify-end gap-[5px]'>
                             {getTop5TokensExcludingBoth().map((token, index) => (
                                 <div

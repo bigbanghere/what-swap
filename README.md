@@ -9,11 +9,12 @@ pnpm run dev
 ## To Do
 
 + max
++ delete недостаточно токенов
 + calculation bug (doge after multiple selection)
 + swap button reset and balances update after swap
 + ticker priority on search
 + bugs
-+ bot with users db and ca
++ bot with button-post for chan, users db, ca search, notifications for TTM
 
 + need X TON for swap on button (insufficient tokens, insufficients ton)
 + lines
