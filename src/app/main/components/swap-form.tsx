@@ -155,46 +155,6 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     }, [getTokenBalance, walletAddress]);
 
 
-    // Helper function to check if input amount exceeds available balance
-    const checkInsufficientAmount = useCallback((): string | null => {
-        console.log('🔍 checkInsufficientAmount called:', {
-            selectedFromToken: selectedFromToken?.symbol,
-            userTokensLength: userTokens?.length,
-            fromAmount,
-            userTokens: userTokens?.map(ut => ({ symbol: ut.jetton?.symbol, balance: ut.balance }))
-        });
-
-        if (!selectedFromToken || !userTokens || userTokens.length === 0) {
-            console.log('🔍 checkInsufficientAmount: No token or user tokens available');
-            return null;
-        }
-
-        const inputAmount = parseFloat(fromAmount);
-        if (isNaN(inputAmount) || inputAmount <= 0) {
-            console.log('🔍 checkInsufficientAmount: Invalid input amount:', inputAmount);
-            return null;
-        }
-
-        const availableBalance = parseFloat(getTokenBalance(selectedFromToken));
-        console.log('🔍 checkInsufficientAmount: Balance check:', {
-            inputAmount,
-            availableBalance,
-            isInsufficient: inputAmount > availableBalance
-        });
-
-        if (isNaN(availableBalance)) {
-            console.log('🔍 checkInsufficientAmount: Invalid available balance');
-            return null;
-        }
-
-        if (inputAmount > availableBalance) {
-            console.log('🔍 checkInsufficientAmount: INSUFFICIENT AMOUNT detected!');
-            return 'Insufficient amount';
-        }
-
-        console.log('🔍 checkInsufficientAmount: Amount is sufficient');
-        return null;
-    }, [selectedFromToken, userTokens, fromAmount, getTokenBalance]);
 
     // Track user input vs programmatic updates
     const userInputRef = useRef<'from' | 'to' | null>(null);
@@ -308,14 +268,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     }, [selectedFromToken, getMaxAmount, getTokenBalance, updateInputSourceTracking, toast]);
     
 
-    // Combine calculation error with insufficient amount error
-    const combinedError = useMemo(() => {
-        const insufficientAmountError = checkInsufficientAmount();
-        if (insufficientAmountError) {
-            return insufficientAmountError;
-        }
-        return calculationError;
-    }, [calculationError, checkInsufficientAmount]);
+    // Use only calculation error (removed insufficient amount check)
+    const combinedError = calculationError;
 
     // Notify parent component of error changes
     useEffect(() => {

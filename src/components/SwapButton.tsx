@@ -41,7 +41,7 @@ export function SwapButton({
   const { isExecuting, executeSwap } = useSwapExecution();
   
   const isWalletConnected = Boolean(walletAddress);
-  const isDisabled = Boolean(disabled || isExecuting || (error && error.includes('No liquidity pools')) || (error && error.includes('Insufficient amount')));
+  const isDisabled = Boolean(disabled || isExecuting || (error && error.includes('No liquidity pools')));
   const isEmptyAmount = !toAmount || toAmount === '' || parseFloat(toAmount) === 0;
   
   const handleClick = async () => {
@@ -91,10 +91,6 @@ export function SwapButton({
     
     if (error && error.includes('No liquidity pools')) {
       return t('no_pools');
-    }
-    
-    if (error && error.includes('Insufficient amount')) {
-      return t('insufficient_balance');
     }
     
     if (toAmount && toAmount !== '' && parseFloat(toAmount) > 0) {
