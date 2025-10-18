@@ -175,7 +175,25 @@ export default function TokensPage() {
       token.symbol.toLowerCase().includes(searchLower) ||
       token.name.toLowerCase().includes(searchLower) ||
       token.address.toLowerCase().includes(searchLower)
-    );
+    ).sort((a, b) => {
+      // Prioritize tokens where symbol matches over name matches
+      const aSymbolMatch = a.symbol.toLowerCase().includes(searchLower);
+      const bSymbolMatch = b.symbol.toLowerCase().includes(searchLower);
+      const aNameMatch = a.name.toLowerCase().includes(searchLower);
+      const bNameMatch = b.name.toLowerCase().includes(searchLower);
+      const aAddressMatch = a.address.toLowerCase().includes(searchLower);
+      const bAddressMatch = b.address.toLowerCase().includes(searchLower);
+      
+      // Priority order: symbol > name > address
+      if (aSymbolMatch && !bSymbolMatch) return -1;
+      if (!aSymbolMatch && bSymbolMatch) return 1;
+      if (aNameMatch && !bNameMatch && !bSymbolMatch) return -1;
+      if (!aNameMatch && bNameMatch && !aSymbolMatch) return 1;
+      if (aAddressMatch && !bAddressMatch && !bSymbolMatch && !bNameMatch) return -1;
+      if (!aAddressMatch && bAddressMatch && !aSymbolMatch && !aNameMatch) return 1;
+      
+      return 0;
+    });
     console.log(`🔍 Filtered result: ${filtered.length} tokens`);
     return filtered;
   }, [tokens, debouncedSearch]);

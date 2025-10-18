@@ -367,6 +367,31 @@ export default function TokensPageFast() {
     }
     
     return false;
+  }).sort((a, b) => {
+    const searchLower = debouncedSearch.toLowerCase();
+    
+    // Handle TON token sorting
+    if ('symbol' in a && a.symbol === 'TON' && 'symbol' in b && b.symbol === 'TON') {
+      return 0; // Both are TON, maintain order
+    }
+    
+    // Handle UserJetton tokens sorting
+    if ('jetton' in a && 'jetton' in b) {
+      const aSymbolMatch = a.jetton.symbol.toLowerCase().includes(searchLower);
+      const bSymbolMatch = b.jetton.symbol.toLowerCase().includes(searchLower);
+      const aNameMatch = a.jetton.name.toLowerCase().includes(searchLower);
+      const bNameMatch = b.jetton.name.toLowerCase().includes(searchLower);
+      
+      // Priority order: symbol > name
+      if (aSymbolMatch && !bSymbolMatch) return -1;
+      if (!aSymbolMatch && bSymbolMatch) return 1;
+      if (aNameMatch && !bNameMatch && !bSymbolMatch) return -1;
+      if (!aNameMatch && bNameMatch && !aSymbolMatch) return 1;
+      
+      return 0;
+    }
+    
+    return 0;
   });
 
   // Exclude TON from "All tokens" if user has TON balance (it's already in "My tokens")
@@ -542,10 +567,10 @@ export default function TokensPageFast() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Content Wrapper - centers content while respecting viewport width */}
+        {/* Content Wrapper - centers content with 420px max width */}
         <div className="flex flex-col items-center w-full">
           {/* Search Bar */}
-          <div className="px-[20px] pt-[20px] pb-[10px]" style={{ width: '100%', maxWidth: 'min(460px, 100vw)' }}>
+          <div className="px-[20px] pt-[20px] pb-[10px]" style={{ width: '100%', maxWidth: '420px' }}>
           <div 
             className="relative flex items-center rounded-[15px] border border-solid gap-[5px] p-[15px]"
             style={{ 
@@ -570,27 +595,31 @@ export default function TokensPageFast() {
               style={{ color: colors.text }}
             />
           </div>
+          </div>
         </div>
-        {/* My Tokens Section - only show when wallet is connected */}
-        {walletAddress && (
+        {/* My Tokens Section - only show when wallet is connected and has tokens */}
+        {walletAddress && (isLoadingUserTokens || userTokensError || filteredUserTokens.length > 0) && (
           <>
             <div 
               className='py-[10px]' 
               style={{ 
-                width: 'calc(100% - 40px)', 
-                maxWidth: 'min(420px, calc(100vw - 40px))', 
+                width: '100%',
+                maxWidth: '420px',
                 margin: '0 auto',
+                paddingLeft: '20px',
+                paddingRight: '20px',
                 color: colors.text
               }}
             >
               My tokens
             </div>
             <div
-              className='h-[1px] my-[10px] mx-auto'
+              className='h-[1px] my-[10px]'
               style={{
                 backgroundColor: 'rgba(0, 122, 255, 0.22)',
                 width: 'calc(100% - 40px)',
-                maxWidth: 'min(420px, calc(100vw - 40px))'
+                maxWidth: '380px',
+                margin: '0 auto'
               }}
             ></div>
             
@@ -600,9 +629,9 @@ export default function TokensPageFast() {
                 touchAction: 'pan-y',
                 WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'auto',
-                // Ensure container doesn't exceed viewport width
                 width: '100%',
-                maxWidth: 'min(460px, 100vw)'
+                maxWidth: '420px',
+                margin: '0 auto'
               }}
             >
               {isLoadingUserTokens ? (
@@ -643,38 +672,34 @@ export default function TokensPageFast() {
                     />
                   );
                 })
-              ) : (
-                <div 
-                  className="text-center py-4"
-                  style={{ color: colors.secondaryText || '#6b7280' }}
-                >
-                  <div className="text-sm">No tokens in your wallet</div>
-                </div>
-              )}
+              ) : null}
             </div>
           </>
         )}
         
-        {/* All Tokens Section - only show when wallet is connected */}
-        {walletAddress && (
+        {/* All Tokens Section - only show when wallet is connected and has tokens */}
+        {walletAddress && filteredOtherTokens.length > 0 && (
           <>
             <div 
               className='py-[10px]' 
               style={{ 
-                width: 'calc(100% - 40px)', 
-                maxWidth: 'min(420px, calc(100vw - 40px))', 
+                width: '100%',
+                maxWidth: '420px',
                 margin: '0 auto',
+                paddingLeft: '20px',
+                paddingRight: '20px',
                 color: colors.text
               }}
             >
               All tokens
             </div>
             <div
-              className='h-[1px] my-[10px] mx-auto'
+              className='h-[1px] my-[10px]'
               style={{
                 backgroundColor: 'rgba(0, 122, 255, 0.22)',
                 width: 'calc(100% - 40px)',
-                maxWidth: 'min(420px, calc(100vw - 40px))'
+                maxWidth: '380px',
+                margin: '0 auto'
               }}
             ></div>
           </>
@@ -688,9 +713,9 @@ export default function TokensPageFast() {
             WebkitOverflowScrolling: 'touch',
             // Don't contain overscroll to allow viewport expansion
             overscrollBehavior: 'auto',
-            // Ensure container doesn't exceed viewport width
             width: '100%',
-            maxWidth: 'min(460px, 100vw)'
+            maxWidth: '420px',
+            margin: '0 auto'
           }}
         >
           {isLoading && filteredTokens.length === 0 ? (
@@ -744,38 +769,37 @@ export default function TokensPageFast() {
                   <div className="text-sm">All your tokens are shown above</div>
                 </div>
               ) : null}
-              
+            
               {/* Show loading indicator at bottom when more tokens are being loaded */}
-        {(isLoading && filteredTokens.length > 0) && (
-          <div className="flex items-center justify-center py-4">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <div className="text-sm" style={{ color: colors.secondaryText || '#6b7280' }}>
-                {`Loading tokens... (${allTokens.length} of ${TOTAL_TOKENS})`}
-              </div>
-              {allTokens.length > 0 && (
-                <div className="w-32 h-1 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 transition-all duration-300"
-                    style={{ width: `${Math.min((allTokens.length / TOTAL_TOKENS) * 100, 100)}%` }}
-                  />
+              {(isLoading && filteredTokens.length > 0) && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="text-sm" style={{ color: colors.secondaryText || '#6b7280' }}>
+                      {`Loading tokens... (${allTokens.length} of ${TOTAL_TOKENS})`}
+                    </div>
+                    {allTokens.length > 0 && (
+                      <div className="w-32 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 transition-all duration-300"
+                          style={{ width: `${Math.min((allTokens.length / TOTAL_TOKENS) * 100, 100)}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-        
-        {/* Show completion message when all tokens are loaded */}
-        {!isLoading && allTokens.length > 0 && allTokens.length >= TOTAL_TOKENS && (
-          <div className="flex items-center justify-center py-4">
-            <div className="text-sm" style={{ color: colors.secondaryText || '#6b7280' }}>
-              ✅ All {allTokens.length} tokens loaded successfully
-            </div>
-          </div>
-        )}
+              
+              {/* Show completion message when all tokens are loaded */}
+              {!isLoading && allTokens.length > 0 && allTokens.length >= TOTAL_TOKENS && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="text-sm" style={{ color: colors.secondaryText || '#6b7280' }}>
+                    ✅ All {allTokens.length} tokens loaded successfully
+                  </div>
+                </div>
+              )}
             </>
           )}
-        </div>
         </div>
       </div>
     </Page>

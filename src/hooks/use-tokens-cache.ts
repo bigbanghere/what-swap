@@ -235,7 +235,21 @@ const searchTokens = (query: string): Jetton[] => {
   return cacheState.tokens.filter(token => 
     token.symbol?.toLowerCase().includes(lowercaseQuery) ||
     token.name?.toLowerCase().includes(lowercaseQuery)
-  );
+  ).sort((a, b) => {
+    // Prioritize tokens where symbol matches over name matches
+    const aSymbolMatch = a.symbol?.toLowerCase().includes(lowercaseQuery) || false;
+    const bSymbolMatch = b.symbol?.toLowerCase().includes(lowercaseQuery) || false;
+    const aNameMatch = a.name?.toLowerCase().includes(lowercaseQuery) || false;
+    const bNameMatch = b.name?.toLowerCase().includes(lowercaseQuery) || false;
+    
+    // If both have symbol matches or both have name matches, maintain original order
+    if (aSymbolMatch === bSymbolMatch) return 0;
+    // If only one has symbol match, prioritize it
+    if (aSymbolMatch && !bSymbolMatch) return -1;
+    if (!aSymbolMatch && bSymbolMatch) return 1;
+    
+    return 0;
+  });
 };
 
 // Check if cache is fresh
