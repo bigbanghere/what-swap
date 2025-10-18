@@ -243,6 +243,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const isFromAmountSetToZeroByGetFocus = useRef(false); // Track if Send field was set to 0 due to Get field focus
     const isInRotation = useRef(false); // Track if we're currently in the middle of a rotation
     const isSettingZeroValues = useRef(false); // Track if we're currently setting zero values to prevent loops
+    const isTokenChangeInProgress = useRef(false); // Track if we're in the middle of a token change to prevent restoration
     
     // State machine for form behavior - eliminates need for setTimeout
     const formState = useRef<'idle' | 'restoring' | 'calculating' | 'user_input' | 'rotation'>('idle');
@@ -1073,9 +1074,18 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                     lastCalculatedAmount.current = null;
                 } else if (isReverseCalculation) {
                     // Reverse calculation was cleared - clear the Send field (fromAmount)
-                    console.log('🔄 SwapForm: Reverse calculation cleared, clearing Send field');
-                    setFromAmount('');
-                    lastCalculatedAmount.current = null;
+                    // But don't clear if we just restored user input from localStorage
+                    const hasRestoredUserInput = localStorage.getItem('userFromAmount') && 
+                      localStorage.getItem('userFromAmount') !== '1' && 
+                      hasUserEnteredCustomValue.current;
+                    
+                    if (!hasRestoredUserInput) {
+                        console.log('🔄 SwapForm: Reverse calculation cleared, clearing Send field');
+                        setFromAmount('');
+                        lastCalculatedAmount.current = null;
+                    } else {
+                        console.log('🔄 SwapForm: Reverse calculation cleared, but preserving restored user input');
+                    }
                 }
             } else {
                 console.log('🔄 SwapForm: Skipping field clearing - initial token loading in progress');
@@ -1464,6 +1474,10 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     console.log('🔄 SwapForm: Token has symbol:', !!e.detail?.token?.symbol);
     console.log('🔄 SwapForm: Full token object:', e.detail?.token);
     
+    // Set flag to prevent restoration logic from running during token change
+    isTokenChangeInProgress.current = true;
+    console.log('🔄 SwapForm: Set isTokenChangeInProgress flag to prevent restoration');
+    
     // Only process real tokens (with address), not test tokens
     if (e.detail?.token?.address && e.detail?.token?.symbol) {
       const token = e.detail.token;
@@ -1487,8 +1501,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         console.log('✅ SwapForm: New token:', token.symbol, token.name);
         setSelectedToToken(token);
         lastChangedTokenRef.current = 'to'; // Track that to token was changed
-        // Set userInputRef to 'to' to trigger reverse calculation if toAmount has a value
-        userInputRef.current = 'to';
+        // Don't override userInputRef - let the calculation hook determine the correct behavior
+        // based on which field actually has user input
         // Also store in localStorage for persistence
         localStorage.setItem('selectedToToken', JSON.stringify(token));
         
@@ -1497,10 +1511,18 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         // Force recalculation by triggering a state update
         console.log('🔄 SwapForm: Triggering recalculation after toToken selection');
       }
+      
+      // Clear the flag after a delay to allow the calculation to complete
+      setTimeout(() => {
+        isTokenChangeInProgress.current = false;
+        console.log('🔄 SwapForm: Cleared isTokenChangeInProgress flag');
+      }, 1000);
     } else {
       console.log('⚠️ SwapForm: Ignoring invalid event (missing address or symbol)');
       console.log('⚠️ SwapForm: Address present:', !!e.detail?.token?.address);
       console.log('⚠️ SwapForm: Symbol present:', !!e.detail?.token?.symbol);
+      // Clear the flag even if the event was invalid
+      isTokenChangeInProgress.current = false;
     }
   }, []);
 
@@ -1513,6 +1535,10 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     // Check if we're returning from tokens page (don't clear localStorage in this case)
     const fromTokensPage = sessionStorage.getItem('fromTokensPage') === 'true';
     const inAssetSelection = sessionStorage.getItem('inAssetSelection') === 'true';
+    
+    // Store these values to use throughout the useEffect since they might get cleared
+    const wasFromTokensPage = fromTokensPage;
+    const wasInAssetSelection = inAssetSelection;
     
     // Only consider it a page reload if we're NOT coming from token selection
     const isPageReload = !fromTokensPage && !inAssetSelection && (
@@ -1636,6 +1662,44 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     } else {
       console.log('🔄 SwapForm: No tokens in localStorage, will use defaults');
     }
+    
+       // Restore user input from localStorage if it exists
+       // Check if we have a stored user input that's different from the default
+       const storedFromAmount = localStorage.getItem('userFromAmount');
+       console.log('🔄 SwapForm: User input restoration check:', {
+         storedFromAmount,
+         isPageReload,
+         hasStoredTokens,
+         fromTokensPage: wasFromTokensPage,
+         inAssetSelection: wasInAssetSelection
+       });
+       
+       // Always restore user input if we have stored tokens and user input, regardless of page reload detection
+       // The page reload detection is unreliable for token changes due to navigation timing
+       if (storedFromAmount && storedFromAmount !== '1' && hasStoredTokens) {
+         console.log('🔄 SwapForm: Restoring user input from localStorage:', storedFromAmount);
+         setFromAmount(storedFromAmount);
+         hasUserEnteredCustomValue.current = true;
+         lastUserEnteredValue.current = storedFromAmount;
+         originalBasisValueRef.current = storedFromAmount;
+         basisFieldRef.current = 'from';
+         
+         // Set a flag to prevent other effects from clearing the restored value
+         isFromAmountSetToZeroByGetFocus.current = false;
+         isFromAmountCalculated.current = false;
+         
+         // Trigger calculation with the restored value after a short delay
+         setTimeout(() => {
+           userInputRef.current = 'from';
+           console.log('🔄 SwapForm: Triggering calculation with restored value');
+         }, 100);
+       } else {
+         console.log('🔄 SwapForm: Not restoring user input - conditions not met:', {
+           hasStoredAmount: !!storedFromAmount,
+           isNotDefault: storedFromAmount !== '1',
+           hasStoredTokens: !!hasStoredTokens
+         });
+       }
   }, []);
 
   // Set up event listeners for token selection
@@ -1839,7 +1903,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         // 1. Complete unfocusing (clicking dollar balance area, etc.) → Should restore defaults
         // 2. Focusing another field (clicking other input) → Should trigger zero handling, not restoration
         const isCompleteUnfocus = !isFocused && wasFocused && !isToAmountFocused;
-        const shouldRestore = isCompleteUnfocus && (fromAmount === '' || fromAmount === '0');
+        const shouldRestore = isCompleteUnfocus && (fromAmount === '' || fromAmount === '0') && !isTokenChangeInProgress.current;
         
         if (shouldRestore) {
             console.log('🔄 SwapForm: INSIDE restoration condition check - COMPLETE UNFOCUS');
@@ -1849,6 +1913,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                 isFromAmountDefault: isFromAmountDefault.current,
                 isCompleteUnfocus,
                 isToAmountFocused,
+                isTokenChangeInProgress: isTokenChangeInProgress.current,
                 shouldRestore: !hasUserEnteredCustomValue.current || fromAmount === ''
             });
             
@@ -1867,7 +1932,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             
             // Only restore if user hasn't entered a custom value or if they cleared the field
             // Also skip restoration if we just completed a rotation (values are already correctly set)
-            if ((!hasUserEnteredCustomValue.current || fromAmount === '') && !justCompletedRotation.current) {
+            // Skip restoration if we're in the middle of a token change
+            if ((!hasUserEnteredCustomValue.current || fromAmount === '') && !justCompletedRotation.current && !isTokenChangeInProgress.current) {
                 
                 // Check if Send field was set to 0 due to Get field focus - if so, skip restoration
                 if (isFromAmountSetToZeroByGetFocus.current) {
@@ -1956,6 +2022,16 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         
         // Set state machine to user input
         setFormState('user_input');
+        
+        // Save user input to localStorage for restoration after token changes
+        if (value && value !== '1') {
+            localStorage.setItem('userFromAmount', value);
+            console.log('🔄 SwapForm: Saved user input to localStorage:', value);
+        } else if (value === '1') {
+            // Clear the stored value if user goes back to default
+            localStorage.removeItem('userFromAmount');
+            console.log('🔄 SwapForm: Cleared user input from localStorage (back to default)');
+        }
         
         // Don't set typing flags during rotation
         if (isRotating.current) {
