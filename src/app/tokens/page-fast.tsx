@@ -677,8 +677,8 @@ export default function TokensPageFast() {
           </>
         )}
         
-        {/* All Tokens Section - only show when wallet is connected and has tokens */}
-        {walletAddress && filteredOtherTokens.length > 0 && (
+        {/* All Tokens Section - only show when wallet is connected and has tokens, and either has user tokens or is not searching */}
+        {walletAddress && filteredOtherTokens.length > 0 && (filteredUserTokens.length > 0 || !debouncedSearch) && (
           <>
             <div 
               className='py-[10px]' 

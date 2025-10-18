@@ -8,7 +8,6 @@ pnpm run dev
 
 ## To Do
 
-+ ticker priority on search
 + calculation bug (doge after multiple selection)
 + swap button reset and balances update after swap
 + bugs
