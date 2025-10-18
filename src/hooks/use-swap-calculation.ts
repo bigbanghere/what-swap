@@ -8,6 +8,10 @@ interface SwapCalculationResult {
     calcKey: string | null;
     isLoading: boolean;
     error: string | null;
+    feeData: {
+        recommended_gas?: number;
+        average_gas?: number;
+    } | null;
 }
 
 interface UseSwapCalculationProps {
@@ -63,7 +67,8 @@ export function useSwapCalculation({
         outputAmount: null,
         calcKey: null,
         isLoading: false,
-        error: null
+        error: null,
+        feeData: null
     });
 
     // New robust calculation state management
@@ -362,7 +367,7 @@ export function useSwapCalculation({
                 } else if (!fromAmount || fromAmount.trim() === '') {
                     // Send field was cleared - clear the Get field as well
                     console.log('🔄 USER_INPUT_FROM: Send field cleared, clearing Get field');
-                    setResult({ outputAmount: null, calcKey: null, isLoading: false, error: null });
+                    setResult({ outputAmount: null, calcKey: null, isLoading: false, error: null, feeData: null });
                 }
                 break;
 
@@ -376,7 +381,7 @@ export function useSwapCalculation({
                 } else if (!toAmount || toAmount.trim() === '') {
                     // Get field was cleared - clear the Send field as well
                     console.log('🔄 USER_INPUT_TO: Get field cleared, clearing Send field');
-                    setResult({ outputAmount: null, calcKey: null, isLoading: false, error: null });
+                    setResult({ outputAmount: null, calcKey: null, isLoading: false, error: null, feeData: null });
                 }
                 break;
 
@@ -657,6 +662,12 @@ export function useSwapCalculation({
                 routeData: route.data
             });
 
+            // Extract fee data from API response
+            const feeData = route.data ? {
+                recommended_gas: route.data.recommended_gas,
+                average_gas: route.data.paths?.[0]?.average_gas
+            } : null;
+
             if (route.data) {
                 // For reverse calculations, we want the input_amount (how much to send)
                 // For forward calculations, we want the output_amount (how much to receive)
@@ -672,7 +683,7 @@ export function useSwapCalculation({
                     // The API already returns the value in the correct units, no conversion needed
                     const formattedAmount = resultAmount.toFixed(6);
                     console.log('✅ Swap calculation result:', formattedAmount);
-                    return { amount: formattedAmount, key: calculationKey } as const;
+                    return { amount: formattedAmount, key: calculationKey, feeData } as const;
                 } else if (resultAmount === 0) {
                     // Check if this calculation is still current (user hasn't changed inputs)
                     if (!isCurrentCalculation(inputToken, outputToken, amount, isReverseCalculation)) {
@@ -780,7 +791,7 @@ export function useSwapCalculation({
                     // Track this calculation result to prevent loops
                     trackCalculationResult(calculationType, result.amount.toString(), amount, isReverse ? toAmount : amount);
                     
-                    setResult(prev => ({ ...prev, outputAmount: result.amount, calcKey: result.key }));
+                    setResult(prev => ({ ...prev, outputAmount: result.amount, calcKey: result.key, feeData: result.feeData }));
                     
                     // Update input source tracking to indicate this value came from calculation
                     if (isReverse) {

@@ -108,8 +108,37 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         return parseFloat(formattedBalance.toString()).toString();
     }, [userTokens, tonBalance]);
 
+    // State to store fee data from the last swap calculation
+    const [lastSwapFeeData, setLastSwapFeeData] = useState<{
+        recommended_gas?: number;
+        average_gas?: number;
+        timestamp: number;
+    } | null>(null);
+
+
+    // Helper function to estimate fees for TON swaps (fallback)
+    const estimateTONFees = useCallback((amount: number): number => {
+        // Base transaction fee: ~0.003 TON
+        let baseFee = 0.003;
+        
+        // Additional fees for complex swaps: ~0.01-0.05 TON
+        let complexSwapFee = 0.02;
+        
+        // Service fees: ~0.1% of transaction amount (max 0.1 TON)
+        const serviceFee = Math.min(amount * 0.001, 0.1);
+        
+        // Total fee calculation
+        const totalFee = baseFee + complexSwapFee + serviceFee;
+        
+        // Add 0.05 TON buffer for safety (same as API-based calculation)
+        const feeWithBuffer = totalFee + 0.05;
+        
+        // Ensure minimum fee of 0.06 TON (0.01 + 0.05 buffer)
+        return Math.max(feeWithBuffer, 0.06);
+    }, []);
+
     // Helper function to calculate maximum amount considering fees
-    const getMaxAmount = useCallback((token: any): string => {
+    const getMaxAmount = useCallback((token: any, toToken?: any): string => {
         const balance = getTokenBalance(token);
         const numericBalance = parseFloat(balance);
         
@@ -119,10 +148,43 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
 
         // For TON swaps, we need to reserve some amount for fees
         if (token.symbol === 'TON' || token.address === 'native') {
-            // Reserve approximately 0.1 TON for fees (this is a conservative estimate)
-            // In a real implementation, you might want to calculate this more precisely
-            const feeReserve = 0.1;
-            const maxAmount = Math.max(0, numericBalance - feeReserve);
+            let estimatedFees: number;
+            
+            console.log('🔍 getMaxAmount debug:', {
+                token: token.symbol,
+                toToken: toToken?.symbol,
+                hasToToken: !!toToken,
+                numericBalance,
+                lastSwapFeeData
+            });
+            
+            // Try to use fee data from the last swap calculation
+            if (lastSwapFeeData && (lastSwapFeeData.recommended_gas || lastSwapFeeData.average_gas)) {
+                // Check if the fee data is recent (within 5 minutes)
+                const isRecent = Date.now() - lastSwapFeeData.timestamp < 5 * 60 * 1000;
+                
+                if (isRecent) {
+                    // Use recommended_gas if available, otherwise use average_gas
+                    const baseFee = lastSwapFeeData.recommended_gas || lastSwapFeeData.average_gas || 0;
+                    estimatedFees = baseFee + 0.05; // Add 0.05 TON buffer
+                    
+                    console.log('🎯 Using fee data from last swap calculation:', {
+                        baseFee,
+                        estimatedFees,
+                        dataAge: Date.now() - lastSwapFeeData.timestamp
+                    });
+                } else {
+                    // Fee data is too old, use estimation
+                    estimatedFees = estimateTONFees(numericBalance);
+                    console.log('🎯 Fee data too old, using estimation:', estimatedFees);
+                }
+            } else {
+                // No fee data available, use estimation
+                estimatedFees = estimateTONFees(numericBalance);
+                console.log('🎯 No fee data available, using estimation:', estimatedFees);
+            }
+            
+            const maxAmount = Math.max(0, numericBalance - estimatedFees);
             
             // Format the result
             if (maxAmount <= 0) {
@@ -140,7 +202,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
 
         // For other tokens, use the full balance
         return balance;
-    }, [getTokenBalance]);
+    }, [getTokenBalance, lastSwapFeeData, estimateTONFees]);
 
     // Helper function to check if MAX button should be shown
     const shouldShowMaxButton = useCallback((token: any): boolean => {
@@ -228,9 +290,24 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         calcKey: calculationKey, 
         isLoading: isCalculating, 
         error: calculationError,
+        feeData: swapFeeData,
         executeCalculation,
         updateInputSourceTracking
     } = swapCalculationResult;
+
+    // Extract fee data from swap calculation results
+    useEffect(() => {
+        if (swapFeeData && (swapFeeData.recommended_gas || swapFeeData.average_gas)) {
+            const feeData = {
+                recommended_gas: swapFeeData.recommended_gas,
+                average_gas: swapFeeData.average_gas,
+                timestamp: Date.now()
+            };
+            
+            console.log('🎯 Extracted fee data from swap calculation:', feeData);
+            setLastSwapFeeData(feeData);
+        }
+    }, [swapFeeData]);
 
     // Handler for MAX button click
     const handleMaxClick = useCallback(() => {
@@ -238,34 +315,45 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             return;
         }
 
-        const maxAmount = getMaxAmount(selectedFromToken);
-        const numericMaxAmount = parseFloat(maxAmount);
-        
-        if (numericMaxAmount <= 0) {
+        try {
+            const maxAmount = getMaxAmount(selectedFromToken, selectedToToken);
+            const numericMaxAmount = parseFloat(maxAmount);
+            
+            if (numericMaxAmount <= 0) {
+                toast({
+                    title: 'Insufficient balance',
+                    description: 'Not enough balance to perform this swap',
+                    variant: 'destructive'
+                });
+                return;
+            }
+
+            // Set the from amount to the maximum available amount
+            setFromAmount(maxAmount);
+            
+            // Mark this as user input to trigger calculation
+            userInputRef.current = 'from';
+            hasUserEnteredCustomValue.current = true;
+            
+            // Update input source tracking
+            updateInputSourceTracking('from');
+            
+            console.log('🎯 MAX button clicked:', {
+                token: selectedFromToken.symbol,
+                maxAmount,
+                originalBalance: getTokenBalance(selectedFromToken),
+                toToken: selectedToToken?.symbol,
+                usedAPI: !!selectedToToken
+            });
+        } catch (error) {
+            console.error('❌ Error calculating max amount:', error);
             toast({
-                title: 'Insufficient balance',
-                description: 'Not enough balance to perform this swap',
+                title: 'Error',
+                description: 'Failed to calculate maximum amount',
                 variant: 'destructive'
             });
-            return;
         }
-
-        // Set the from amount to the maximum available amount
-        setFromAmount(maxAmount);
-        
-        // Mark this as user input to trigger calculation
-        userInputRef.current = 'from';
-        hasUserEnteredCustomValue.current = true;
-        
-        // Update input source tracking
-        updateInputSourceTracking('from');
-        
-        console.log('🎯 MAX button clicked:', {
-            token: selectedFromToken.symbol,
-            maxAmount,
-            originalBalance: getTokenBalance(selectedFromToken)
-        });
-    }, [selectedFromToken, getMaxAmount, getTokenBalance, updateInputSourceTracking, toast]);
+    }, [selectedFromToken, selectedToToken, getMaxAmount, getTokenBalance, updateInputSourceTracking, toast]);
     
 
     // Use only calculation error (removed insufficient amount check)
