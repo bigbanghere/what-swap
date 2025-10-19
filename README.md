@@ -8,6 +8,7 @@ pnpm run dev
 
 ## To Do
 
++ hover on connected wallet & on max
 + calculation bug (doge after multiple selection)
 + swap button reset and balances update after swap
 + bugs
