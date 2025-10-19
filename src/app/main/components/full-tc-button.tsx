@@ -118,12 +118,13 @@ export function CustomTonConnectButton() {
       <PopoverTrigger asChild>
         <div
           data-custom-keyboard
-          className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px]"
+          className="flex flex-row items-center gap-[5px] h-[40px] px-[15px] rounded-[15px] cursor-pointer"
           style={{
             border: `1px solid rgba(0, 122, 255, 0.22)`,
             color: `1px solid rgba(0, 122, 255, 1)`,
             zIndex: 1001,
-            position: 'relative'
+            position: 'relative',
+            cursor: 'pointer'
           }}
         >
           <IoWalletSharp 

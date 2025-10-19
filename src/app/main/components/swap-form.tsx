@@ -2396,7 +2396,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         </div>
                         {walletAddress && shouldShowMaxButton(selectedFromToken) ? (
                             <div 
-                                className='text-[#007AFF] cursor-pointer hover:opacity-80 transition-opacity'
+                                className='text-[#007AFF] cursor-pointer'
+                                style={{ cursor: 'pointer' }}
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();

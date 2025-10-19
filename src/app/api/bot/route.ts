@@ -18,7 +18,7 @@ async function createBot(token: string) {
   // Add some basic commands
   bot.command("start", async (ctx) => {
     try {
-      await ctx.reply("Nice to meet you here. Swap any tokens at best rate with What Swap App!", {
+      await ctx.reply("Nice to meet you here. Swap any tokens at best rate with What Swap!", {
         reply_markup: {
           inline_keyboard: [
             [{

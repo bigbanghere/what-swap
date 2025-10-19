@@ -8,11 +8,13 @@ pnpm run dev
 
 ## To Do
 
-+ hover on connected wallet & on max
++ bot: button-post for chan
++ bot: users db
++ app & bot: ca links & search
 + calculation bug (doge after multiple selection)
 + swap button reset and balances update after swap
 + bugs
-+ bot with button-post for chan, users db, ca search, notifications for TTM, tokens amount
+, notifications for TTM, tokens amount
 + more tokens
 
 ## To Test 
