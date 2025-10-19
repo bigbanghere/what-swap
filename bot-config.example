@@ -1,0 +1,11 @@
+# Telegram Bot Configuration
+# Get your bot token from @BotFather on Telegram
+BOT_TOKEN=your_bot_token_here
+
+# Example:
+# BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+
+# To use this bot:
+# 1. Copy this file to .env.local
+# 2. Replace 'your_bot_token_here' with your actual bot token
+# 3. Set up webhook: https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://your-domain.com/api/bot

@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "eruda": "^3.0.1",
+    "grammy": "^1.38.3",
     "lucide-react": "^0.544.0",
     "next": "15.3.1",
     "next-intl": "^4.1.0",
