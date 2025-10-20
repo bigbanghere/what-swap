@@ -1,4 +1,4 @@
-![lead picture](http://what-swap.vercel.app/Preview.png)
+![lead picture](http://what-swap.vercel.app/lead.png)
 
 ## Development
 
