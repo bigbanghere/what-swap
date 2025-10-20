@@ -8,18 +8,15 @@ pnpm run dev
 
 ## To Do
 
-+ округление
-+ bot: button-post for chan
-+ bot: users db
++ round up values on calculation
 + app & bot: ca links & search
-+ calculation bug (doge after multiple selection)
-+ swap button reset and balances update after swap
-+ bugs
-, notifications for TTM, tokens amount
++ notifications for TTM, ca
 + more tokens
 
 ## To Test 
 
++ calculation bug (doge after multiple selection)
++ swap button reset and balances update after swap
 + actual swap functionality
 + token selection
 + $ rates
@@ -31,6 +28,8 @@ pnpm run dev
 + languages support
 + check themes
 + value selection on long tap
+
+## Errors noticed
 
 AxiosError: Request failed with status code 400
     at settle (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/axios@1.12.2/node_modules/axios/dist/browser/axios.cjs:2056:12)

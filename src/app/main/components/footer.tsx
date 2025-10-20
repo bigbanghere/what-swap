@@ -40,7 +40,7 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
           }}
         ></div>
         <a 
-          href="https://github.com/bigbanghere" 
+          href="https://github.com/bigbanghere/what-swap" 
           target="_blank" 
           rel="noopener noreferrer"
         >
