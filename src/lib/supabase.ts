@@ -4,20 +4,27 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
-  throw new Error('Missing required Supabase environment variables');
-}
+// Provide fallback values for build time
+const fallbackUrl = 'https://placeholder.supabase.co';
+const fallbackKey = 'placeholder-key';
 
 // Client for server-side operations with service role key
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+export const supabaseAdmin = createClient(
+  supabaseUrl || fallbackUrl, 
+  supabaseServiceKey || fallbackKey, 
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
   }
-});
+);
 
 // Client for client-side operations with anon key
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  supabaseUrl || fallbackUrl, 
+  supabaseAnonKey || fallbackKey
+);
 
 // Database types
 export interface User {

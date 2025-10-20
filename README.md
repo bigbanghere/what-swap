@@ -12,7 +12,7 @@ pnpm run dev
 
 + round up values on calculation
 + app & bot: ca links & search
-+ notifications for TTM, ca
++ notifications for TTM
 + more tokens
 
 ## To Test 

