@@ -20,7 +20,24 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Database types
-export interface ConnectedChat {
+export interface User {
+  id: number
+  user_id: number
+  username?: string
+  first_name?: string
+  last_name?: string
+  language_code?: string
+  is_bot: boolean
+  is_premium: boolean
+  first_seen: string
+  last_activity: string
+  message_count: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Chat {
   id: number
   chat_id: string
   chat_type: 'private' | 'group' | 'supergroup' | 'channel'
@@ -37,32 +54,6 @@ export interface ConnectedChat {
   first_seen: string
   last_activity: string
   message_count: number
-  created_at: string
-  updated_at: string
-}
-
-export interface BotMessage {
-  id: number
-  chat_id: string
-  message_id: number
-  template_id?: string
-  content: string
-  parse_mode: 'HTML' | 'Markdown' | 'MarkdownV2'
-  variables?: Record<string, any>
-  sent_at: string
-  created_at: string
-}
-
-export interface ScheduledMessage {
-  id: number
-  chat_id: string
-  template_id: string
-  variables?: Record<string, any>
-  scheduled_for: string
-  repeat_interval_ms?: number
-  is_active: boolean
-  last_sent?: string
-  next_run?: string
   created_at: string
   updated_at: string
 }

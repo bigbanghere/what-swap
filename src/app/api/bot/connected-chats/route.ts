@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { TelegramDatabaseService } from "@/lib/telegram-database";
+import { ChatDatabaseService } from "@/lib/chat-database";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const chatId = searchParams.get('chatId');
-    const limit = searchParams.get('limit');
 
-    const dbService = new TelegramDatabaseService();
+    const chatDbService = new ChatDatabaseService();
 
     switch (action) {
       case 'all':
-        const allChats = await dbService.getAllConnectedChats();
+        const allChats = await chatDbService.getActiveChats();
         return NextResponse.json({ success: true, data: allChats });
 
       case 'active':
-        const activeChats = await dbService.getActiveConnectedChats();
+        const activeChats = await chatDbService.getActiveChats();
         return NextResponse.json({ success: true, data: activeChats });
 
       case 'single':
@@ -26,39 +25,28 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           );
         }
-        const chat = await dbService.getConnectedChat(chatId);
+        const chat = await chatDbService.getChat(chatId);
         return NextResponse.json({ success: true, data: chat });
 
-      case 'messages':
-        if (!chatId) {
-          return NextResponse.json(
-            { error: 'chatId parameter is required' },
-            { status: 400 }
-          );
-        }
-        const messages = await dbService.getBotMessages(chatId, limit ? parseInt(limit) : 50);
-        return NextResponse.json({ success: true, data: messages });
-
       case 'statistics':
-        const stats = await dbService.getChatStatistics();
+        const stats = await chatDbService.getChatStats();
         return NextResponse.json({ success: true, data: stats });
 
       default:
         return NextResponse.json({
           success: true,
-          message: 'Connected chats API',
+          message: 'Chats API',
           availableActions: [
-            'all - Get all connected chats',
-            'active - Get active connected chats',
+            'all - Get all chats',
+            'active - Get active chats',
             'single?chatId=CHAT_ID - Get specific chat',
-            'messages?chatId=CHAT_ID&limit=LIMIT - Get chat messages',
             'statistics - Get chat statistics'
           ]
         });
     }
 
   } catch (error) {
-    console.error('Connected chats API error:', error);
+    console.error('Chats API error:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error', 
@@ -80,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dbService = new TelegramDatabaseService();
+    const chatDbService = new ChatDatabaseService();
 
     switch (action) {
       case 'update-chat':
@@ -93,7 +81,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const updatedChat = await dbService.upsertConnectedChat({
+        const updatedChat = await chatDbService.upsertChat({
           chat_id: updateChatId,
           ...chatData
         });
@@ -110,29 +98,8 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        await dbService.updateChatActivity(activityChatId);
+        await chatDbService.updateChatActivity(activityChatId);
         return NextResponse.json({ success: true, message: 'Activity updated' });
-
-      case 'store-message':
-        const { chatId: messageChatId, messageId, templateId, content, parseMode, variables } = data;
-        
-        if (!messageChatId || !messageId || !content) {
-          return NextResponse.json(
-            { error: 'chatId, messageId, and content are required' },
-            { status: 400 }
-          );
-        }
-
-        const storedMessage = await dbService.storeBotMessage({
-          chat_id: messageChatId,
-          message_id: messageId,
-          template_id: templateId,
-          content,
-          parse_mode: parseMode || 'HTML',
-          variables
-        });
-
-        return NextResponse.json({ success: true, data: storedMessage });
 
       default:
         return NextResponse.json(
@@ -142,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Connected chats POST error:', error);
+    console.error('Chats POST error:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error', 

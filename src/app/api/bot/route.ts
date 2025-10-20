@@ -1,6 +1,7 @@
 import { Bot } from "grammy";
 import { NextRequest, NextResponse } from "next/server";
-import { TelegramDatabaseService } from "@/lib/telegram-database";
+import { ChatDatabaseService } from "@/lib/chat-database";
+import { UserDatabaseService } from "@/lib/user-database";
 
 // Function to create and configure the bot
 async function createBot(token: string) {
@@ -16,10 +17,11 @@ async function createBot(token: string) {
     botInfo: botInfo.result
   });
 
-  // Initialize database service
-  const dbService = new TelegramDatabaseService();
+  // Initialize database services
+  const chatDbService = new ChatDatabaseService();
+  const userDbService = new UserDatabaseService();
 
-  // Middleware to store chat data on every update
+  // Middleware to store chat data and user activity on every update
   bot.use(async (ctx, next) => {
     try {
       // Store chat information if available
@@ -33,10 +35,23 @@ async function createBot(token: string) {
           invite_link: 'invite_link' in ctx.chat ? (ctx.chat.invite_link as string) : undefined,
         };
 
-        await dbService.upsertConnectedChat(chatData);
+        await chatDbService.upsertChat(chatData);
+      }
+
+      // Register/update user data if user is present
+      if (ctx.from) {
+        await userDbService.upsertUser({
+          user_id: ctx.from.id,
+          username: ctx.from.username,
+          first_name: ctx.from.first_name,
+          last_name: ctx.from.last_name,
+          language_code: ctx.from.language_code,
+          is_bot: ctx.from.is_bot || false,
+          is_premium: ctx.from.is_premium || false,
+        });
       }
     } catch (error) {
-      console.error('Error storing chat data:', error);
+      console.error('Error storing chat/user data:', error);
     }
     
     await next();
@@ -55,17 +70,6 @@ async function createBot(token: string) {
           ]
         }
       });
-
-      // Store the bot message
-      if (message && ctx.chat) {
-        await dbService.storeBotMessage({
-          chat_id: ctx.chat.id.toString(),
-          message_id: message.message_id,
-          template_id: 'start',
-          content: message.text || '',
-          parse_mode: 'HTML'
-        });
-      }
     } catch (error) {
       console.log('Could not send start message to chat:', ctx.chat?.id, error instanceof Error ? error.message : String(error));
     }

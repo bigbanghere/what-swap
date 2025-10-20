@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { TelegramDatabaseService } from "@/lib/telegram-database";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +10,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { chatId, message, parseMode = 'HTML', replyToMessageId, templateId, variables } = await request.json();
+    const { chatId, message, parseMode = 'HTML', replyToMessageId } = await request.json();
 
     // Validate required parameters
     if (!chatId || !message) {
@@ -20,9 +19,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Initialize database service
-    const dbService = new TelegramDatabaseService();
 
     // Send message to Telegram
     const response = await fetch(`https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`, {
@@ -47,21 +43,6 @@ export async function POST(request: NextRequest) {
         { error: `Failed to send message: ${result.description}`, details: result },
         { status: 400 }
       );
-    }
-
-    // Store the message in database
-    try {
-      await dbService.storeBotMessage({
-        chat_id: chatId.toString(),
-        message_id: result.result.message_id,
-        template_id: templateId,
-        content: message,
-        parse_mode: parseMode,
-        variables: variables
-      });
-    } catch (dbError) {
-      console.error('Error storing message in database:', dbError);
-      // Don't fail the request if database storage fails
     }
 
     return NextResponse.json({
