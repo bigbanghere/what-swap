@@ -1,3 +1,5 @@
+![lead picture](http://what-swap.vercel.app/Preview.png)
+
 ## Development
 
 To run the project in development mode:
