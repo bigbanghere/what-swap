@@ -9,7 +9,7 @@ const { Bot, InputFile } = require('grammy');
 const fs = require('fs');
 
 // Load environment variables from .env.local
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '../.env.local' });
 
 // Your channel data
 const CHANNEL_DATA = {
