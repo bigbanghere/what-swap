@@ -8,6 +8,7 @@ pnpm run dev
 
 ## To Do
 
++ округление
 + bot: button-post for chan
 + bot: users db
 + app & bot: ca links & search
