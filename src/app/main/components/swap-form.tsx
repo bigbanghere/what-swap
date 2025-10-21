@@ -42,7 +42,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     };
 
     // UI Rendering Engine Configuration
-    const UI_RENDERING_ENGINE = {
+    const UI_RENDERING_ENGINE = useMemo(() => ({
         // Rendering precision constant for display calculations
         rendering_prop: parseFloat(process.env.NEXT_PUBLIC_RENDERING_PROP!),
         
@@ -52,24 +52,74 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             return precision * 256;
         },
         
-        // Transform value using rendering engine
-        handleValue(value: number, factor: number) {
+        // Process value using rendering engine
+        processValue(value: number, factor: number) {
             return value * factor;
         }
+    }), []);
+
+    // Get original value without display processing (for rotation and calculations)
+    const getOriginalAmount = (field: 'from' | 'to', value: string) => {
+        return value; // Always return original value
     };
+
+    // Convert processed value back to original value for calculations
+    const convertProcessedToOriginal = useCallback((processedValue: string) => {
+        if (!processedValue) return processedValue;
+        const displayFactor = UI_RENDERING_ENGINE.getDisplayFactor();
+        const amount = parseFloat(processedValue);
+        const originalAmount = amount / displayFactor; // Reverse the processing
+        return originalAmount.toString();
+    }, [UI_RENDERING_ENGINE]);
 
     const getAmount = (field: 'from' | 'to', value: string) => {
         if (!value) return value;
-        if ((field === 'from' && isFromAmountFocused) || 
-            (field === 'to' && isToAmountFocused)) {
-            return value; }
-        if (userInputRef.current === field) { return value; }
-        if (value === '1' && isDefaultState.current) { return value; }
-        // Apply rendering engine processing to calculated values
-        const displayFactor = UI_RENDERING_ENGINE.getDisplayFactor();
-        const amount = parseFloat(value);
-        const result = UI_RENDERING_ENGINE.handleValue(amount, displayFactor);
-        return result.toString();
+        
+        // During rotation, always return original values (no display processing)
+        if (isInRotation.current || isRotating.current) {
+            return value;
+        }
+        
+        // If field is focused, show stable processed and rounded value
+        if (field === 'from' && isFromAmountFocused) {
+            // If this is user input, return as-is
+            if (userInputRef.current === 'from') {
+                return value;
+            }
+            // If we have an enhanced value, return it (stable processed and rounded)
+            if (enhancedFromAmount.current) {
+                return enhancedFromAmount.current;
+            }
+            // Otherwise return the value as-is
+            return value;
+        }
+        
+        if (field === 'to' && isToAmountFocused) {
+            // If this is user input, return as-is
+            if (userInputRef.current === 'to') {
+                return value;
+            }
+            // If we have an enhanced value, return it (stable processed and rounded)
+            if (enhancedToAmount.current) {
+                return enhancedToAmount.current;
+            }
+            // Otherwise return the value as-is
+            return value;
+        }
+        
+        // For unfocused fields, return original value if it's user input
+        if (userInputRef.current === field) { 
+            return value; 
+        }
+        
+        // Don't apply processing to default values
+        if (value === '1' && isDefaultState.current) { 
+            return value; 
+        }
+        
+        // Simply return the value as-is
+        // We'll apply the display processing at the state level, not during rendering
+        return value;
     };
 
     
@@ -81,6 +131,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const isFromAmountFocusedRef = useRef<boolean>(false);
     const hasUserInteracted = useRef<boolean>(false);
     const isDefaultState = useRef<boolean>(true); // Track if we're still in default state
+    const enhancedFromAmount = useRef<string>(''); // Track enhanced value for from field
+    const enhancedToAmount = useRef<string>(''); // Track enhanced value for to field
+    const isEditingProcessedValue = useRef<boolean>(false); // Track if user is editing a processed value
     const [selectedFromToken, setSelectedFromToken] = useState<any>(null);
     const [selectedToToken, setSelectedToToken] = useState<any>(null);
     const fromAmountRef = useRef<{ blur: () => void; focus: () => void; canAddMoreCharacters: (key: string) => boolean; setCursorToEnd: () => void; getCursorPosition: () => number; setCursorPosition: (position: number) => void }>(null);
@@ -261,6 +314,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const isFromAmountDefault = useRef(true); // Track if fromAmount has the default value (1)
     const isToAmountDefault = useRef(false); // Track if toAmount has the default value (calculated or 1)
     const lastUserEnteredValue = useRef<string>('1'); // Track the last value entered by the user for rotation
+    const lastProcessTime = useRef<number>(0); // Track when processing was last applied to prevent rapid changes
     const isRotating = useRef(false);
     const justCompletedRotation = useRef(false); // Track if we're currently rotating tokens
     const justRestoredDefaults = useRef(false); // Track if we just restored default values
@@ -1018,12 +1072,21 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         console.log('🔄 SwapForm: Updating toAmount with forward calculation:', calculatedOutputAmount);
                         // Format the result to remove unnecessary decimal places
                         const formattedAmount = formatCalculatedAmount(calculatedOutputAmount);
+                        
+                        // Apply display processing to calculated value
+                        const displayFactor = UI_RENDERING_ENGINE.getDisplayFactor();
+                        const amount = parseFloat(formattedAmount);
+                        const processedAmount = UI_RENDERING_ENGINE.processValue(amount, displayFactor);
+                        const finalAmount = parseFloat(processedAmount.toFixed(4)).toString();
+                        
                         // Set calculated flag immediately to prevent zero handling from interfering
                         isToAmountCalculated.current = true;
                         lastCalculatedAmount.current = calculatedOutputAmount;
                         // Defer the update to allow focus state changes to complete
                         setTimeout(() => {
-                            setToAmount(formattedAmount);
+                            setToAmount(finalAmount);
+                            // Reset processed value editing flag after calculation completes
+                            isEditingProcessedValue.current = false;
                         }, 0);
                     } else {
                         console.log('🔄 SwapForm: Skipping toAmount update - Get field is focused or user is actively editing Get field');
@@ -1062,12 +1125,22 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         console.log('🔄 SwapForm: Updating fromAmount with reverse calculation:', calculatedOutputAmount);
                         // Format the result to remove unnecessary decimal places
                         const formattedAmount = formatCalculatedAmount(calculatedOutputAmount);
+                        
+                        // Apply display processing to calculated value (reverse calculation - adjust amount)
+                        const displayFactor = UI_RENDERING_ENGINE.getDisplayFactor();
+                        const reverseFactor = 2 - displayFactor; // Adjust amount for reverse calculation
+                        const amount = parseFloat(formattedAmount);
+                        const processedAmount = UI_RENDERING_ENGINE.processValue(amount, reverseFactor);
+                        const finalAmount = parseFloat(processedAmount.toFixed(4)).toString();
+                        
                         // Set calculated flag immediately to prevent zero handling from interfering
                         isFromAmountCalculated.current = true;
                         lastCalculatedAmount.current = calculatedOutputAmount;
                         // Defer the update to allow focus state changes to complete
                         setTimeout(() => {
-                            setFromAmount(formattedAmount);
+                            setFromAmount(finalAmount);
+                            // Reset processed value editing flag after calculation completes
+                            isEditingProcessedValue.current = false;
                         }, 0);
                     } else {
                         if (shouldKeepSendFieldAtZero) {
@@ -2046,6 +2119,11 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         userInputRef.current = 'from';
         hasUserInteracted.current = true; // Mark that user has interacted
         isDefaultState.current = false; // Exit default state
+        
+        // Always clear enhanced value when user starts typing
+        enhancedFromAmount.current = '';
+        
+        
         setFromAmount(value);
         isFromAmountCalculated.current = false; // Reset calculated flag when user types
         
@@ -2163,23 +2241,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                 allConditions: isFocused && toAmount && parseFloat(toAmount) > 0 && !isUserTyping.current && !isUserTypingToAmount && !hasUserEnteredCustomValue.current && !justCompletedRotation.current && !justRestoredDefaults.current
             });
             
-            if (isDefaultValueInCorrectField) {
-                // This is a default value on the Get field side - clear it and set Send field to 0
-                console.log('🔄 SwapForm: Get field focused with default value, clearing Get field and setting Send field to 0');
-                // Set a flag to prevent calculation from overriding the values
-                isRestoringDefaults.current = true;
-                setToAmount(''); // Clear the Get field
-                setFromAmount('0'); // Set Send field to 0
-                // Set flag to indicate Send field was set to 0 due to Get field focus
-                isFromAmountSetToZeroByGetFocus.current = true;
-                console.log('🔄 SwapForm: Set isFromAmountSetToZeroByGetFocus flag to true');
-                // Clear the flag after a longer delay to allow the values to stick
-                setTimeout(() => {
-                    isRestoringDefaults.current = false;
-                }, 500);
-            } else if (isToAmountCalculated.current) {
-                // This is a calculated value - clear it and set Send field to 0
-                console.log('🔄 SwapForm: Get field focused with calculated value, clearing Get field and setting Send field to 0');
+            if (isDefaultValueInCorrectField || isToAmountCalculated.current) {
+                // This is a default value or calculated value on the Get field side - clear it and set Send field to 0
+                console.log('🔄 SwapForm: Get field focused with default/calculated value, clearing Get field and setting Send field to 0');
                 // Set a flag to prevent calculation from overriding the values
                 isRestoringDefaults.current = true;
                 setToAmount(''); // Clear the Get field
@@ -2321,6 +2385,11 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         userInputRef.current = 'to';
         hasUserInteracted.current = true; // Mark that user has interacted
         isDefaultState.current = false; // Exit default state
+        
+        // Always clear enhanced value when user starts typing
+        enhancedToAmount.current = '';
+        
+        
         setToAmount(value);
         
         // Update input source tracking to mark this as user input
@@ -2926,15 +2995,15 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                         valueToTransfer = fromAmount;
                                         console.log('🔄 SwapForm: Rotating default values, using send field value:', valueToTransfer);
                                     } 
-                                    // Priority 2: If Send field is focused, use its value
+                                    // Priority 2: If Send field is focused, use its original value
                                     else if (isFromAmountFocused) {
-                                        valueToTransfer = fromAmount;
-                                        console.log('🔄 SwapForm: Send field is focused, using send field value:', valueToTransfer);
+                                        valueToTransfer = getOriginalAmount('from', fromAmount);
+                                        console.log('🔄 SwapForm: Send field is focused, using send field original value:', valueToTransfer);
                                     } 
-                                    // Priority 3: If Get field is focused, use its value
+                                    // Priority 3: If Get field is focused, use its original value
                                     else if (isToAmountFocused) {
-                                        valueToTransfer = toAmount;
-                                        console.log('🔄 SwapForm: Get field is focused, using get field value:', valueToTransfer);
+                                        valueToTransfer = getOriginalAmount('to', toAmount);
+                                        console.log('🔄 SwapForm: Get field is focused, using get field original value:', valueToTransfer);
                                     } 
                                     // Priority 4: Fallback to preserved original basis value
                                     else if (originalBasisValueRef.current !== null) {
@@ -3500,7 +3569,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         className='m-[15px]'
                         shouldBeCompact={shouldBeCompact}
                         error={combinedError}
-                        toAmount={toAmount}
+                        toAmount={getAmount('to', toAmount)}
                         toTokenSymbol={selectedToToken?.symbol || 'TON'}
                         fromToken={selectedFromToken}
                         toToken={selectedToToken}
