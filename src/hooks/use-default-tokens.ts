@@ -35,11 +35,19 @@ const fetchDefaultTokens = async () => {
   try {
     console.log('🔄 DefaultTokens: Fetching USDT and TON from API...');
     
-    // Fetch both tokens in parallel
-    const [usdtResponse, tonResponse] = await Promise.all([
-      swapCoffeeApiClient.getJettonByAddress(USDT_ADDRESS),
-      swapCoffeeApiClient.getJettonByAddress(TON_ADDRESS),
-    ]);
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout: API call took too long')), 3000); // 3 second timeout
+    });
+    
+    // Fetch both tokens in parallel with timeout
+    const [usdtResponse, tonResponse] = await Promise.race([
+      Promise.all([
+        swapCoffeeApiClient.getJettonByAddress(USDT_ADDRESS),
+        swapCoffeeApiClient.getJettonByAddress(TON_ADDRESS),
+      ]),
+      timeoutPromise
+    ]) as [any, any];
     
     defaultTokensCache.usdt = usdtResponse;
     defaultTokensCache.ton = tonResponse;

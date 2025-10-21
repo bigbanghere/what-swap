@@ -1203,7 +1203,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             console.log('🔄 SwapForm: Calculation completed, clearing isRestoringDefaults flag');
             isRestoringDefaults.current = false;
         }
-    }, [calculatedOutputAmount, calculationKey, toAmount, fromAmount, selectedFromToken, selectedToToken]);
+    }, [calculatedOutputAmount, calculationKey, toAmount, fromAmount, selectedFromToken, selectedToToken, UI_RENDERING_ENGINE]);
 
     // REMOVED: Additional effect that was causing conflicts
 

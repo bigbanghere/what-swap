@@ -198,11 +198,45 @@ export function useKeyboardDetection() {
     
     // Handle TMA viewport expansion when input is focused
     if (focused && !isInBrowser) {
-      try {
-        viewport.expand();
-      } catch (error) {
-        console.error('Failed to expand TMA viewport:', error);
-      }
+      const expandViewport = () => {
+        try {
+          viewport.expand();
+          debug('Viewport expansion successful');
+        } catch (error) {
+          console.error('Failed to expand TMA viewport:', error);
+          
+          // Retry viewport expansion with exponential backoff
+          let retryCount = 0;
+          const maxRetries = 5;
+          const retryDelay = 50;
+          
+          const retryExpansion = () => {
+            if (retryCount >= maxRetries) {
+              debug('Viewport expansion failed after max retries');
+              return;
+            }
+            
+            retryCount++;
+            debug(`Viewport expansion retry attempt ${retryCount}/${maxRetries}`);
+            
+            try {
+              viewport.expand();
+              debug('Viewport expansion successful on retry');
+            } catch (retryError) {
+              console.error(`Viewport expansion retry ${retryCount} failed:`, retryError);
+              
+              // Exponential backoff: 50ms, 100ms, 200ms, 400ms, 800ms
+              const delay = retryDelay * Math.pow(2, retryCount - 1);
+              setTimeout(retryExpansion, delay);
+            }
+          };
+          
+          // Start retry after initial delay
+          setTimeout(retryExpansion, retryDelay);
+        }
+      };
+      
+      expandViewport();
     }
     
     // Notify all listeners
@@ -294,6 +328,62 @@ export function useKeyboardDetection() {
       savedViewport: sessionStorage.getItem('viewportExpanded'),
       isInTelegram: Boolean((window as any).Telegram?.WebApp),
     });
+
+    // Retry logic for TMA initialization
+    const initializeTMA = () => {
+      const webApp = (window as any).Telegram?.WebApp;
+      if (webApp) {
+        debug('TMA found, initializing viewport state');
+        
+        // Check initial viewport state
+        const isExpanded = Boolean(webApp.isExpanded);
+        debug('Initial TMA viewport state:', { isExpanded });
+        
+        // Set initial viewport state
+        setIsViewportExpanded(isExpanded);
+        globalViewportExpanded = isExpanded;
+        setViewportExpanded(isExpanded);
+        sessionStorage.setItem('viewportExpanded', isExpanded.toString());
+        
+        // Call ready() to ensure TMA is properly initialized
+        if (webApp.ready) {
+          webApp.ready();
+        }
+        
+        return true; // Success
+      }
+      return false; // Not ready yet
+    };
+
+    // Try to initialize TMA immediately
+    if (!initializeTMA()) {
+      // If TMA is not ready, retry with exponential backoff
+      let retryCount = 0;
+      const maxRetries = 10;
+      const retryDelay = 100; // Start with 100ms
+      
+      const retryTMA = () => {
+        if (retryCount >= maxRetries) {
+          debug('TMA initialization failed after max retries');
+          return;
+        }
+        
+        retryCount++;
+        debug(`TMA retry attempt ${retryCount}/${maxRetries}`);
+        
+        if (initializeTMA()) {
+          debug('TMA initialization successful on retry');
+          return;
+        }
+        
+        // Exponential backoff: 100ms, 200ms, 400ms, 800ms, etc.
+        const delay = retryDelay * Math.pow(2, retryCount - 1);
+        setTimeout(retryTMA, delay);
+      };
+      
+      // Start retry after initial delay
+      setTimeout(retryTMA, retryDelay);
+    }
 
     // Check if we're returning from navigation (not a page reload)
     const isNavigationReturn = sessionStorage.getItem('isNavigationReturn') === 'true';
@@ -472,25 +562,65 @@ export function useKeyboardDetection() {
       }
 
       // Subscribe once per effect run to Telegram viewport changes
-      try {
-        const tg = (window as any).Telegram?.WebApp;
-        if (tg?.onEvent) {
-          const handler = () => {
-            const expanded = Boolean(tg.isExpanded);
-            debug('telegram viewportChanged', { expanded });
-            setIsViewportExpanded(expanded);
-            globalViewportExpanded = expanded;
-            setViewportExpanded(expanded);
-            sessionStorage.setItem('viewportExpanded', expanded.toString());
-          };
-          tg.onEvent('viewportChanged', handler);
-          return () => {
-            try { tg.offEvent?.('viewportChanged', handler); } catch {}
-          };
+      const setupViewportListener = () => {
+        try {
+          const tg = (window as any).Telegram?.WebApp;
+          if (tg?.onEvent) {
+            const handler = () => {
+              const expanded = Boolean(tg.isExpanded);
+              debug('telegram viewportChanged', { expanded });
+              setIsViewportExpanded(expanded);
+              globalViewportExpanded = expanded;
+              setViewportExpanded(expanded);
+              sessionStorage.setItem('viewportExpanded', expanded.toString());
+            };
+            tg.onEvent('viewportChanged', handler);
+            debug('Viewport change listener set up successfully');
+            return () => {
+              try { tg.offEvent?.('viewportChanged', handler); } catch {}
+            };
+          }
+          return null;
+        } catch (e) {
+          console.error('Failed to bind Telegram viewportChanged', e);
+          return null;
         }
-      } catch (e) {
-        console.error('Failed to bind Telegram viewportChanged', e);
+      };
+
+      // Try to set up listener immediately
+      let cleanup = setupViewportListener();
+      
+      // If setup failed, retry with exponential backoff
+      if (!cleanup) {
+        let retryCount = 0;
+        const maxRetries = 5;
+        const retryDelay = 100;
+        
+        const retrySetup = () => {
+          if (retryCount >= maxRetries) {
+            debug('Viewport listener setup failed after max retries');
+            return;
+          }
+          
+          retryCount++;
+          debug(`Viewport listener setup retry attempt ${retryCount}/${maxRetries}`);
+          
+          cleanup = setupViewportListener();
+          if (cleanup) {
+            debug('Viewport listener setup successful on retry');
+            return;
+          }
+          
+          // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
+          const delay = retryDelay * Math.pow(2, retryCount - 1);
+          setTimeout(retrySetup, delay);
+        };
+        
+        // Start retry after initial delay
+        setTimeout(retrySetup, retryDelay);
       }
+      
+      return cleanup || (() => {});
     }
   }, [telegramIsExpanded, isInBrowser, isKeyboardOpen, mockViewportExpanded, isInputActive, isViewportExpanded, isInputFocused, setViewportExpanded]); // Include all dependencies
 
