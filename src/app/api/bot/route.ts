@@ -2,6 +2,64 @@ import { Bot } from "grammy";
 import { NextRequest, NextResponse } from "next/server";
 import { ChatDatabaseService } from "@/lib/chat-database";
 import { UserDatabaseService } from "@/lib/user-database";
+import { swapCoffeeApiClient } from "@/lib/swap-coffee-api";
+
+// Function to validate TON address format
+function isValidTONAddress(text: string): boolean {
+  // Remove whitespace
+  const cleanText = text.trim();
+  
+  // TON addresses can be in different formats:
+  // 1. Raw format: 0:83dfd552e63729b472fcbcc8c45ebcc6691702558b68ec7527e1ba403a0f31a8
+  // 2. User-friendly format: UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH
+  // 3. Base64 format: EQAjWFZaH0Xib0VGEwe3148Hg7arST5mhJwDB3YTIS0OFUxJ
+  // 4. Other formats: QBKMfjX_a_dsOLm-juxyVZytFP7_KKnzGv6J01kGc72gVBp
+  
+  // Check for raw format (0: followed by 64 hex characters)
+  if (/^0:[0-9a-fA-F]{64}$/.test(cleanText)) {
+    return true;
+  }
+  
+  // Check for user-friendly format (UQ followed by base64-like characters)
+  if (/^UQ[A-Za-z0-9_-]{46}$/.test(cleanText)) {
+    return true;
+  }
+  
+  // Check for base64 format (48 characters, base64-like, no underscores or dashes)
+  if (/^[A-Za-z0-9+/]{48}$/.test(cleanText)) {
+    return true;
+  }
+  
+  // Check for other TON address formats (47-48 characters, alphanumeric + underscore + dash)
+  if (/^[A-Za-z0-9_-]{47,48}$/.test(cleanText)) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Function to validate token exists via API
+async function validateTokenExists(address: string): Promise<{ exists: boolean; token?: any }> {
+  try {
+    console.log(`🔍 Validating token: ${address}`);
+    const token = await swapCoffeeApiClient.getJettonByAddress(address);
+    console.log(`✅ Token found: ${token.symbol} (${token.name})`);
+    return { exists: true, token };
+  } catch (error) {
+    console.log(`❌ Token not found: ${address}`, error);
+    return { exists: false };
+  }
+}
+
+// Function to create swap link with startapp parameter
+function createSwapLink(tokenAddress: string): string {
+  const baseUrl = "https://t.me/what_swap_bot/whatswap";
+  const params = new URLSearchParams({
+    mode: "compact",
+    startapp: tokenAddress
+  });
+  return `${baseUrl}?${params.toString()}`;
+}
 
 // Function to create and configure the bot
 async function createBot(token: string) {
@@ -77,7 +135,8 @@ async function createBot(token: string) {
 
   bot.command("help", async (ctx) => {
     try {
-      await ctx.reply("🤖 Bot Help\n\nCommands:\n• /start - Welcome message\n• /help - Show this help\n• /ping - Test bot response\n\nThis bot is powered by Next.js and Grammy!", {
+      await ctx.reply("🤖 **What Swap Bot Help**\n\n**Commands:**\n• /start - Welcome message\n• /help - Show this help\n• /ping - Test bot response\n\n**Features:**\n• Send any TON token address to get a direct swap link\n• Supports all TON address formats (raw, user-friendly, base64)\n• Automatically validates tokens via API\n\n**Examples:**\n• Send: `EQAjWFZaH0Xib0VGEwe3148Hg7arST5mhJwDB3YTIS0OFUxJ`\n• Send: `0:83dfd552e63729b472fcbcc8c45ebcc6691702558b68ec7527e1ba403a0f31a8`\n\nThis bot is powered by Next.js and Grammy!", {
+        parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
             [{
@@ -107,6 +166,36 @@ async function createBot(token: string) {
       
       // Skip if it's a command (starts with /)
       if (message.startsWith('/')) {
+        return;
+      }
+      
+      // Check if the message looks like a TON address
+      if (isValidTONAddress(message)) {
+        console.log(`🔍 Detected TON address: ${message}`);
+        
+        // Show typing indicator
+        await ctx.replyWithChatAction('typing');
+        
+        // Validate token exists
+        const validation = await validateTokenExists(message);
+        
+        if (validation.exists && validation.token) {
+          const token = validation.token;
+          const swapLink = createSwapLink(message);
+          
+          await ctx.reply(
+            `[Swap ${token.symbol} on What Swap](${swapLink})`,
+            { parse_mode: 'Markdown' }
+          );
+        } else {
+          await ctx.reply(
+            `❌ **Token Not Found**\n\n` +
+            `The address \`${message}\` does not correspond to a valid token in our database.\n\n` +
+            `Please check the address and try again.`,
+            { parse_mode: 'Markdown' }
+          );
+        }
+        
         return;
       }
       

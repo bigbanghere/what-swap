@@ -93,6 +93,8 @@ export function useTMAParams() {
   // Main effect for TMA parameter processing
   useEffect(() => {
     console.log('🔄 TMA: Starting parameter processing');
+    console.log('🔄 TMA: Current URL:', window.location.href);
+    console.log('🔄 TMA: Search params:', window.location.search);
     
     // Don't proceed if we've already processed parameters
     if (getProcessedFlag()) {
@@ -105,6 +107,9 @@ export function useTMAParams() {
     const urlParams = new URLSearchParams(window.location.search);
     const startappParam = urlParams.get('startapp');
     const tgWebAppStartParam = urlParams.get('tgWebAppStartParam');
+    
+    console.log('🔄 TMA: startappParam:', startappParam);
+    console.log('🔄 TMA: tgWebAppStartParam:', tgWebAppStartParam);
     
     const hasStartParams = startappParam || tgWebAppStartParam;
     
