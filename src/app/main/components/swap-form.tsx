@@ -2448,7 +2448,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         <div 
             className={`w-full relative z-10 flex flex-col items-center justify-center mx-auto`}
             style={{
-                maxWidth: '460px',
+                maxWidth: '420px',
                 padding: shouldBeCompact ? '0' : '15px'
             }}
         >

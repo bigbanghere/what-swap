@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from 'next-intl';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/core/theme';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 import { SwapButton } from '@/components/SwapButton';
@@ -10,6 +10,18 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
   const t = useTranslations('translations');
   const { colors } = useTheme();
   const { shouldBeCompact } = useKeyboardDetection();
+  const [isInTMA, setIsInTMA] = useState(false);
+
+  // Detect if we're running in TMA
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const inTelegram = 
+        window.location.search.includes('tgWebAppPlatform') || 
+        window.location.hash.includes('tgWebAppPlatform') ||
+        !!(window as any).Telegram?.WebApp;
+      setIsInTMA(inTelegram);
+    }
+  }, []);
 
   return (
     <footer 
@@ -36,7 +48,7 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
         </a>
         <div className='w-[1px] h-[30px]'
           style={{
-              backgroundColor: 'rgba(0, 122, 255, 0.11)'
+              backgroundColor: 'rgba(0, 122, 255, 0.22)'
           }}
         ></div>
         <a 
@@ -53,6 +65,15 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
         >
           <img src="/3.svg" alt="2" className="w-[20px] h-[20px]" />
         </a>
+        {isInTMA && (
+          <a 
+            href="https://what-swap.vercel.app/"
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            <img src="/4.svg" alt="2" className="w-[20px] h-[20px]" />
+          </a>
+        )}
       </div>
     </footer>
   );
