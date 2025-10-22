@@ -19,6 +19,7 @@ import { useUserTokensCache } from '@/hooks/use-user-tokens-cache';
 import { useSwapCalculation } from '@/hooks/use-swap-calculation';
 import { SwapButton } from '@/components/SwapButton';
 import { useToast } from '@/hooks/use-toast';
+import { useTMAParams } from '@/hooks/use-tma-params';
 
 export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: (error: string | null) => void; onSwapDataChange?: (data: { toAmount: string; toTokenSymbol: string }) => void }) {
     const router = useRouter();
@@ -145,6 +146,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const { allTokens } = useTokensCache();
     const { userTokens, tonBalance } = useUserTokensCache(walletAddress);
     const { toast } = useToast();
+    const { isTMAReady, tmaParams, tmaToken, isLoading: tmaLoading } = useTMAParams();
 
     // Helper function to get the balance for the selected token
     const getTokenBalance = useCallback((token: any): string => {
@@ -649,8 +651,69 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         return formattedValue;
     }, [toAmount, calculateUSDValueInline, formatUSDValueInline, defaultTon, selectedToToken]);
 
+    // Handle TMA parameters for token selection
+    useEffect(() => {
+        if (!isTMAReady || !tmaParams) {
+            return;
+        }
+        
+        console.log('🔄 SwapForm: Processing TMA parameters:', tmaParams);
+        
+        // If we have a fetched TMA token, use it
+        if (tmaToken) {
+            console.log('🔄 SwapForm: Using TMA token:', tmaToken);
+            
+            // Set the TMA token as the "to" token (what user wants to get)
+            const tmaTokenData = {
+                symbol: tmaToken.symbol,
+                name: tmaToken.name,
+                image_url: tmaToken.image_url,
+                address: tmaToken.address
+            };
+            
+            setSelectedToToken(tmaTokenData);
+            localStorage.setItem('selectedToToken', JSON.stringify(tmaTokenData));
+        } else if (defaultUsdt) {
+            // Fallback to default USDT if no TMA token was fetched
+            console.log('🔄 SwapForm: Using default USDT as fallback for TMA parameters');
+            
+            const fallbackTokenData = {
+                symbol: defaultUsdt.symbol,
+                name: defaultUsdt.name,
+                image_url: defaultUsdt.image_url,
+                address: defaultUsdt.address
+            };
+            
+            setSelectedToToken(fallbackTokenData);
+            localStorage.setItem('selectedToToken', JSON.stringify(fallbackTokenData));
+        }
+        
+        // Set TON as the "from" token (what user will send)
+        if (defaultTon) {
+            const tonTokenData = {
+                symbol: defaultTon.symbol,
+                name: defaultTon.name,
+                image_url: defaultTon.image_url,
+                address: defaultTon.address
+            };
+            setSelectedFromToken(tonTokenData);
+            localStorage.setItem('selectedFromToken', JSON.stringify(tonTokenData));
+        }
+        
+        // Set default amount to 1 TON as specified
+        setFromAmount('1');
+        
+        console.log('✅ SwapForm: TMA parameters applied successfully');
+    }, [isTMAReady, tmaParams, tmaToken, defaultTon, defaultUsdt]);
+
     // Only reset to default tokens on actual page refresh, not on navigation
     useEffect(() => {
+        
+        // Skip if TMA parameters exist (they will be handled by the TMA effect)
+        if (tmaParams) {
+            console.log('🔄 SwapForm: Skipping token initialization - TMA parameters will be applied');
+            return;
+        }
         
         // Simplified logic: Check if we're in the middle of token selection process
         const isTokenSelectionProcess = () => {
@@ -862,7 +925,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         }
         
 
-    }, []);
+    }, [tmaLoading, tmaParams, isTMAReady]);
 
   // Debug: Log when selectedFromToken or selectedToToken changes
   useEffect(() => {
@@ -1415,11 +1478,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     // Ensure default tokens are set if no valid tokens are loaded
     // This runs when default tokens are loaded from API or when token state changes
     useEffect(() => {
-        // Don't set defaults if we're still loading the default tokens from API
-        if (defaultTokensLoading) {
-            console.log('🔄 SwapForm: Waiting for default tokens to load from API...');
-            return;
-        }
+        // Don't wait for default tokens to load - proceed with whatever we have
+        console.log('🔄 SwapForm: Setting up default tokens...');
 
         // Check if we need to set defaults - only if no tokens are loaded from localStorage
         const fromTokenInStorage = localStorage.getItem('selectedFromToken');
@@ -1518,7 +1578,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             }
         }
         
-    }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading, allTokens]); // Include dependencies but logic prevents infinite loops
+    }, [selectedFromToken, selectedToToken, defaultUsdt, defaultTon, defaultTokensLoading, allTokens, tmaParams, tmaToken]); // Include dependencies but logic prevents infinite loops
 
     // Function to get prioritized tokens for shortcuts (exclude both fromToken and toToken)
     const getPrioritizedTokens = useCallback((excludeFromToken: any, excludeToToken: any) => {
@@ -2682,25 +2742,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 pointerEvents: 'auto'
                             }}
                         >
-                            {defaultTokensLoading ? (
-                                <>
-                                    <div 
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            backgroundColor: 'transparent',
-                                            borderRadius: '50%',
-                                        }}
-                                    />
-                                    <div 
-                                        style={{
-                                            width: '30.04px',
-                                            height: '21px',
-                                            backgroundColor: 'transparent',
-                                        }}
-                                    />
-                                </>
-                            ) : (
+                            {(
                                 <>
                                     <Image
                                         src={selectedFromToken?.image_url || defaultUsdt?.image_url}
@@ -2740,16 +2782,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         {walletAddress ? <div className='flex flex-row gap-[5px]'>
                             <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
                             <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
-                                {getTokenBalance(selectedFromToken || defaultTon)} {defaultTokensLoading ? (
-                                    <span style={{ 
-                                        display: 'inline-block',
-                                        width: '38.23px',
-                                        height: '21px',
-                                        backgroundColor: 'transparent'
-                                    }} />
-                                ) : (
-                                    selectedFromToken?.symbol || defaultTon?.symbol
-                                )}
+                                {getTokenBalance(selectedFromToken || defaultTon)} {selectedFromToken?.symbol || defaultTon?.symbol}
                             </span>
                         </div> : null}
                         <div className='flex flex-row w-full justify-end text-nowrap' style={{ opacity: 0.66 }}>
@@ -3473,25 +3506,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 pointerEvents: 'auto'
                             }}
                         >
-                            {defaultTokensLoading ? (
-                                <>
-                                    <div 
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            backgroundColor: 'transparent',
-                                            borderRadius: '50%',
-                                        }}
-                                    />
-                                    <div 
-                                        style={{
-                                            width: '38.23px ',
-                                            height: '21px',
-                                            backgroundColor: 'transparent',
-                                        }}
-                                    />
-                                </>
-                            ) : (
+                            {(
                                 <>
                                     <Image
                                         src={selectedToToken?.image_url || defaultTon?.image_url}
@@ -3543,16 +3558,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                             }}>
                                 <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
                                 <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
-                                    {getTokenBalance(selectedToToken || defaultTon)} {defaultTokensLoading ? (
-                                        <span style={{ 
-                                            display: 'inline-block',
-                                            width: '30.04px',
-                                            height: '21px',
-                                            backgroundColor: 'transparent'
-                                        }} />
-                                    ) : (
-                                        selectedToToken?.symbol || defaultTon?.symbol
-                                    )}
+                                    {getTokenBalance(selectedToToken || defaultTon)} {selectedToToken?.symbol || defaultTon?.symbol}
                                 </span> 
                             </div>
                         </div>

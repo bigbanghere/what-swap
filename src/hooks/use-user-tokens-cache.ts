@@ -78,6 +78,7 @@ const loadUserTokens = async (walletAddress: string) => {
     userTokensCacheListeners.forEach(listener => listener());
     
     // Trigger all tokens loading after user tokens are loaded
+    // For TMA parameters, we still need some tokens for shortcuts, but not all
     console.log('🚀 UserTokensCache: Triggering all tokens loading...');
     startAllTokensLoading();
 

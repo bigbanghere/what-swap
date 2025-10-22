@@ -151,9 +151,19 @@ const startBackgroundLoading = (delay = 0) => {
   }
 };
 
+// Check if we have TMA parameters (for limiting token loading)
+const hasTMAParams = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const urlParams = new URLSearchParams(window.location.search);
+  return !!(urlParams.get('startapp') || urlParams.get('tgWebAppStartParam'));
+};
+
 // Load tokens progressively (all available tokens)
 const loadAllTokens = async () => {
-  console.log('🚀 Cache: Starting progressive loading of all available tokens...');
+  const isTMAMode = hasTMAParams();
+  const maxPages = isTMAMode ? 3 : Infinity; // Load only first 3 pages (~150 tokens) for TMA mode
+  
+  console.log(`🚀 Cache: Starting progressive loading ${isTMAMode ? '(TMA mode - limited to 3 pages)' : '(all tokens)'}...`);
   
   // Set initial loading state
   cacheState.isLoading = true;
@@ -165,7 +175,7 @@ const loadAllTokens = async () => {
   let allTokens: Jetton[] = [];
   const startTime = Date.now();
   
-  while (hasMore) {
+  while (hasMore && page <= maxPages) {
     try {
       console.log(`📥 Cache: Loading page ${page}...`);
       const { data, hasMore: pageHasMore } = await fetchTokensPage(page);
@@ -219,9 +229,10 @@ const loadAllTokens = async () => {
   // Final state update
   cacheState.isLoading = false;
   cacheState.isFetching = false;
-  cacheState.hasMore = hasMore; // Keep hasMore true if there are more pages
+  cacheState.hasMore = hasMore && page <= maxPages; // Keep hasMore true if there are more pages and we haven't hit the limit
   
-  console.log(`✅ Cache: Loaded ${allTokens.length} tokens in ${Date.now() - startTime}ms!`);
+  const loadingMode = isTMAMode ? ' (TMA mode - limited load)' : '';
+  console.log(`✅ Cache: Loaded ${allTokens.length} tokens in ${Date.now() - startTime}ms${loadingMode}!`);
   
   // Final notification
   cacheListeners.forEach(listener => listener());
