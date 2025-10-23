@@ -80,7 +80,8 @@ const loadUserTokens = async (walletAddress: string) => {
     // Trigger all tokens loading after user tokens are loaded
     // For TMA parameters, we still need some tokens for shortcuts, but not all
     console.log('🚀 UserTokensCache: Triggering all tokens loading...');
-    startAllTokensLoading();
+    // Start background loading with a small delay to prioritize UI rendering
+    startAllTokensLoading(100);
 
   } catch (err) {
     console.error(`❌ UserTokensCache: Failed to fetch user tokens:`, err);
@@ -94,7 +95,8 @@ const loadUserTokens = async (walletAddress: string) => {
     
     // Still trigger all tokens loading even if user tokens failed
     console.log('🚀 UserTokensCache: Triggering all tokens loading despite user tokens error...');
-    startAllTokensLoading();
+    // Start background loading with a small delay to prioritize UI rendering
+    startAllTokensLoading(100);
   }
 };
 
@@ -145,7 +147,8 @@ export const useUserTokensCache = (walletAddress: string | null) => {
         // If wallet address is still empty after 500ms, start all tokens loading
         if (!walletAddress) {
           console.log('🚀 UserTokensCache: No wallet connected after timeout, starting all tokens loading...');
-          startAllTokensLoading();
+          // Start background loading with a small delay to prioritize UI rendering
+          startAllTokensLoading(100);
         }
       }, 500);
       

@@ -2742,7 +2742,27 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 pointerEvents: 'auto'
                             }}
                         >
-                            {(
+                            {defaultTokensLoading || !defaultUsdt ? (
+                                // Loading state with invisible placeholders that reserve space
+                                <>
+                                    <div 
+                                        style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            opacity: 0,
+                                        }}
+                                    />
+                                    <div 
+                                        style={{
+                                            width: '60px',
+                                            height: '16px',
+                                            opacity: 0,
+                                        }}
+                                    />
+                                </>
+                            ) : (
                                 <>
                                     <Image
                                         src={selectedFromToken?.image_url || defaultUsdt?.image_url}
@@ -2779,12 +2799,22 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         <div className='w-full' style={{ opacity: 0.66 }}>
                             {fromTokenUSDValue}
                         </div>
-                        {walletAddress ? <div className='flex flex-row gap-[5px]'>
-                            <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
-                            <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
-                                {getTokenBalance(selectedFromToken || defaultTon)} {selectedFromToken?.symbol || defaultTon?.symbol}
-                            </span>
-                        </div> : null}
+                        {walletAddress ? (
+                            <div className='flex flex-row gap-[5px]'>
+                                <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
+                                <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
+                                    {getTokenBalance(selectedFromToken || defaultTon)} {selectedFromToken?.symbol || defaultTon?.symbol}
+                                </span>
+                            </div>
+                        ) : (
+                            // Transparent placeholder to preserve layout on mobile
+                            <div className='flex flex-row gap-[5px]' style={{ opacity: 0 }}>
+                                <IoWalletSharp style={{ height: '20px', width: '20px' }} />
+                                <span className='whitespace-nowrap' style={{ minWidth: '80px' }}>
+                                    &nbsp;
+                                </span>
+                            </div>
+                        )}
                         <div className='flex flex-row w-full justify-end text-nowrap' style={{ opacity: 0.66 }}>
                             {t('on')} TON
                         </div>
@@ -3506,7 +3536,27 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 pointerEvents: 'auto'
                             }}
                         >
-                            {(
+                            {defaultTokensLoading || !defaultTon ? (
+                                // Loading state with invisible placeholders that reserve space
+                                <>
+                                    <div 
+                                        style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            opacity: 0,
+                                        }}
+                                    />
+                                    <div 
+                                        style={{
+                                            width: '60px',
+                                            height: '16px',
+                                            opacity: 0,
+                                        }}
+                                    />
+                                </>
+                            ) : (
                                 <>
                                     <Image
                                         src={selectedToToken?.image_url || defaultTon?.image_url}
@@ -3550,17 +3600,32 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                             )}
                         </div>
                         <div className='flex flex-row gap-[5px]'>
-                            <div style={{ 
-                                display: walletAddress ? 'flex' : 'none',
-                                alignItems: 'center',
-                                gap: '5px',
-                                transition: 'display 0.2s ease'
-                            }}>
-                                <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
-                                <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
-                                    {getTokenBalance(selectedToToken || defaultTon)} {selectedToToken?.symbol || defaultTon?.symbol}
-                                </span> 
-                            </div>
+                            {walletAddress ? (
+                                <div style={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    transition: 'display 0.2s ease'
+                                }}>
+                                    <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
+                                    <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>
+                                        {getTokenBalance(selectedToToken || defaultTon)} {selectedToToken?.symbol || defaultTon?.symbol}
+                                    </span> 
+                                </div>
+                            ) : (
+                                // Transparent placeholder to preserve layout on mobile
+                                <div style={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    opacity: 0
+                                }}>
+                                    <IoWalletSharp style={{ height: '20px', width: '20px' }} />
+                                    <span className='whitespace-nowrap' style={{ minWidth: '80px' }}>
+                                        &nbsp;
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className='flex flex-row w-full justify-end text-nowrap' style={{ opacity: 0.66 }}>
                             On TON

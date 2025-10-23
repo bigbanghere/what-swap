@@ -151,6 +151,14 @@ const startBackgroundLoading = (delay = 0) => {
   }
 };
 
+// Start loading immediately when the module loads (for better performance)
+if (typeof window !== 'undefined') {
+  // Start background loading with a small delay to let the UI render first
+  setTimeout(() => {
+    startBackgroundLoading();
+  }, 200);
+}
+
 // Check if we have TMA parameters (for limiting token loading)
 const hasTMAParams = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -322,9 +330,9 @@ export const useTokensCache = (searchQuery: string = '') => {
 };
 
 // Function to start all tokens loading (can be called from user tokens cache)
-export const startAllTokensLoading = () => {
+export const startAllTokensLoading = (delay = 0) => {
   console.log('🚀 AllTokensCache: Starting loading triggered by user tokens completion');
-  startBackgroundLoading();
+  startBackgroundLoading(delay);
 };
 
 // Export cache utilities

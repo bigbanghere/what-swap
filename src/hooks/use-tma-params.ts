@@ -76,11 +76,16 @@ export function useTMAParams() {
     const urlParams = new URLSearchParams(window.location.search);
     const startappParam = urlParams.get('startapp');
     const tgWebAppStartParam = urlParams.get('tgWebAppStartParam');
-    const hasStartParams = startappParam || tgWebAppStartParam;
+    
+    // Also check for startapp in the hash fragment
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const hashStartappParam = hashParams.get('startapp');
+    
+    const hasStartParams = startappParam || tgWebAppStartParam || hashStartappParam;
     
     // If we have new start parameters, clear the processed flag
     if (hasStartParams) {
-      const currentParams = startappParam || tgWebAppStartParam;
+      const currentParams = startappParam || tgWebAppStartParam || hashStartappParam;
       const storedParams = localStorage.getItem('tmaParamsProcessed');
       
       // If the parameters are different from what we processed before, clear the flag
@@ -92,26 +97,22 @@ export function useTMAParams() {
 
   // Main effect for TMA parameter processing
   useEffect(() => {
-    console.log('🔄 TMA: Starting parameter processing');
-    console.log('🔄 TMA: Current URL:', window.location.href);
-    console.log('🔄 TMA: Search params:', window.location.search);
-    
     // Don't proceed if we've already processed parameters
     if (getProcessedFlag()) {
-      console.log('✅ TMA: Already processed, marking as ready');
       setIsTMAReady(true);
       return;
     }
     
-    // Check if we have startapp parameters in the URL
+    // Check if we have startapp parameters in the URL (both search params and hash)
     const urlParams = new URLSearchParams(window.location.search);
     const startappParam = urlParams.get('startapp');
     const tgWebAppStartParam = urlParams.get('tgWebAppStartParam');
     
-    console.log('🔄 TMA: startappParam:', startappParam);
-    console.log('🔄 TMA: tgWebAppStartParam:', tgWebAppStartParam);
+    // Also check for startapp in the hash fragment
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const hashStartappParam = hashParams.get('startapp');
     
-    const hasStartParams = startappParam || tgWebAppStartParam;
+    const hasStartParams = startappParam || tgWebAppStartParam || hashStartappParam;
     
     // Check if we're in a TMA context by looking at the URL pattern OR if we have startapp parameters
     const isTMAContext = window.location.href.includes('t.me') || 
@@ -121,14 +122,12 @@ export function useTMAParams() {
     
     // If not in TMA context, we're ready immediately
     if (!isTMAContext) {
-      console.log('✅ TMA: Not in TMA context, marking as ready');
       setIsTMAReady(true);
       return;
     }
     
     // If no start parameters, we're ready immediately
     if (!hasStartParams) {
-      console.log('✅ TMA: No start parameters, marking as ready');
       setIsTMAReady(true);
       return;
     }
@@ -198,21 +197,23 @@ export function useTMAParams() {
       }
     };
     
-    // Process the parameters in the background
-    const processParams = async () => {
-      try {
-        if (tgWebAppStartParam) {
-          await parseAndApply(tgWebAppStartParam);
-        } else if (startappParam) {
-          await parseAndApply(startappParam);
-        } else {
-          setTmaLoadingReason("");
-        }
-      } catch (error) {
-        console.error("Error processing TMA parameters:", error);
-        setTmaLoadingReason("");
-      }
-    };
+        // Process the parameters in the background
+        const processParams = async () => {
+          try {
+            if (tgWebAppStartParam) {
+              await parseAndApply(tgWebAppStartParam);
+            } else if (startappParam) {
+              await parseAndApply(startappParam);
+            } else if (hashStartappParam) {
+              await parseAndApply(hashStartappParam);
+            } else {
+              setTmaLoadingReason("");
+            }
+          } catch (error) {
+            console.error("Error processing TMA parameters:", error);
+            setTmaLoadingReason("");
+          }
+        };
     
     // Process in the background without blocking
     processParams();
