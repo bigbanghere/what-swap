@@ -284,8 +284,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                 return maxAmount.toString();
             }
             
-            // For decimal numbers, remove trailing zeros
-            return parseFloat(maxAmount.toString()).toString();
+            // For decimal numbers, round to 4 decimal places
+            return parseFloat(maxAmount.toFixed(4)).toString();
         }
 
         // For other tokens, use the full balance
