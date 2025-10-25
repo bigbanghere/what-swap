@@ -1,0 +1,156 @@
+/* Custom theme styles for What Swap app */
+
+/* Theme CSS Variables - These will be set by the theme provider */
+:root {
+  /* Default fallback values */
+  --theme-background: #ffffff;
+  --theme-secondaryBackground: #efefef;
+  --theme-tertiaryBackground: #f8f9fa;
+  --theme-text: #000000;
+  --theme-secondaryText: #616161;
+  --theme-mutedText: #9aa0a6;
+  --theme-border: #dadce0;
+  --theme-secondaryBorder: #e8eaed;
+  --theme-primary: #1a73e8;
+  --theme-primaryHover: #1557b0;
+  --theme-secondary: #efefef;
+  --theme-secondaryHover: #e0e0e0;
+  --theme-success: #34a853;
+  --theme-warning: #fbbc04;
+  --theme-error: #ea4335;
+  --theme-cardBackground: #ffffff;
+  --theme-inputBackground: #efefef;
+  --theme-buttonBackground: #1a73e8;
+  --theme-buttonText: #ffffff;
+  --theme-buttonHover: #1557b0;
+  --theme-divider: #efefef;
+  --theme-segmentedBackground: #efefef;
+  --theme-segmentedSelectedBackground: #ffffff;
+  --theme-segmentedSelectedText: #333333;
+  --theme-segmentedUnselectedText: #616161;
+  --theme-switchBackground: #efefef;
+  --theme-switchThumb: #ffffff;
+  --theme-switchTrack: #efefef;
+}
+
+/* Apply theme background to entire viewport */
+html {
+  background-color: var(--theme-background, #000000) !important;
+  color: var(--theme-text, #ffffff) !important;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500; /* Medium weight */
+  font-size: 14px; /* Default font size */
+}
+
+/* Apply theme background to body */
+body {
+  background-color: var(--theme-background, #000000) !important;
+  color: var(--theme-text, #ffffff) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500; /* Medium weight */
+  font-size: 14px; /* Default font size */
+}
+
+html, body {
+  height: 100%;
+}
+
+#__next, #__next > div {
+  height: 100%;
+  min-height: 100vh;
+  background-color: var(--theme-background) !important;
+}
+
+/* Prevent AppRoot from interfering with height */
+#__next > div > div {
+  height: 100%;
+  min-height: 100vh;
+}
+
+/* Remove iOS tap highlight on buttons/links */
+button, [role="button"], a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Normalize native button appearance (prevents odd borders in Safari/WebView) */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Example theme-aware utility classes */
+.theme-bg {
+  background-color: var(--theme-background);
+}
+
+.theme-text {
+  color: var(--theme-text);
+}
+
+.theme-border {
+  border-color: var(--theme-border);
+}
+
+.theme-card {
+  background-color: var(--theme-cardBackground);
+  border: 1px solid var(--theme-border);
+}
+
+.theme-button {
+  background-color: var(--theme-buttonBackground);
+  color: var(--theme-buttonText);
+}
+
+.theme-button:hover {
+  background-color: var(--theme-buttonHover);
+}
+
+/* Segmented control utility classes */
+.theme-segmented {
+  background-color: var(--theme-segmentedBackground);
+}
+
+.theme-segmented-selected {
+  background-color: var(--theme-segmentedSelectedBackground);
+  color: var(--theme-segmentedSelectedText);
+}
+
+.theme-segmented-unselected {
+  color: var(--theme-segmentedUnselectedText);
+}
+
+/* Prevent zoom on mobile */
+* {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500; /* Medium weight */
+  font-size: 14px; /* Default font size */
+}
+
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Root loading styles */
+.root__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--theme-background, #000000);
+  color: var(--theme-text, #ffffff);
+}

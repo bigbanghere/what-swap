@@ -1,0 +1,78 @@
+"use client";
+
+import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { useTheme } from '@/core/theme';
+import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
+import { SwapForm } from './swap-form';
+import Image from 'next/image';
+
+export function Swap() {
+    const { colors } = useTheme();
+    const [fromAmount, setFromAmount] = useState<string>('1');
+    const [toAmount, setToAmount] = useState<string>('1');
+    const { shouldBeCompact } = useKeyboardDetection();
+    const { isDark } = useTheme();
+    const t = useTranslations('translations');
+
+    return (
+        <div 
+            className="flex-1 flex flex-col items-center justify-center relative overflow-hidden"
+            style={{ 
+                backgroundColor: shouldBeCompact ? 'transparent' : 'rgba(0, 122, 255, 0.22)',
+                transition: 'background-color 0.2s ease'
+            }}
+        >
+            {/* Decorative overlay - only visible when not compact */}
+            <div
+                style={{
+                    display: shouldBeCompact ? 'none' : 'block',
+                    transition: 'display 0.2s ease'
+                }}
+            >
+                <Image
+                    src={isDark ? '/decor_dark.svg' : '/decor_light.svg'}
+                    alt="Decorative pattern"
+                    width={1012}
+                    height={952}
+                    className="absolute pointer-events-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0"
+                    style={{ minWidth: '1012px', minHeight: '952px' }}
+                />
+            </div>
+            
+            {/* Single SwapForm component - always rendered */}
+            <div 
+                className="w-full max-w-[460px] p-[20px] relative z-10 flex flex-col items-center justify-center mx-auto mb-[22px]"
+                style={{
+                    display: shouldBeCompact ? 'none' : 'flex',
+                    transition: 'display 0.2s ease'
+                }}
+            >
+                <span className="text-[33px] mb-[20px] text-center">
+                    {t('swap_tokens')}
+                </span>
+                <div 
+                    style={{ 
+                        border: '1px solid rgba(0, 122, 255, 1)', 
+                        borderRadius: '15px', 
+                        backgroundColor: colors.background,
+                    }}
+                    className="w-full"
+                >
+                    <SwapForm key="swap-form" />
+                </div>
+            </div>
+            
+            {/* Compact wrapper - always rendered */}
+            <div 
+                style={{ 
+                    display: shouldBeCompact ? 'block' : 'none',
+                    transition: 'display 0.2s ease',
+                    width: '100%'
+                }}
+            >
+                <SwapForm key="swap-form" />
+            </div>
+        </div>
+    );
+}

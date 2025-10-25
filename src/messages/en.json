@@ -1,0 +1,19 @@
+{
+  "translations": {
+    "swap_tokens": "Swap tokens",
+    "get": "Get",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "copy_address": "Copy address",
+    "send": "Send",
+    "max": "Max.",
+    "swap": "Swap",
+    "crypto-exchange": "Swap – Best Rate",
+    "on": "On",
+    "connect_wallet": "Connect wallet",
+    "no_pools": "No pools",
+    "insufficient_balance": "Insufficient balance",
+    "enter_amount": "Enter amount",
+    "swapping": "Swapping..."
+  }
+}
