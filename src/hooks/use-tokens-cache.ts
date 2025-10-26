@@ -38,6 +38,31 @@ interface TokensCacheState {
   totalExpected: number;
 }
 
+// Utility function to deduplicate tokens by address
+const deduplicateTokens = (tokens: Jetton[]): Jetton[] => {
+  const seen = new Set<string>();
+  return tokens.filter(token => {
+    if (seen.has(token.address)) {
+      console.warn(`⚠️ Duplicate token detected: ${token.symbol} (${token.address})`);
+      return false;
+    }
+    seen.add(token.address);
+    return true;
+  });
+};
+
+// Global loading coordination
+let globalLoadingState = {
+  isInitialized: false,
+  isLoading: false,
+  loadingPromise: null as Promise<void> | null,
+  lastTriggerTime: 0,
+  triggerCount: 0,
+};
+
+// Request deduplication
+const activeRequests = new Map<string, Promise<any>>();
+
 // Global cache state
 let cacheState: TokensCacheState = {
   tokens: [],
@@ -55,36 +80,69 @@ let cacheState: TokensCacheState = {
 const cacheListeners = new Set<() => void>();
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const pageSize = 100;
+const pageSize = 100; // Swap.coffee API max size is 100
 
 const fetchTokensPage = async (page: number, retryCount = 0): Promise<{ data: Jetton[]; hasMore: boolean }> => {
-  console.log(`🚀 Cache: Fetching page ${page} with size ${pageSize}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+  const requestKey = `tokens-page-${page}`;
   
-  try {
-    const response = await swapCoffeeApiClient.getJettonsPaginated({
-      page,
-      size: pageSize,
-      verification: ['WHITELISTED', 'COMMUNITY'],
-    });
-
-    console.log(`✅ Cache: Page ${page}: Got ${response.data.length} tokens (hasMore: ${response.hasMore})`);
-    
-    return {
-      data: response.data,
-      hasMore: response.hasMore,
-    };
-  } catch (error) {
-    if (retryCount < 2 && error instanceof Error && error.message.includes('422')) {
-      console.log(`⚠️ Cache: Page ${page} failed with 422, likely end of data`);
-      return { data: [], hasMore: false };
-    } else if (retryCount < 2) {
-      console.log(`🔄 Cache: Retrying page ${page} in 1 second...`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return fetchTokensPage(page, retryCount + 1);
-    } else {
-      throw error;
-    }
+  // Check if request is already in progress
+  if (activeRequests.has(requestKey)) {
+    console.log(`🔄 Cache: Request for page ${page} already in progress, reusing...`);
+    return activeRequests.get(requestKey)!;
   }
+  
+  const requestPromise = (async () => {
+    console.log(`🚀 Cache: Fetching page ${page} with size ${pageSize}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+    
+    try {
+      const response = await swapCoffeeApiClient.getJettonsPaginated({
+        page,
+        size: pageSize,
+        verification: ['WHITELISTED', 'COMMUNITY'],
+      });
+
+      console.log(`✅ Cache: Page ${page}: Got ${response.data.length} tokens (hasMore: ${response.hasMore})`);
+      console.log(`🔍 API Response details:`, {
+        page,
+        dataLength: response.data.length,
+        hasMore: response.hasMore,
+        total: response.total,
+        pageSize: response.size,
+        expectedPageSize: pageSize
+      });
+      
+      return {
+        data: response.data,
+        hasMore: response.hasMore,
+      };
+    } catch (error) {
+      console.error(`❌ Cache: Page ${page} failed:`, error);
+      console.error(`❌ Cache: Error details:`, {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        retryCount
+      });
+      
+      if (retryCount < 2 && error instanceof Error && error.message.includes('422')) {
+        console.log(`⚠️ Cache: Page ${page} failed with 422, likely end of data`);
+        return { data: [], hasMore: false };
+      } else if (retryCount < 2) {
+        console.log(`🔄 Cache: Retrying page ${page} in 1 second...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return fetchTokensPage(page, retryCount + 1);
+      } else {
+        throw error;
+      }
+    } finally {
+      // Clean up the request from active requests
+      activeRequests.delete(requestKey);
+    }
+  })();
+  
+  // Store the request promise
+  activeRequests.set(requestKey, requestPromise);
+  
+  return requestPromise;
 };
 
 const loadTokensPage = async (page: number, isInitial = false) => {
@@ -99,11 +157,15 @@ const loadTokensPage = async (page: number, isInitial = false) => {
     const { data, hasMore } = await fetchTokensPage(page);
 
     if (isInitial) {
-      cacheState.tokens = data;
-      console.log(`🎯 Cache: Initial load: Cached ${data.length} tokens`);
+      cacheState.tokens = deduplicateTokens(data);
+      console.log(`🎯 Cache: Initial load: Cached ${cacheState.tokens.length} tokens (deduplicated from ${data.length})`);
     } else {
-      cacheState.tokens = [...cacheState.tokens, ...data];
-      console.log(`📊 Cache: Total cached tokens: ${cacheState.tokens.length} (added ${data.length})`);
+      // Merge with existing tokens and deduplicate
+      const mergedTokens = [...cacheState.tokens, ...data];
+      const beforeCount = mergedTokens.length;
+      cacheState.tokens = deduplicateTokens(mergedTokens);
+      const duplicatesRemoved = beforeCount - cacheState.tokens.length;
+      console.log(`📊 Cache: Total cached tokens: ${cacheState.tokens.length} (added ${data.length}, removed ${duplicatesRemoved} duplicates)`);
     }
 
     cacheState.hasMore = hasMore;
@@ -134,58 +196,143 @@ const loadTokensPage = async (page: number, isInitial = false) => {
   }
 };
 
-// Start background loading immediately
+// Coordinated loading function to prevent multiple simultaneous loads
 const startBackgroundLoading = (delay = 0) => {
-  if (cacheState.tokens.length === 0 && !cacheState.isLoading && !cacheState.isFetching && !cacheState.error) {
-    if (delay > 0) {
-      console.log(`🚀 Cache: Starting background token loading with ${delay}ms delay...`);
-      setTimeout(() => {
-        loadAllTokens();
-      }, delay);
-    } else {
-      console.log('🚀 Cache: Starting background token loading...');
-      loadAllTokens();
-    }
-  } else {
-    console.log('🚀 Cache: Skipping background loading - already in progress or completed');
+  const now = Date.now();
+  
+  // Prevent rapid successive calls (debounce within 1 second)
+  if (now - globalLoadingState.lastTriggerTime < 1000) {
+    console.log('🚀 Cache: Skipping duplicate loading trigger (debounced)');
+    return;
   }
+  
+  globalLoadingState.lastTriggerTime = now;
+  globalLoadingState.triggerCount++;
+  
+  // If already loading, return the existing promise
+  if (globalLoadingState.isLoading && globalLoadingState.loadingPromise) {
+    console.log('🚀 Cache: Already loading, returning existing promise');
+    return globalLoadingState.loadingPromise;
+  }
+  
+  // If tokens are already loaded and cache is fresh, skip loading
+  if (cacheState.tokens.length > 0 && isCacheFresh()) {
+    console.log('🚀 Cache: Tokens already loaded and cache is fresh, skipping');
+    globalLoadingState.isInitialized = true;
+    return Promise.resolve();
+  }
+  
+  // If no tokens are loaded, we need to load them regardless of cache freshness
+  if (cacheState.tokens.length === 0) {
+    console.log('🚀 Cache: No tokens loaded, starting loading...');
+  }
+  
+  const loadTokens = async () => {
+    // Always load tokens if we don't have all of them yet
+    if (cacheState.tokens.length === 0 || cacheState.hasMore) {
+      console.log(`🚀 Cache: Starting coordinated token loading (trigger #${globalLoadingState.triggerCount})...`);
+      globalLoadingState.isLoading = true;
+      globalLoadingState.isInitialized = true;
+      
+      // Set loading state immediately and notify listeners
+      cacheState.isLoading = true;
+      cacheListeners.forEach(listener => listener());
+      
+      try {
+        await loadAllTokens();
+      } finally {
+        globalLoadingState.isLoading = false;
+        globalLoadingState.loadingPromise = null;
+      }
+    } else {
+      console.log('🚀 Cache: Skipping loading - all tokens already loaded');
+      globalLoadingState.isInitialized = true;
+    }
+  };
+  
+  if (delay > 0) {
+    console.log(`🚀 Cache: Starting background token loading with ${delay}ms delay...`);
+    globalLoadingState.loadingPromise = new Promise((resolve) => {
+      setTimeout(async () => {
+        await loadTokens();
+        resolve();
+      }, delay);
+    });
+  } else {
+    console.log('🚀 Cache: Starting background token loading...');
+    globalLoadingState.loadingPromise = loadTokens();
+  }
+  
+  return globalLoadingState.loadingPromise;
 };
 
-// Start loading immediately when the module loads (for better performance)
-if (typeof window !== 'undefined') {
-  // Start background loading with a small delay to let the UI render first
-  setTimeout(() => {
-    startBackgroundLoading();
-  }, 200);
-}
+// Module-level auto-loading removed - loading is now coordinated through the hook
+
+// Simple API test function
+const testAPI = async () => {
+  console.log('🧪 Testing API directly...');
+  try {
+    const response = await fetch('/api/proxy/tokens?path=jettons&page=1&size=100&verification=WHITELISTED&verification=COMMUNITY');
+    const data = await response.json();
+    console.log('🧪 Direct API test result:', {
+      status: response.status,
+      ok: response.ok,
+      dataLength: data.data?.length || 0,
+      hasMore: data.hasMore,
+      total: data.total,
+      page: data.page,
+      size: data.size
+    });
+  } catch (error) {
+    console.error('🧪 Direct API test failed:', error);
+  }
+};
 
 // Check if we have TMA parameters (for limiting token loading)
 const hasTMAParams = (): boolean => {
   if (typeof window === 'undefined') return false;
+  
+  // Check search parameters
   const urlParams = new URLSearchParams(window.location.search);
-  return !!(urlParams.get('startapp') || urlParams.get('tgWebAppStartParam'));
+  const hasSearchParams = !!(urlParams.get('startapp') || urlParams.get('tgWebAppStartParam'));
+  
+  // Check hash parameters
+  const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const hasHashParams = !!(hashParams.get('startapp') || hashParams.get('tgWebAppStartParam'));
+  
+  const hasParams = hasSearchParams || hasHashParams;
+  console.log(`🔍 TMA Detection: search=${hasSearchParams}, hash=${hasHashParams}, total=${hasParams}`);
+  
+  return hasParams;
 };
 
 // Load tokens progressively (all available tokens)
 const loadAllTokens = async () => {
   const isTMAMode = hasTMAParams();
-  const maxPages = isTMAMode ? 3 : Infinity; // Load only first 3 pages (~150 tokens) for TMA mode
+  // Load all available tokens regardless of TMA mode
+  const maxPages = Infinity; // Load all available tokens
   
-  console.log(`🚀 Cache: Starting progressive loading ${isTMAMode ? '(TMA mode - limited to 3 pages)' : '(all tokens)'}...`);
+  console.log(`🚀 Cache: Starting progressive loading (TMA mode detected: ${isTMAMode}, loading all tokens)...`);
+  
+  // Test API first
+  await testAPI();
   
   // Set initial loading state
   cacheState.isLoading = true;
   cacheState.error = null;
   cacheListeners.forEach(listener => listener());
   
-  let page = 1;
-  let hasMore = true;
-  let allTokens: Jetton[] = [];
+  // Start from current page if tokens are already loaded
+  let page = cacheState.tokens.length > 0 ? Math.floor(cacheState.tokens.length / pageSize) + 1 : 1;
+  let hasMore = cacheState.hasMore !== false; // Use cached hasMore if available
+  let allTokens: Jetton[] = [...cacheState.tokens]; // Start with existing tokens
   const startTime = Date.now();
   
-  while (hasMore && page <= maxPages) {
+  console.log(`🚀 Cache: Starting from page ${page} with ${allTokens.length} existing tokens`);
+  
+  while (hasMore && page <= maxPages && page <= 100) { // Safety limit of 100 pages max
     try {
-      console.log(`📥 Cache: Loading page ${page}...`);
+      console.log(`📥 Cache: Loading page ${page}... (hasMore: ${hasMore}, page <= maxPages: ${page <= maxPages}, maxPages: ${maxPages})`);
       const { data, hasMore: pageHasMore } = await fetchTokensPage(page);
       
       // Check if we got data
@@ -195,10 +342,53 @@ const loadAllTokens = async () => {
       } else {
         allTokens = [...allTokens, ...data];
         console.log(`✅ Cache: Page ${page}: Got ${data.length} tokens (Total: ${allTokens.length})`);
+        
+        // Log some sample tokens for debugging
+        if (page <= 3) {
+          console.log(`🔍 Sample tokens from page ${page}:`, data.slice(0, 3).map(t => ({ symbol: t.symbol, address: t.address })));
+        }
       }
       
       hasMore = pageHasMore && data.length > 0;
+      
+      // Safety check: if we got a full page of data but API says no more, 
+      // continue for a few more pages to be sure (API might be wrong)
+      if (!pageHasMore && data.length === pageSize && page < 100) {
+        console.log(`⚠️ Cache: API says no more pages but got full page (${data.length} tokens), continuing for safety...`);
+        hasMore = true;
+      }
+      
+      // Additional safety: if we have very few tokens loaded compared to expected total, keep trying
+      const expectedMinTokens = 4000; // Expected around 4471 tokens
+      if (!hasMore && allTokens.length < expectedMinTokens && page < 50) {
+        console.log(`⚠️ Cache: Only ${allTokens.length} tokens loaded (expected ~${expectedMinTokens}), continuing to page ${page + 1}...`);
+        hasMore = true;
+      }
+      
+      // If API says no more but we have very few tokens, try a different approach
+      if (!hasMore && allTokens.length < 1000 && page < 5) {
+        console.log(`⚠️ Cache: API says no more but only ${allTokens.length} tokens loaded. Trying alternative approach...`);
+        
+        // Try to get all tokens without pagination
+        try {
+          const allTokensResponse = await swapCoffeeApiClient.getJettons({
+            verification: ['WHITELISTED', 'COMMUNITY'],
+          });
+          
+          if (allTokensResponse.length > allTokens.length) {
+            console.log(`✅ Cache: Got ${allTokensResponse.length} tokens via non-paginated API`);
+            allTokens = allTokensResponse;
+            hasMore = false; // We got all tokens
+            break;
+          }
+        } catch (error) {
+          console.log(`⚠️ Cache: Non-paginated API also failed:`, error);
+        }
+      }
+      
       page++;
+      
+      console.log(`🔄 Cache: After page ${page-1}: hasMore=${hasMore}, page=${page}, maxPages=${maxPages}, continuing=${hasMore && page <= maxPages}`);
       
       // Update cache state with current progress
       cacheState.tokens = allTokens;
@@ -234,13 +424,24 @@ const loadAllTokens = async () => {
     }
   }
   
+  // Deduplicate final tokens
+  const beforeDedup = allTokens.length;
+  allTokens = deduplicateTokens(allTokens);
+  const duplicatesRemoved = beforeDedup - allTokens.length;
+  
   // Final state update
+  cacheState.tokens = allTokens;
   cacheState.isLoading = false;
   cacheState.isFetching = false;
   cacheState.hasMore = hasMore && page <= maxPages; // Keep hasMore true if there are more pages and we haven't hit the limit
   
   const loadingMode = isTMAMode ? ' (TMA mode - limited load)' : '';
-  console.log(`✅ Cache: Loaded ${allTokens.length} tokens in ${Date.now() - startTime}ms${loadingMode}!`);
+  console.log(`✅ Cache: Loaded ${allTokens.length} tokens in ${Date.now() - startTime}ms${loadingMode}! (removed ${duplicatesRemoved} duplicates)`);
+  
+  // Ensure we have at least some tokens for shortcuts
+  if (allTokens.length < 10) {
+    console.warn(`⚠️ Cache: Very few tokens loaded (${allTokens.length}), shortcuts may not work properly`);
+  }
   
   // Final notification
   cacheListeners.forEach(listener => listener());
@@ -294,16 +495,44 @@ export const useTokensCache = (searchQuery: string = '') => {
     cacheListeners.add(updateState);
     updateState(); // Initial update
 
-    // Don't start background loading here - wait for user tokens to complete
-    // startBackgroundLoading(); // Removed - will be triggered by user tokens completion
+    // Start loading if no tokens are loaded yet
+    if (cacheState.tokens.length === 0) {
+      console.log('🚀 useTokensCache: Starting initial token loading...');
+      startBackgroundLoading(200); // Small delay to let UI render first
+    }
+    
+    // Fallback: if no tokens loaded after 5 seconds, try to load at least some
+    if (cacheState.tokens.length === 0) {
+      const fallbackTimeout = setTimeout(async () => {
+        if (cacheState.tokens.length === 0) {
+          console.log('🚀 useTokensCache: Fallback loading - trying to get at least some tokens...');
+          try {
+            const fallbackTokens = await swapCoffeeApiClient.getJettons({
+              verification: ['WHITELISTED', 'COMMUNITY'],
+            });
+            if (fallbackTokens.length > 0) {
+              cacheState.tokens = fallbackTokens.slice(0, 100); // Take first 100 tokens
+              cacheState.isLoading = false;
+              cacheState.lastFetchTime = Date.now();
+              cacheListeners.forEach(listener => listener());
+              console.log(`✅ useTokensCache: Fallback loaded ${fallbackTokens.length} tokens`);
+            }
+          } catch (error) {
+            console.error('❌ useTokensCache: Fallback loading failed:', error);
+          }
+        }
+      }, 5000);
+      
+      return () => clearTimeout(fallbackTimeout);
+    }
 
     return () => {
       cacheListeners.delete(updateState);
     };
   }, []);
 
-  // Search tokens
-  const filteredTokens = searchQuery ? searchTokens(searchQuery) : state.tokens;
+  // Search tokens and ensure deduplication
+  const filteredTokens = searchQuery ? searchTokens(searchQuery) : deduplicateTokens(state.tokens);
 
   // Force refresh if cache is stale
   const refresh = useCallback(() => {
@@ -319,7 +548,7 @@ export const useTokensCache = (searchQuery: string = '') => {
 
   return {
     data: filteredTokens,
-    allTokens: state.tokens,
+    allTokens: deduplicateTokens(state.tokens),
     isLoading: state.isLoading,
     isFetching: state.isFetching,
     error: state.error,

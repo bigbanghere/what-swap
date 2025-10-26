@@ -27,7 +27,7 @@ interface UseTokensQueryReturn {
 
 export function useTokensQuery(options: UseTokensQueryOptions = {}): UseTokensQueryReturn {
   const {
-    initialPageSize = 20,
+    initialPageSize = 100, // Swap.coffee API max size is 100
     searchQuery = '',
     verification = ['WHITELISTED', 'COMMUNITY'], // Default to verified tokens
     label_id,

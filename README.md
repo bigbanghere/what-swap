@@ -10,10 +10,19 @@ pnpm run dev
 
 ## To Do
 
-+ round up values on calculation
-+ app & bot: ca links & search
++ market cap, link to analitics
++ trench trading through bot > memepads integration + trading interface
++ 11 when I choose token bug
++ back button bag
++ emerald iced peak
++ user + connected wallet in db
++ notifications to bot
++ personalized ai reccomendations in bot
++ create wallet (store cloud checkmark), import wallet
++ cross-chain integration
++ pre-market
++ ai assistent
 + notifications for TTM
-+ more tokens
 
 ## To Test 
 

@@ -42,7 +42,7 @@ export const useTokensQueryFast = (searchQuery: string = '') => {
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const pageSize = 100; // Load 100 tokens per page as per API default
+  const pageSize = 100; // Swap.coffee API max size is 100
 
   const fetchTokens = useCallback(async (page: number, isInitial = false) => {
     try {

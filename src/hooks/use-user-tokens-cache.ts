@@ -78,10 +78,10 @@ const loadUserTokens = async (walletAddress: string) => {
     userTokensCacheListeners.forEach(listener => listener());
     
     // Trigger all tokens loading after user tokens are loaded
-    // For TMA parameters, we still need some tokens for shortcuts, but not all
+    // Only if not already loading or loaded
     console.log('🚀 UserTokensCache: Triggering all tokens loading...');
     // Start background loading with a small delay to prioritize UI rendering
-    startAllTokensLoading(100);
+    startAllTokensLoading(200);
 
   } catch (err) {
     console.error(`❌ UserTokensCache: Failed to fetch user tokens:`, err);
@@ -96,7 +96,7 @@ const loadUserTokens = async (walletAddress: string) => {
     // Still trigger all tokens loading even if user tokens failed
     console.log('🚀 UserTokensCache: Triggering all tokens loading despite user tokens error...');
     // Start background loading with a small delay to prioritize UI rendering
-    startAllTokensLoading(100);
+    startAllTokensLoading(200);
   }
 };
 
@@ -141,18 +141,9 @@ export const useUserTokensCache = (walletAddress: string | null) => {
     if (!walletAddress) {
       clearUserTokensCache();
       // Don't start all tokens loading immediately when wallet address is empty
-      // because it might become available shortly (timing issue with useTonAddress hook)
-      // Instead, we'll use a timeout to wait for wallet connection
-      const timeoutId = setTimeout(() => {
-        // If wallet address is still empty after 500ms, start all tokens loading
-        if (!walletAddress) {
-          console.log('🚀 UserTokensCache: No wallet connected after timeout, starting all tokens loading...');
-          // Start background loading with a small delay to prioritize UI rendering
-          startAllTokensLoading(100);
-        }
-      }, 500);
-      
-      return () => clearTimeout(timeoutId);
+      // The main token loading will be handled by the useTokensCache hook
+      console.log('🚀 UserTokensCache: No wallet connected, skipping user tokens loading');
+      return;
     }
 
     // Only load user tokens if we haven't loaded them yet for this wallet

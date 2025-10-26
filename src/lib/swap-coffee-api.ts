@@ -58,8 +58,8 @@ export interface UserJettonsResponse {
 }
 
 class SwapCoffeeApiClient {
-  private baseURL = 'https://tokens.swap.coffee/api/v3';
-  private tonBalanceBaseURL = 'https://backend.swap.coffee';
+  private baseURL = '/api/proxy/tokens';
+  private tonBalanceBaseURL = '/api/proxy/ton-balance';
   private apiKey?: string;
 
   constructor(apiKey?: string) {
@@ -67,7 +67,9 @@ class SwapCoffeeApiClient {
   }
 
   private async request<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
-    const url = new URL(`${this.baseURL}${endpoint}`);
+    // For proxy routes, we need to pass the path as a query parameter
+    const url = new URL(this.baseURL, window.location.origin);
+    url.searchParams.append('path', endpoint.replace('/', ''));
     
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -109,7 +111,7 @@ class SwapCoffeeApiClient {
       verification,
       label_id,
       page = 1,
-      size = 100, // Changed back to 100 for proper API pagination
+      size = 100, // Swap.coffee API max size is 100
     } = params;
 
     const queryParams: Record<string, any> = {
@@ -133,23 +135,46 @@ class SwapCoffeeApiClient {
   }
 
   async getJettonsPaginated(params: JettonsParams = {}): Promise<JettonsResponse> {
-    const { page = 1, size = 100 } = params;
+    const { page = 1, size = 100 } = params; // Swap.coffee API max size is 100
     
     console.log(`🌐 API Request: Fetching page ${page} with size ${size}`, params);
     
-    const jettons = await this.getJettons(params);
-    
-    console.log(`✅ API Response: Received ${jettons.length} tokens from Swap Coffee API`);
-    
-    // If we got fewer tokens than requested, we've reached the end
-    const hasMore = jettons.length === size;
-    
-    return {
-      data: jettons,
-      total: jettons.length,
+    // Make a direct API call to get paginated response
+    const queryParams: Record<string, any> = {
       page,
       size,
-      hasMore,
+    };
+
+    if (params.search) {
+      queryParams.search = params.search;
+    }
+
+    if (params.verification && params.verification.length > 0) {
+      queryParams.verification = params.verification;
+    }
+
+    if (params.label_id) {
+      queryParams.label_id = params.label_id;
+    }
+
+    // Swap.coffee API returns a direct array, not a paginated response
+    const response = await this.request<Jetton[]>('/jettons', queryParams);
+    
+    console.log(`✅ API Response: Received ${response.length} tokens from Swap Coffee API`);
+    
+    // Calculate pagination info based on response length
+    // If we got a full page, there might be more pages available
+    // Also continue if we got close to a full page (might be some duplicates removed)
+    const hasMore = response.length >= size * 0.95 || (response.length === size);
+    // We don't know the total count, so we'll estimate based on current page
+    const total = response.length;
+    
+    return {
+      data: response,
+      total: total,
+      page: page,
+      size: size,
+      hasMore: hasMore,
     };
   }
 
@@ -176,7 +201,8 @@ class SwapCoffeeApiClient {
   async getTONBalance(walletAddress: string): Promise<string> {
     console.log(`🌐 API Request: Fetching TON balance for wallet ${walletAddress}`);
     
-    const url = new URL(`${this.tonBalanceBaseURL}/v1/ton/wallet/${walletAddress}/balance`);
+    const url = new URL(this.tonBalanceBaseURL, window.location.origin);
+    url.searchParams.append('wallet', walletAddress);
     
     console.log(`🔗 Final TON Balance API URL: ${url.toString()}`);
 

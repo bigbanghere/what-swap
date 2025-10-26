@@ -147,7 +147,7 @@ export default function TokensPage() {
     isFetching = false,
     error = null,
     hasMore = false,
-  } = useTokensCache();
+  } = useTokensCache(debouncedSearch);
   
   console.log('🎯 TokensPage: useTokensQuery result', { 
     tokensCount: tokens.length, 
