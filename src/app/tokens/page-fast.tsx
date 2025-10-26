@@ -65,10 +65,20 @@ const TokenItem = React.memo(({
 }) => {
   const [imageError, setImageError] = useState(false);
   
+  // Reset imageError when token or image_url changes
+  useEffect(() => {
+    setImageError(false);
+    if (token.image_url) {
+      console.log(`🖼️ Token ${token.symbol} has image_url: ${token.image_url}`);
+    } else {
+      console.log(`⚠️ Token ${token.symbol} has no image_url`);
+    }
+  }, [token.image_url, token.symbol]);
+  
   const handleImageError = useCallback((e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     console.log(`🖼️ Image failed to load for ${token.symbol}:`, e.currentTarget.src);
     setImageError(true);
-  }, [token.symbol]);
+  }, [token.symbol, token.image_url]);
 
   const formatTokenBalance = () => {
     // If token has a balance (from user's wallet), format it
@@ -189,6 +199,9 @@ const TokenItem = React.memo(({
             alt={token.symbol}
             className="w-[30px] h-[30px] object-cover"
             onError={handleImageError}
+            onLoad={(e) => {
+              console.log(`✅ Image loaded for ${token.symbol}`);
+            }}
             loading="lazy"
           />
         ) : (
