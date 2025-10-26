@@ -3096,26 +3096,26 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                     // Determine which value to use for rotation
                                     let valueToTransfer = lastUserEnteredValue.current;
                                     
-                                    // Priority 1: If we're rotating default values, use the current send field value
-                                    if (fromAmount === '1' && isFromAmountDefault.current && !hasUserEnteredCustomValue.current) {
+                                    // Priority 1: Always use preserved original basis value if available (this is the original "1" value)
+                                    if (originalBasisValueRef.current !== null && originalBasisValueRef.current !== '') {
+                                        valueToTransfer = originalBasisValueRef.current;
+                                        console.log('🔄 SwapForm: Using preserved original basis value:', valueToTransfer);
+                                    } 
+                                    // Priority 2: If we're rotating default values, use the current send field value
+                                    else if (fromAmount === '1' && isFromAmountDefault.current && !hasUserEnteredCustomValue.current) {
                                         valueToTransfer = fromAmount;
                                         console.log('🔄 SwapForm: Rotating default values, using send field value:', valueToTransfer);
                                     } 
-                                    // Priority 2: If Send field is focused, use its original value
+                                    // Priority 3: If Send field is focused, use its original value
                                     else if (isFromAmountFocused) {
                                         valueToTransfer = getOriginalAmount('from', fromAmount);
                                         console.log('🔄 SwapForm: Send field is focused, using send field original value:', valueToTransfer);
                                     } 
-                                    // Priority 3: If Get field is focused, use its original value
+                                    // Priority 4: If Get field is focused, use its original value
                                     else if (isToAmountFocused) {
                                         valueToTransfer = getOriginalAmount('to', toAmount);
                                         console.log('🔄 SwapForm: Get field is focused, using get field original value:', valueToTransfer);
                                     } 
-                                    // Priority 4: Fallback to preserved original basis value
-                                    else if (originalBasisValueRef.current !== null) {
-                                            valueToTransfer = originalBasisValueRef.current;
-                                        console.log('🔄 SwapForm: No field focused, using preserved original basis value:', valueToTransfer);
-                                        }
                                     // Priority 5: Final fallback to last user entered value
                                     else {
                                         console.log('🔄 SwapForm: No field focused, using last user entered value:', valueToTransfer);
