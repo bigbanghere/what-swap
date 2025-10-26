@@ -2745,7 +2745,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 msUserSelect: 'none',
                                 position: 'relative',
                                 zIndex: 10,
-                                pointerEvents: 'auto'
+                                pointerEvents: 'auto',
+                                opacity: fromTokenImageLoaded ? 1 : 0,
+                                transition: 'opacity 0.2s ease-in'
                             }}
                         >
                             {defaultTokensLoading || !defaultUsdt ? (
@@ -2768,23 +2770,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                         }}
                                     />
                                 </>
-                            ) : (
+                            ) : fromTokenImageLoaded ? (
                                 <>
-                                    {!fromTokenImageLoaded && (
-                                        <div
-                                            style={{
-                                                width: '20px',
-                                                height: '20px',
-                                                minWidth: '20px',
-                                                minHeight: '20px',
-                                                maxWidth: '20px',
-                                                maxHeight: '20px',
-                                                display: 'block',
-                                                borderRadius: '50%',
-                                                backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                                            }}
-                                        />
-                                    )}
                                     <Image
                                         src={selectedFromToken?.image_url || defaultUsdt?.image_url}
                                         alt={selectedFromToken?.symbol || defaultUsdt?.symbol}
@@ -2803,11 +2790,43 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                             borderRadius: '50%',
                                         }}
                                     />
-                                    {fromTokenImageLoaded && (
-                                        <span className='text-[#007AFF]'>
-                                            {selectedFromToken?.symbol || defaultUsdt?.symbol}
-                                        </span>
-                                    )}
+                                    <span className='text-[#007AFF]'>
+                                        {selectedFromToken?.symbol || defaultUsdt?.symbol}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <div
+                                        style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            maxWidth: '20px',
+                                            maxHeight: '20px',
+                                            display: 'block',
+                                            borderRadius: '50%',
+                                            backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                                        }}
+                                    />
+                                    <Image
+                                        src={selectedFromToken?.image_url || defaultUsdt?.image_url}
+                                        alt={selectedFromToken?.symbol || defaultUsdt?.symbol}
+                                        width="20"
+                                        height="20"
+                                        priority
+                                        onLoadingComplete={() => setFromTokenImageLoaded(true)}
+                                        style={{
+                                            width: '20px !important',
+                                            height: '20px !important',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            maxWidth: '20px',
+                                            maxHeight: '20px',
+                                            display: 'block',
+                                            borderRadius: '50%',
+                                        }}
+                                    />
                                 </>
                             )}
                             <MdKeyboardArrowRight 
@@ -3557,7 +3576,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 msUserSelect: 'none',
                                 position: 'relative',
                                 zIndex: 10,
-                                pointerEvents: 'auto'
+                                pointerEvents: 'auto',
+                                opacity: toTokenImageLoaded ? 1 : 0,
+                                transition: 'opacity 0.2s ease-in'
                             }}
                         >
                             {defaultTokensLoading || !defaultTon ? (
@@ -3580,23 +3601,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                         }}
                                     />
                                 </>
-                            ) : (
+                            ) : toTokenImageLoaded ? (
                                 <>
-                                    {!toTokenImageLoaded && (
-                                        <div
-                                            style={{
-                                                width: '20px',
-                                                height: '20px',
-                                                minWidth: '20px',
-                                                minHeight: '20px',
-                                                maxWidth: '20px',
-                                                maxHeight: '20px',
-                                                display: 'block',
-                                                borderRadius: '50%',
-                                                backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                                            }}
-                                        />
-                                    )}
                                     <Image
                                         src={selectedToToken?.image_url || defaultTon?.image_url}
                                         alt={selectedToToken?.symbol || defaultTon?.symbol}
@@ -3615,11 +3621,43 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                             borderRadius: '50%',
                                         }}
                                     />
-                                    {toTokenImageLoaded && (
-                                        <span className='text-[#007AFF]'>
-                                            {selectedToToken?.symbol || defaultTon?.symbol}
-                                        </span>
-                                    )}
+                                    <span className='text-[#007AFF]'>
+                                        {selectedToToken?.symbol || defaultTon?.symbol}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <div
+                                        style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            maxWidth: '20px',
+                                            maxHeight: '20px',
+                                            display: 'block',
+                                            borderRadius: '50%',
+                                            backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                                        }}
+                                    />
+                                    <Image
+                                        src={selectedToToken?.image_url || defaultTon?.image_url}
+                                        alt={selectedToToken?.symbol || defaultTon?.symbol}
+                                        width="20"
+                                        height="20"
+                                        priority
+                                        onLoadingComplete={() => setToTokenImageLoaded(true)}
+                                        style={{
+                                            width: '20px !important',
+                                            height: '20px !important',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            maxWidth: '20px',
+                                            maxHeight: '20px',
+                                            display: 'block',
+                                            borderRadius: '50%',
+                                        }}
+                                    />
                                 </>
                             )}
                             <MdKeyboardArrowRight 
