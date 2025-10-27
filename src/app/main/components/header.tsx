@@ -33,8 +33,10 @@ export function Header() {
           <Image
             src={isDark ? '/what-swap-dark.svg' : '/what-swap-light.svg'}
             alt="What Swap"
+            // width={60}
+            // height={40}
             width={81}
-            height={91}
+            height={41}
             priority
           />
         </div>

@@ -68,7 +68,11 @@ class SwapCoffeeApiClient {
 
   private async request<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
     // For proxy routes, we need to pass the path as a query parameter
-    const url = new URL(this.baseURL, window.location.origin);
+    // Use environment variable or detect if we're on server/client
+    const baseOrigin = typeof window !== 'undefined' 
+      ? window.location.origin 
+      : process.env.NEXT_PUBLIC_BASE_URL || 'https://what-swap.vercel.app';
+    const url = new URL(this.baseURL, baseOrigin);
     url.searchParams.append('path', endpoint.replace('/', ''));
     
     if (params) {

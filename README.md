@@ -10,8 +10,10 @@ pnpm run dev
 
 ## To Do
 
++ ca search ain't working
 + market cap, link to analitics
 + trench trading through bot > memepads integration + trading interface
++ ETF integration
 + 11 when I choose token bug
 + back button bag
 + emerald iced peak
