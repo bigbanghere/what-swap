@@ -945,14 +945,17 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     
     // Fallback: Set to loaded after a timeout to ensure UI appears (for TMA compatibility)
     const fallbackTimeout = setTimeout(() => {
-      if (!fromTokenImageLoaded) {
-        console.log('⏱️ SwapForm: Fallback timeout - setting fromTokenImageLoaded to true');
-        setFromTokenImageLoaded(true);
-      }
+      setFromTokenImageLoaded(prev => {
+        if (!prev) {
+          console.log('⏱️ SwapForm: Fallback timeout - setting fromTokenImageLoaded to true');
+          return true;
+        }
+        return prev;
+      });
     }, 3000); // 3 second fallback
     
     return () => clearTimeout(fallbackTimeout);
-  }, [selectedFromToken, fromTokenImageLoaded]);
+  }, [selectedFromToken]);
 
   useEffect(() => {
     console.log('🔄 SwapForm: selectedToToken changed:', selectedToToken);
@@ -969,14 +972,17 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     
     // Fallback: Set to loaded after a timeout to ensure UI appears (for TMA compatibility)
     const fallbackTimeout = setTimeout(() => {
-      if (!toTokenImageLoaded) {
-        console.log('⏱️ SwapForm: Fallback timeout - setting toTokenImageLoaded to true');
-        setToTokenImageLoaded(true);
-      }
+      setToTokenImageLoaded(prev => {
+        if (!prev) {
+          console.log('⏱️ SwapForm: Fallback timeout - setting toTokenImageLoaded to true');
+          return true;
+        }
+        return prev;
+      });
     }, 3000); // 3 second fallback
     
     return () => clearTimeout(fallbackTimeout);
-  }, [selectedToToken, toTokenImageLoaded]);
+  }, [selectedToToken]);
 
   // Fallback: Check localStorage for tokens when returning from tokens page
   useEffect(() => {
@@ -2790,32 +2796,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                         }}
                                     />
                                 </>
-                            ) : fromTokenImageLoaded ? (
-                                <>
-                                    <Image
-                                        src={selectedFromToken?.image_url || defaultUsdt?.image_url}
-                                        alt={selectedFromToken?.symbol || defaultUsdt?.symbol}
-                                        width="20"
-                                        height="20"
-                                        priority
-                                        onLoadingComplete={() => setFromTokenImageLoaded(true)}
-                                        style={{
-                                            width: '20px !important',
-                                            height: '20px !important',
-                                            minWidth: '20px',
-                                            minHeight: '20px',
-                                            maxWidth: '20px',
-                                            maxHeight: '20px',
-                                            display: 'block',
-                                            borderRadius: '50%',
-                                        }}
-                                    />
-                                    <span className='text-[#007AFF]'>
-                                        {selectedFromToken?.symbol || defaultUsdt?.symbol}
-                                    </span>
-                                </>
                             ) : (
                                 <>
+                                    {/* Placeholder while image loads */}
                                     <div
                                         style={{
                                             width: '20px',
@@ -2829,14 +2812,29 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                             backgroundColor: 'rgba(0, 122, 255, 0.1)',
                                         }}
                                     />
+                                    <span 
+                                        className='text-[#007AFF]' 
+                                        style={{ opacity: fromTokenImageLoaded ? 1 : 0 }}
+                                    >
+                                        {selectedFromToken?.symbol || defaultUsdt?.symbol}
+                                    </span>
                                     <Image
                                         src={selectedFromToken?.image_url || defaultUsdt?.image_url}
                                         alt={selectedFromToken?.symbol || defaultUsdt?.symbol}
                                         width="20"
                                         height="20"
                                         priority
-                                        onLoadingComplete={() => setFromTokenImageLoaded(true)}
+                                        onLoadingComplete={() => {
+                                            console.log('🖼️ SwapForm: From token image loaded successfully');
+                                            setFromTokenImageLoaded(true);
+                                        }}
+                                        onError={(e) => {
+                                            console.error('❌ SwapForm: From token image failed to load:', e);
+                                            // Show token anyway
+                                            setFromTokenImageLoaded(true);
+                                        }}
                                         style={{
+                                            position: 'absolute',
                                             width: '20px !important',
                                             height: '20px !important',
                                             minWidth: '20px',
@@ -3621,32 +3619,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                         }}
                                     />
                                 </>
-                            ) : toTokenImageLoaded ? (
-                                <>
-                                    <Image
-                                        src={selectedToToken?.image_url || defaultTon?.image_url}
-                                        alt={selectedToToken?.symbol || defaultTon?.symbol}
-                                        width="20"
-                                        height="20"
-                                        priority
-                                        onLoadingComplete={() => setToTokenImageLoaded(true)}
-                                        style={{
-                                            width: '20px !important',
-                                            height: '20px !important',
-                                            minWidth: '20px',
-                                            minHeight: '20px',
-                                            maxWidth: '20px',
-                                            maxHeight: '20px',
-                                            display: 'block',
-                                            borderRadius: '50%',
-                                        }}
-                                    />
-                                    <span className='text-[#007AFF]'>
-                                        {selectedToToken?.symbol || defaultTon?.symbol}
-                                    </span>
-                                </>
                             ) : (
                                 <>
+                                    {/* Placeholder while image loads */}
                                     <div
                                         style={{
                                             width: '20px',
@@ -3660,14 +3635,29 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                             backgroundColor: 'rgba(0, 122, 255, 0.1)',
                                         }}
                                     />
+                                    <span 
+                                        className='text-[#007AFF]' 
+                                        style={{ opacity: toTokenImageLoaded ? 1 : 0 }}
+                                    >
+                                        {selectedToToken?.symbol || defaultTon?.symbol}
+                                    </span>
                                     <Image
                                         src={selectedToToken?.image_url || defaultTon?.image_url}
                                         alt={selectedToToken?.symbol || defaultTon?.symbol}
                                         width="20"
                                         height="20"
                                         priority
-                                        onLoadingComplete={() => setToTokenImageLoaded(true)}
+                                        onLoadingComplete={() => {
+                                            console.log('🖼️ SwapForm: To token image loaded successfully');
+                                            setToTokenImageLoaded(true);
+                                        }}
+                                        onError={(e) => {
+                                            console.error('❌ SwapForm: To token image failed to load:', e);
+                                            // Show token anyway
+                                            setToTokenImageLoaded(true);
+                                        }}
                                         style={{
+                                            position: 'absolute',
                                             width: '20px !important',
                                             height: '20px !important',
                                             minWidth: '20px',

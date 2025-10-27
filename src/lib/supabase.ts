@@ -1,14 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Server-side environment variables (should be set in Vercel)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Provide fallback values for build time
+// Provide fallback values for build time (development only)
 const fallbackUrl = 'https://placeholder.supabase.co';
 const fallbackKey = 'placeholder-key';
 
+if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+  console.warn('⚠️ Supabase environment variables are not set. Please configure them in Vercel:');
+  console.warn('  - NEXT_PUBLIC_SUPABASE_URL');
+  console.warn('  - NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  console.warn('  - SUPABASE_SERVICE_ROLE_KEY (server-side only)');
+}
+
 // Client for server-side operations with service role key
+// Used by: UserDatabaseService, ChatDatabaseService in API routes
 export const supabaseAdmin = createClient(
   supabaseUrl || fallbackUrl, 
   supabaseServiceKey || fallbackKey, 
@@ -21,6 +30,7 @@ export const supabaseAdmin = createClient(
 );
 
 // Client for client-side operations with anon key
+// NOTE: Currently not actively used, but available for future client-side features
 export const supabase = createClient(
   supabaseUrl || fallbackUrl, 
   supabaseAnonKey || fallbackKey
