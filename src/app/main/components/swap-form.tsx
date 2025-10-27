@@ -942,7 +942,17 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     }
     // Reset image loaded state when token changes
     setFromTokenImageLoaded(false);
-  }, [selectedFromToken]);
+    
+    // Fallback: Set to loaded after a timeout to ensure UI appears (for TMA compatibility)
+    const fallbackTimeout = setTimeout(() => {
+      if (!fromTokenImageLoaded) {
+        console.log('⏱️ SwapForm: Fallback timeout - setting fromTokenImageLoaded to true');
+        setFromTokenImageLoaded(true);
+      }
+    }, 3000); // 3 second fallback
+    
+    return () => clearTimeout(fallbackTimeout);
+  }, [selectedFromToken, fromTokenImageLoaded]);
 
   useEffect(() => {
     console.log('🔄 SwapForm: selectedToToken changed:', selectedToToken);
@@ -956,7 +966,17 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     }
     // Reset image loaded state when token changes
     setToTokenImageLoaded(false);
-  }, [selectedToToken]);
+    
+    // Fallback: Set to loaded after a timeout to ensure UI appears (for TMA compatibility)
+    const fallbackTimeout = setTimeout(() => {
+      if (!toTokenImageLoaded) {
+        console.log('⏱️ SwapForm: Fallback timeout - setting toTokenImageLoaded to true');
+        setToTokenImageLoaded(true);
+      }
+    }, 3000); // 3 second fallback
+    
+    return () => clearTimeout(fallbackTimeout);
+  }, [selectedToToken, toTokenImageLoaded]);
 
   // Fallback: Check localStorage for tokens when returning from tokens page
   useEffect(() => {
