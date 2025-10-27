@@ -561,7 +561,7 @@ export function useKeyboardDetection() {
         }
       }
 
-      // Subscribe once per effect run to Telegram viewport changes
+      // Subscribe to Telegram viewport changes with polling fallback
       const setupViewportListener = () => {
         try {
           const tg = (window as any).Telegram?.WebApp;
@@ -573,11 +573,38 @@ export function useKeyboardDetection() {
               globalViewportExpanded = expanded;
               setViewportExpanded(expanded);
               sessionStorage.setItem('viewportExpanded', expanded.toString());
+              
+              // Release any compact lock if user manually expanded
+              if (expanded && compactModeLockUntilTs) {
+                compactModeLockUntilTs = null;
+                debug('lock released due to manual expansion via event');
+              }
             };
             tg.onEvent('viewportChanged', handler);
             debug('Viewport change listener set up successfully');
+            
+            // Also set up a polling mechanism as a fallback
+            const pollInterval = setInterval(() => {
+              const tgCurrent = (window as any).Telegram?.WebApp;
+              if (tgCurrent && tgCurrent.isExpanded !== globalViewportExpanded) {
+                const expanded = Boolean(tgCurrent.isExpanded);
+                debug('polling detected viewport change', { expanded, previous: globalViewportExpanded });
+                setIsViewportExpanded(expanded);
+                globalViewportExpanded = expanded;
+                setViewportExpanded(expanded);
+                sessionStorage.setItem('viewportExpanded', expanded.toString());
+                
+                // Release any compact lock if user manually expanded
+                if (expanded && compactModeLockUntilTs) {
+                  compactModeLockUntilTs = null;
+                  debug('lock released due to manual expansion via polling');
+                }
+              }
+            }, 500); // Poll every 500ms as fallback
+            
             return () => {
               try { tg.offEvent?.('viewportChanged', handler); } catch {}
+              clearInterval(pollInterval);
             };
           }
           return null;
