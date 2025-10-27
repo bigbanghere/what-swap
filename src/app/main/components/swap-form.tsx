@@ -2745,7 +2745,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 msUserSelect: 'none',
                                 position: 'relative',
                                 zIndex: 10,
-                                pointerEvents: 'auto'
+                                pointerEvents: 'auto',
+                                opacity: fromTokenImageLoaded ? 1 : 0,
+                                transition: 'opacity 0.2s ease-in'
                             }}
                         >
                             {defaultTokensLoading || !defaultUsdt ? (
@@ -3574,7 +3576,9 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 msUserSelect: 'none',
                                 position: 'relative',
                                 zIndex: 10,
-                                pointerEvents: 'auto'
+                                pointerEvents: 'auto',
+                                opacity: toTokenImageLoaded ? 1 : 0,
+                                transition: 'opacity 0.2s ease-in'
                             }}
                         >
                             {defaultTokensLoading || !defaultTon ? (
