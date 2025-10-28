@@ -503,14 +503,31 @@ export function useKeyboardDetection() {
   // Memoize the return object to prevent unnecessary re-renders
   const shouldBeCompact = useMemo(() => {
     const forcedCompact = compactModeLockUntilTs && Date.now() < compactModeLockUntilTs;
+    
+    // If viewport is expanded AND keyboard is not open, force fullscreen mode
+    // This handles the case where user manually expands from compact to fullscreen
+    if (isViewportExpanded && !isKeyboardOpen && !isInputFocused) {
+      return false; // Fullscreen mode
+    }
+    
     const result = forcedCompact || isInputFocused || (!isKeyboardOpen && !isViewportExpanded);
     return result;
   }, [isInputFocused, isKeyboardOpen, isViewportExpanded]);
 
   // Update viewport expansion state
   useEffect(() => {
+    // Check if user manually expanded (this should override any compact lock)
+    const isManuallyExpanded = !isInBrowser && typeof window !== 'undefined' && 
+      Boolean((window as any).Telegram?.WebApp?.isExpanded);
+    
+    // If user manually expanded, release compact lock immediately
+    if (isManuallyExpanded && compactModeLockUntilTs) {
+      debug('lock released due to manual expansion detected');
+      compactModeLockUntilTs = null;
+    }
+    
     // If compact mode is locked, keep it compact and skip updates
-    if (compactModeLockUntilTs && Date.now() < compactModeLockUntilTs) {
+    if (compactModeLockUntilTs && Date.now() < compactModeLockUntilTs && !isManuallyExpanded) {
       debug('lock active, forcing compact');
       if (isViewportExpanded) {
         setIsViewportExpanded(false);
@@ -523,7 +540,7 @@ export function useKeyboardDetection() {
       return;
     }
     // Clear the lock if time elapsed
-    if (compactModeLockUntilTs) {
+    if (compactModeLockUntilTs && Date.now() >= compactModeLockUntilTs) {
       debug('lock released');
       compactModeLockUntilTs = null;
     }
