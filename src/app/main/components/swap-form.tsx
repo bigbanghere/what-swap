@@ -145,10 +145,18 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const t = useTranslations('translations');
     const { setCanAddMoreCharacters } = useValidation();
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
-    const { allTokens } = useTokensCache();
+    const { allTokens, startLoading } = useTokensCache();
     const { userTokens, tonBalance } = useUserTokensCache(walletAddress);
     const { toast } = useToast();
     const { isTMAReady, tmaParams, tmaToken, isLoading: tmaLoading } = useTMAParams();
+
+    // Start loading token list only after default tokens are ready
+    useEffect(() => {
+      if (!defaultTokensLoading && defaultUsdt && defaultTon && startLoading) {
+        console.log('✅ SwapForm: Default tokens loaded, starting token list loading...');
+        startLoading();
+      }
+    }, [defaultTokensLoading, defaultUsdt, defaultTon, startLoading]);
 
     // Helper function to get the balance for the selected token
     const getTokenBalance = useCallback((token: any): string => {
@@ -952,7 +960,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         }
         return prev;
       });
-    }, 3000); // 3 second fallback
+    }, 500); // 500ms fallback
     
     return () => clearTimeout(fallbackTimeout);
   }, [selectedFromToken]);
@@ -979,7 +987,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         }
         return prev;
       });
-    }, 3000); // 3 second fallback
+    }, 500); // 500ms fallback
     
     return () => clearTimeout(fallbackTimeout);
   }, [selectedToToken]);
@@ -2572,7 +2580,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                     <div className='pt-[15px] pr-[15px] pl-[15px] flex flex-row gap-[15px] items-center justify-between'>
                         <div className='flex flex-row w-full items-center gap-[5px]'>
                             {shouldBeCompact && (
-                                <div style={{ width: '25px', height: '20px', overflow: 'hidden', transition: 'width 0.2s ease' }}>
+                                <div style={{ width: '25px', height: '20px', overflow: 'hidden' }}>
                                     <Image
                                         src="/logo_sign.svg"
                                         alt="sign"
@@ -2605,7 +2613,13 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 {t('max')}
                             </div>
                         ) : null}
-                        <div className='w-full flex justify-end gap-[5px]'>
+                        {/* Shortcuts - Rendered but initially hidden (opacity 0) until tokens load */}
+                        <div 
+                            className='w-full flex justify-end gap-[5px]'
+                            style={{
+                                opacity: fromTokenImageLoaded && toTokenImageLoaded ? 1 : 0
+                            }}
+                        >
                             {getTop5TokensExcludingBoth().map((token, index) => (
                                 <div
                                     key={`from-token-${index}-${token.symbol}`}
@@ -2773,7 +2787,6 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 zIndex: 10,
                                 pointerEvents: 'auto',
                                 opacity: fromTokenImageLoaded ? 1 : 0,
-                                transition: 'opacity 0.2s ease-in'
                             }}
                         >
                             {defaultTokensLoading || !defaultUsdt ? (
@@ -3428,7 +3441,13 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                     </div>
                     <div className='pr-[15px] pl-[15px] flex flex-row items-center justify-between'>
                         {t('get')}
-                        <div className='w-full flex justify-end gap-[5px]'>
+                        {/* Shortcuts - Rendered but initially hidden (opacity 0) until tokens load */}
+                        <div 
+                            className='w-full flex justify-end gap-[5px]'
+                            style={{
+                                opacity: fromTokenImageLoaded && toTokenImageLoaded ? 1 : 0
+                            }}
+                        >
                             {getTop5TokensExcludingBoth().map((token, index) => (
                                 <div
                                     key={`to-token-${index}-${token.symbol}`}
@@ -3596,7 +3615,6 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                 zIndex: 10,
                                 pointerEvents: 'auto',
                                 opacity: toTokenImageLoaded ? 1 : 0,
-                                transition: 'opacity 0.2s ease-in'
                             }}
                         >
                             {defaultTokensLoading || !defaultTon ? (
@@ -3695,7 +3713,6 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '5px',
-                                    transition: 'display 0.2s ease'
                                 }}>
                                     <IoWalletSharp style={{ height: '20px', width: '20px', opacity: 0.66 }} />
                                     <span className='whitespace-nowrap' style={{ opacity: 0.66 }}>

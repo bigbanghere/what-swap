@@ -20,6 +20,9 @@ let defaultTokensCache: DefaultTokensState = {
   error: null,
 };
 
+// Global flag to indicate default tokens are loaded
+let defaultTokensLoaded = false;
+
 // Cache listeners
 const cacheListeners = new Set<() => void>();
 
@@ -37,7 +40,7 @@ const fetchDefaultTokens = async () => {
     
     // Add timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout: API call took too long')), 3000); // 3 second timeout
+      setTimeout(() => reject(new Error('Timeout: API call took too long')), 2000); // 2 second timeout
     });
     
     // Fetch both tokens in parallel with timeout
@@ -53,15 +56,18 @@ const fetchDefaultTokens = async () => {
     defaultTokensCache.ton = tonResponse;
     defaultTokensCache.isLoading = false;
     defaultTokensCache.error = null;
+    defaultTokensLoaded = true; // Mark as loaded
     
     console.log('✅ DefaultTokens: Successfully fetched default tokens');
     console.log('✅ DefaultTokens: USDT:', usdtResponse.symbol, usdtResponse.name);
     console.log('✅ DefaultTokens: TON:', tonResponse.symbol, tonResponse.name);
+    console.log('✅ DefaultTokens: Default tokens ready - token list can now load');
     
   } catch (error) {
     console.error('❌ DefaultTokens: Failed to fetch default tokens:', error);
     defaultTokensCache.error = error instanceof Error ? error : new Error('Failed to fetch default tokens');
     defaultTokensCache.isLoading = false;
+    defaultTokensLoaded = true; // Still mark as loaded (even if failed) so token list can proceed
   }
   
   // Notify listeners
@@ -102,4 +108,5 @@ export const useDefaultTokens = () => {
 export const defaultTokensCacheUtils = {
   getTokens: () => defaultTokensCache,
   refetch: fetchDefaultTokens,
+  isLoaded: () => defaultTokensLoaded,
 };

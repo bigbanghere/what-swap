@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { swapCoffeeApiClient } from '@/lib/swap-coffee-api';
 import { TOTAL_TOKENS } from '@/constants/tokens';
+import { defaultTokensCacheUtils } from '@/hooks/use-default-tokens';
 
 export interface Jetton {
   address: string;
@@ -401,7 +402,7 @@ const loadAllTokens = async () => {
       cacheListeners.forEach(listener => listener());
       
       // Small delay to prevent overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
       
     } catch (err) {
       console.error(`❌ Cache: Failed to load page ${page}:`, err);
@@ -495,38 +496,29 @@ export const useTokensCache = (searchQuery: string = '') => {
     cacheListeners.add(updateState);
     updateState(); // Initial update
 
-    // Start loading if no tokens are loaded yet
-    if (cacheState.tokens.length === 0) {
-      console.log('🚀 useTokensCache: Starting initial token loading...');
-      startBackgroundLoading(200); // Small delay to let UI render first
-    }
-    
     // Fallback: if no tokens loaded after 5 seconds, try to load at least some
-    if (cacheState.tokens.length === 0) {
-      const fallbackTimeout = setTimeout(async () => {
-        if (cacheState.tokens.length === 0) {
-          console.log('🚀 useTokensCache: Fallback loading - trying to get at least some tokens...');
-          try {
-            const fallbackTokens = await swapCoffeeApiClient.getJettons({
-              verification: ['WHITELISTED', 'COMMUNITY'],
-            });
-            if (fallbackTokens.length > 0) {
-              cacheState.tokens = fallbackTokens.slice(0, 100); // Take first 100 tokens
-              cacheState.isLoading = false;
-              cacheState.lastFetchTime = Date.now();
-              cacheListeners.forEach(listener => listener());
-              console.log(`✅ useTokensCache: Fallback loaded ${fallbackTokens.length} tokens`);
-            }
-          } catch (error) {
-            console.error('❌ useTokensCache: Fallback loading failed:', error);
+    const fallbackTimeout = setTimeout(async () => {
+      if (cacheState.tokens.length === 0) {
+        console.log('🚀 useTokensCache: Fallback loading - trying to get at least some tokens...');
+        try {
+          const fallbackTokens = await swapCoffeeApiClient.getJettons({
+            verification: ['WHITELISTED', 'COMMUNITY'],
+          });
+          if (fallbackTokens.length > 0) {
+            cacheState.tokens = fallbackTokens.slice(0, 100); // Take first 100 tokens
+            cacheState.isLoading = false;
+            cacheState.lastFetchTime = Date.now();
+            cacheListeners.forEach(listener => listener());
+            console.log(`✅ useTokensCache: Fallback loaded ${fallbackTokens.length} tokens`);
           }
+        } catch (error) {
+          console.error('❌ useTokensCache: Fallback loading failed:', error);
         }
-      }, 5000);
-      
-      return () => clearTimeout(fallbackTimeout);
-    }
-
+      }
+    }, 5000);
+    
     return () => {
+      clearTimeout(fallbackTimeout);
       cacheListeners.delete(updateState);
     };
   }, []);
@@ -555,6 +547,12 @@ export const useTokensCache = (searchQuery: string = '') => {
     hasMore: state.hasMore,
     isCacheFresh: isCacheFresh(),
     refresh,
+    startLoading: () => {
+      if (!cacheState.isLoading && cacheState.tokens.length === 0) {
+        console.log('🚀 useTokensCache: Starting loading via startLoading()');
+        startBackgroundLoading(0);
+      }
+    },
   };
 };
 
