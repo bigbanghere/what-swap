@@ -40,6 +40,19 @@ function isValidTONAddress(text: string): boolean {
 
 // Function to validate token exists via API
 async function validateTokenExists(address: string): Promise<{ exists: boolean; token?: any }> {
+  // Special case: TON native coin (all zeros) is always valid
+  if (address.trim() === '0:0000000000000000000000000000000000000000000000000000000000000000') {
+    console.log(`🔍 Validating token: ${address} (TON native coin)`);
+    return { 
+      exists: true, 
+      token: {
+        symbol: 'TON',
+        name: 'Toncoin',
+        address: '0:0000000000000000000000000000000000000000000000000000000000000000'
+      }
+    };
+  }
+  
   try {
     console.log(`🔍 Validating token: ${address}`);
     const token = await swapCoffeeApiClient.getJettonByAddress(address);
@@ -54,9 +67,15 @@ async function validateTokenExists(address: string): Promise<{ exists: boolean; 
 // Function to create swap link with startapp parameter
 function createSwapLink(tokenAddress: string): string {
   const baseUrl = "https://t.me/what_swap_bot/whatswap";
+  
+  // Special case: use "TON" for the native TON coin address instead of the full address
+  const startappValue = (tokenAddress.trim() === '0:0000000000000000000000000000000000000000000000000000000000000000') 
+    ? 'TON' 
+    : tokenAddress;
+  
   const params = new URLSearchParams({
     mode: "compact",
-    startapp: tokenAddress
+    startapp: startappValue
   });
   return `${baseUrl}?${params.toString()}`;
 }
@@ -183,8 +202,13 @@ async function createBot(token: string) {
           const token = validation.token;
           const swapLink = createSwapLink(message);
           
+          // Use "Buy" for TON, "Swap" for all other tokens
+          const actionText = (message.trim() === 'TON' || message.trim() === '0:0000000000000000000000000000000000000000000000000000000000000000')
+            ? 'Buy'
+            : 'Swap';
+          
           await ctx.reply(
-            `[Swap ${token.symbol} on What Swap](${swapLink})`,
+            `[${actionText} ${token.symbol} on What Swap](${swapLink})`,
             { parse_mode: 'Markdown' }
           );
         } else {
