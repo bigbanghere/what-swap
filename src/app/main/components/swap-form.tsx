@@ -145,7 +145,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const t = useTranslations('translations');
     const { setCanAddMoreCharacters } = useValidation();
     const { usdt: defaultUsdt, ton: defaultTon, isLoading: defaultTokensLoading } = useDefaultTokens();
-    const { allTokens, startLoading, isLoading: tokensLoading } = useTokensCache();
+    const { allTokens, startLoading } = useTokensCache();
     const { userTokens, tonBalance } = useUserTokensCache(walletAddress);
     const { toast } = useToast();
     const { isTMAReady, tmaParams, tmaToken, isLoading: tmaLoading } = useTMAParams();
@@ -332,7 +332,6 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     const justRestoredDefaults = useRef(false); // Track if we just restored default values
     const rotatedTransferredToAmount = useRef<string | null>(null); // Value moved into get field during rotation
     const fromDefaultValueRef = useRef<string>('1'); // Tracks what the default send value should restore to on unfocus
-    const isBuyingTonModeRef = useRef<boolean>(false); // Track if we're in "buying TON" mode from TMA link
     const isRestoringDefaults = useRef(false); // Guards effects during default restoration on unfocus
     const rotatedFromDefaultsRef = useRef<boolean>(false); // Tracks if last rotation started from true defaults
     const defaultBasisSideRef = useRef<'from' | 'to'>('from'); // Tracks where basis "1" should be on default restore
@@ -513,8 +512,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             }
         }
         
-        if (!fullToken || !fullToken.market_stats?.price_usd) {
-            console.log('🔍 SwapForm: No price data for token:', fullToken?.symbol, fullToken?.market_stats);
+        if (!fullToken.market_stats?.price_usd) {
+            console.log('🔍 SwapForm: No price data for token:', fullToken.symbol, fullToken.market_stats);
             return null;
         }
         
@@ -557,8 +556,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
     }, []);
 
     // Stable USD calculations to prevent blinking
-    const fromTokenUSDValueRef = useRef<string>('');
-    const toTokenUSDValueRef = useRef<string>('');
+    const fromTokenUSDValueRef = useRef<string>('$0');
+    const toTokenUSDValueRef = useRef<string>('$0');
     const lastFromAmountRef = useRef<string>('');
     const lastToAmountRef = useRef<string>('');
     const lastFromTokenRef = useRef<string>('');
@@ -584,7 +583,7 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
             }
         }
         
-        if (!fullToken || !fullToken.market_stats?.price_usd) {
+        if (!fullToken.market_stats?.price_usd) {
             return null;
         }
         
@@ -617,179 +616,50 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
 
     // Calculate USD values with smart caching
     const fromTokenUSDValue = useMemo(() => {
-        // Don't calculate if we don't have a token selected yet
-        if (!selectedFromToken && !defaultUsdt) return '';
-        
         const currentToken = selectedFromToken || defaultUsdt;
-        
-        // Don't calculate if token doesn't exist
-        if (!currentToken) return '';
-        
-        // Check if token has market_stats before calculating - prevents flashing with incorrect values
-        let fullToken = currentToken;
-        if (allTokens && allTokens.length > 0 && currentToken.address) {
-            const foundToken = allTokens.find(t => t.address === currentToken.address);
-            if (foundToken) {
-                fullToken = foundToken;
-            }
-        }
-        
-        // If no market_stats on the token, return empty string to prevent flashing
-        if (!fullToken?.market_stats?.price_usd) {
-            return '';
-        }
-        
-        // Double-check: also verify the token object has valid address and market_stats
-        if (!currentToken?.address || !fullToken.market_stats?.price_usd) {
-            return '';
-        }
-        
         const currentAmount = fromAmount;
         const currentTokenAddress = currentToken?.address || '';
         
-        // Check if we need to recalculate (skip if values are empty to allow recalculation)
+        // Check if we need to recalculate
         if (lastFromAmountRef.current === currentAmount && 
             lastFromTokenRef.current === currentTokenAddress &&
-            fromTokenUSDValueRef.current && 
-            fromTokenUSDValueRef.current !== '' &&
             fromTokenUSDValueRef.current !== '$0') {
             return fromTokenUSDValueRef.current;
         }
         
         const usdValue = calculateUSDValueInline(currentAmount, currentToken);
-        
-        // Debug logging to track USD calculation
-        if (usdValue !== null && usdValue > 0) {
-            console.log('💰 USD Calculation - From:', {
-                amount: currentAmount,
-                token: currentToken.symbol,
-                price: fullToken.market_stats?.price_usd,
-                usdValue: usdValue,
-                formatted: formatUSDValueInline(usdValue)
-            });
-        }
-        
-        // If calculation returns null (no price data), return empty string
-        if (usdValue === null) return '';
-        
-        const formattedValue = formatUSDValueInline(usdValue);
+        const formattedValue = formatUSDValueInline(usdValue) || '$0';
         
         // Update refs
-        fromTokenUSDValueRef.current = formattedValue || '';
+        fromTokenUSDValueRef.current = formattedValue;
         lastFromAmountRef.current = currentAmount;
         lastFromTokenRef.current = currentTokenAddress;
         
-        return formattedValue || '';
-    }, [fromAmount, calculateUSDValueInline, formatUSDValueInline, defaultUsdt, selectedFromToken, allTokens]);
+        return formattedValue;
+    }, [fromAmount, calculateUSDValueInline, formatUSDValueInline, defaultUsdt, selectedFromToken]);
 
     const toTokenUSDValue = useMemo(() => {
-        // Don't calculate if we don't have a token selected yet
-        if (!selectedToToken && !defaultTon) return '';
-        
         const currentToken = selectedToToken || defaultTon;
-        
-        // Don't calculate if token doesn't exist
-        if (!currentToken) return '';
-        
-        // Check if token has market_stats before calculating - prevents flashing with incorrect values
-        let fullToken = currentToken;
-        if (allTokens && allTokens.length > 0 && currentToken.address) {
-            const foundToken = allTokens.find(t => t.address === currentToken.address);
-            if (foundToken) {
-                fullToken = foundToken;
-            }
-        }
-        
-        // If no market_stats on the token, return empty string to prevent flashing
-        if (!fullToken?.market_stats?.price_usd) {
-            return '';
-        }
-        
-        // Double-check: also verify the token object has valid address and market_stats
-        if (!currentToken?.address || !fullToken.market_stats?.price_usd) {
-            return '';
-        }
-        
         const currentAmount = toAmount;
         const currentTokenAddress = currentToken?.address || '';
         
-        // Check if we need to recalculate (skip if values are empty to allow recalculation)
+        // Check if we need to recalculate
         if (lastToAmountRef.current === currentAmount && 
             lastToTokenRef.current === currentTokenAddress &&
-            toTokenUSDValueRef.current && 
-            toTokenUSDValueRef.current !== '' &&
             toTokenUSDValueRef.current !== '$0') {
             return toTokenUSDValueRef.current;
         }
         
         const usdValue = calculateUSDValueInline(currentAmount, currentToken);
-        
-        // Debug logging to track USD calculation
-        if (usdValue !== null && usdValue > 0) {
-            console.log('💰 USD Calculation - To:', {
-                amount: currentAmount,
-                token: currentToken.symbol,
-                price: fullToken.market_stats?.price_usd,
-                usdValue: usdValue,
-                formatted: formatUSDValueInline(usdValue)
-            });
-        }
-        
-        // If calculation returns null (no price data), return empty string
-        if (usdValue === null) return '';
-        
-        const formattedValue = formatUSDValueInline(usdValue);
+        const formattedValue = formatUSDValueInline(usdValue) || '$0';
         
         // Update refs
-        toTokenUSDValueRef.current = formattedValue || '';
+        toTokenUSDValueRef.current = formattedValue;
         lastToAmountRef.current = currentAmount;
         lastToTokenRef.current = currentTokenAddress;
         
-        return formattedValue || '';
-    }, [toAmount, calculateUSDValueInline, formatUSDValueInline, defaultTon, selectedToToken, allTokens]);
-
-    // Check if price data is available for tokens
-    // Only show USD values when the specific token has price data
-    // Note: We wait for default tokens to load first to avoid flashing
-    const hasFromTokenPriceData = useMemo(() => {
-        // Don't show if default tokens are still loading
-        if (defaultTokensLoading) return false;
-        
-        const currentToken = selectedFromToken || defaultUsdt;
-        if (!currentToken) return false;
-        
-        // Get full token data with market stats
-        let fullToken = currentToken;
-        if (allTokens && allTokens.length > 0 && currentToken.address) {
-            const foundToken = allTokens.find(t => t.address === currentToken.address);
-            if (foundToken) {
-                fullToken = foundToken;
-            }
-        }
-        
-        // Check if this token has price data
-        return !!fullToken?.market_stats?.price_usd;
-    }, [selectedFromToken, defaultUsdt, allTokens, defaultTokensLoading]);
-
-    const hasToTokenPriceData = useMemo(() => {
-        // Don't show if default tokens are still loading
-        if (defaultTokensLoading) return false;
-        
-        const currentToken = selectedToToken || defaultTon;
-        if (!currentToken) return false;
-        
-        // Get full token data with market stats
-        let fullToken = currentToken;
-        if (allTokens && allTokens.length > 0 && currentToken.address) {
-            const foundToken = allTokens.find(t => t.address === currentToken.address);
-            if (foundToken) {
-                fullToken = foundToken;
-            }
-        }
-        
-        // Check if this token has price data
-        return !!fullToken?.market_stats?.price_usd;
-    }, [selectedToToken, defaultTon, allTokens, defaultTokensLoading]);
+        return formattedValue;
+    }, [toAmount, calculateUSDValueInline, formatUSDValueInline, defaultTon, selectedToToken]);
 
     // Handle TMA parameters for token selection
     useEffect(() => {
@@ -799,115 +669,94 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
         
         console.log('🔄 SwapForm: Processing TMA parameters:', tmaParams);
         
-        // Check if TMA token is TON (zero address) - in this case, we want to BUY TON with USDT
-        // Check tmaParams first, then tmaToken as fallback
-        const tmaAddress = tmaParams?.tokenAddress?.trim() || tmaToken?.address?.trim();
-        const tonAddress = '0:0000000000000000000000000000000000000000000000000000000000000000';
-        const isBuyingTon = tmaAddress === tonAddress;
+        const TON_ZERO_ADDRESS = '0:0000000000000000000000000000000000000000000000000000000000000000';
+        const isTonTarget = tmaParams.tokenAddress === TON_ZERO_ADDRESS;
         
-        console.log('🔄 SwapForm: TMA debug:', {
-            isBuyingTon,
-            tmaAddress,
-            tonAddress,
-            hasDefaultTon: !!defaultTon,
-            hasDefaultUsdt: !!defaultUsdt
-        });
-        
-        // IMPORTANT: If buying TON and both defaultTon and defaultUsdt are not ready yet, 
-        // return early to wait for them instead of falling back to incorrect tokens
-        if (isBuyingTon && (!defaultTon || !defaultUsdt)) {
-            console.log('🔄 SwapForm: Waiting for default tokens to be ready before setting TON buying state');
-            return;
-        }
-        
-        // Handle the "to" token (what user wants to get)
-        if (isBuyingTon && defaultTon) {
-            // Buying TON - set TON as the "to" token
+        // If TON is the target token (startapp=TON or startapp=TON:amount)
+        if (isTonTarget && defaultTon) {
             console.log('🔄 SwapForm: Buying TON - setting TON as toToken');
+            
+            // Set TON as the "to" token (what user wants to get)
             const tonTokenData = {
                 symbol: defaultTon.symbol,
                 name: defaultTon.name,
                 image_url: defaultTon.image_url,
                 address: defaultTon.address
             };
+            
             setSelectedToToken(tonTokenData);
             localStorage.setItem('selectedToToken', JSON.stringify(tonTokenData));
-        } else if (tmaToken) {
-            // Using the fetched TMA token as the "to" token
-            console.log('🔄 SwapForm: Using TMA token:', tmaToken);
-            const tmaTokenData = {
-                symbol: tmaToken.symbol,
-                name: tmaToken.name,
-                image_url: tmaToken.image_url,
-                address: tmaToken.address
-            };
-            setSelectedToToken(tmaTokenData);
-            localStorage.setItem('selectedToToken', JSON.stringify(tmaTokenData));
-        } else if (defaultUsdt) {
-            // Fallback to default USDT if no TMA token was fetched
-            console.log('🔄 SwapForm: Using default USDT as fallback for TMA parameters');
-            const fallbackTokenData = {
-                symbol: defaultUsdt.symbol,
-                name: defaultUsdt.name,
-                image_url: defaultUsdt.image_url,
-                address: defaultUsdt.address
-            };
-            setSelectedToToken(fallbackTokenData);
-            localStorage.setItem('selectedToToken', JSON.stringify(fallbackTokenData));
-        }
-        
-        // Set the "from" token based on what we're buying
-        // If buying TON, use USDT as the from token (sell USDT to buy TON)
-        // Otherwise, use TON as the from token (sell TON to buy the token)
-        if (isBuyingTon && defaultUsdt) {
-            console.log('🔄 SwapForm: Buying TON with USDT');
-            const usdtTokenData = {
-                symbol: defaultUsdt.symbol,
-                name: defaultUsdt.name,
-                image_url: defaultUsdt.image_url,
-                address: defaultUsdt.address
-            };
             
-            // Set flag to indicate we're buying TON - this will trigger reverse calculation
-            isBuyingTonModeRef.current = true;
+            // Set USDT as the "from" token (what user will send)
+            if (defaultUsdt) {
+                console.log('🔄 SwapForm: Buying TON with USDT');
+                const usdtTokenData = {
+                    symbol: defaultUsdt.symbol,
+                    name: defaultUsdt.name,
+                    image_url: defaultUsdt.image_url,
+                    address: defaultUsdt.address
+                };
+                setSelectedFromToken(usdtTokenData);
+                localStorage.setItem('selectedFromToken', JSON.stringify(usdtTokenData));
+            }
             
-            // CRITICAL ORDER: Set toAmount='1' and clear fromAmount BEFORE setting tokens
-            // This ensures TOKEN_CHANGE handlers see the correct state and trigger REVERSE calculation
-            setToAmount('1');
-            setFromAmount('');
-            updateInputSourceTracking('to');
+            // Use amount from params if specified, otherwise default to 1
+            const amount = tmaParams.amount || '1';
+            // For buying TON, the amount is how much TON to receive (toAmount)
+            // Set toAmount to the target amount and focus it so calculation works backwards
+            setToAmount(amount);
+            setIsToAmountFocused(true); // Focus toAmount so calculation calculates fromAmount from it
+            setFromAmount(''); // Clear fromAmount, will be calculated from toAmount
+        } else {
+            // For other tokens, use existing logic
+            // If we have a fetched TMA token, use it
+            if (tmaToken) {
+                console.log('🔄 SwapForm: Using TMA token:', tmaToken);
+                
+                // Set the TMA token as the "to" token (what user wants to get)
+                const tmaTokenData = {
+                    symbol: tmaToken.symbol,
+                    name: tmaToken.name,
+                    image_url: tmaToken.image_url,
+                    address: tmaToken.address
+                };
+                
+                setSelectedToToken(tmaTokenData);
+                localStorage.setItem('selectedToToken', JSON.stringify(tmaTokenData));
+            } else if (defaultUsdt) {
+                // Fallback to default USDT if no TMA token was fetched
+                console.log('🔄 SwapForm: Using default USDT as fallback for TMA parameters');
+                
+                const fallbackTokenData = {
+                    symbol: defaultUsdt.symbol,
+                    name: defaultUsdt.name,
+                    image_url: defaultUsdt.image_url,
+                    address: defaultUsdt.address
+                };
+                
+                setSelectedToToken(fallbackTokenData);
+                localStorage.setItem('selectedToToken', JSON.stringify(fallbackTokenData));
+            }
             
-            // Set fromToken - TOKEN_CHANGE_FROM will see fromAmount='' and toAmount='1', so it should do REVERSE
-            setSelectedFromToken(usdtTokenData);
-            localStorage.setItem('selectedFromToken', JSON.stringify(usdtTokenData));
-        } else if (defaultTon) {
-            console.log('🔄 SwapForm: Buying token with TON');
-            const tonTokenData = {
-                symbol: defaultTon.symbol,
-                name: defaultTon.name,
-                image_url: defaultTon.image_url,
-                address: defaultTon.address
-            };
-            setSelectedFromToken(tonTokenData);
-            localStorage.setItem('selectedFromToken', JSON.stringify(tonTokenData));
+            // Set TON as the "from" token (what user will send)
+            if (defaultTon) {
+                const tonTokenData = {
+                    symbol: defaultTon.symbol,
+                    name: defaultTon.name,
+                    image_url: defaultTon.image_url,
+                    address: defaultTon.address
+                };
+                setSelectedFromToken(tonTokenData);
+                localStorage.setItem('selectedFromToken', JSON.stringify(tonTokenData));
+            }
             
-            // When buying other tokens with TON, set fromAmount to 1 TON
-            setFromAmount('1');
+            // Use amount from params if specified, otherwise default to 1
+            const amount = tmaParams.amount || '1';
+            setFromAmount(amount);
         }
         
         console.log('✅ SwapForm: TMA parameters applied successfully');
-    }, [isTMAReady, tmaParams, tmaToken, defaultTon, defaultUsdt, executeCalculation, updateInputSourceTracking]);
-
-    // Trigger reverse calculation when buying TON from TMA link
-    useLayoutEffect(() => {
-        if (isBuyingTonModeRef.current && selectedFromToken && selectedToToken && toAmount === '1' && executeCalculation) {
-            console.log('🔄 SwapForm: Buying TON detected - forcing reverse calculation');
-            // Force reverse calculation for buying TON
-            executeCalculation('REVERSE', '1');
-            // Clear the flag after triggering
-            isBuyingTonModeRef.current = false;
-        }
-    }, [selectedFromToken, selectedToToken, toAmount, executeCalculation]);
+    }, [isTMAReady, tmaParams, tmaToken, defaultTon, defaultUsdt]);
 
     // Only reset to default tokens on actual page refresh, not on navigation
     useEffect(() => {
@@ -3063,8 +2912,8 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         </div>
                     </div>
                     <div className='pr-[15px] pl-[15px] flex flex-row justify-between items-center gap-[15px]'>
-                        <div className='w-full' style={{ opacity: hasFromTokenPriceData && fromTokenUSDValue ? 0.66 : 0 }}>
-                            {fromTokenUSDValue || '\u00A0'}
+                        <div className='w-full' style={{ opacity: 0.66 }}>
+                            {fromTokenUSDValue}
                         </div>
                         {walletAddress ? (
                             <div className='flex flex-row gap-[5px]'>
@@ -3891,13 +3740,13 @@ export function SwapForm({ onErrorChange, onSwapDataChange }: { onErrorChange?: 
                         </div>
                     </div>
                     <div className='pr-[15px] pl-[15px] pb-[15px] flex flex-row justify-between items-center'>
-                        <div className='w-full' style={{ opacity: hasToTokenPriceData && toTokenUSDValue ? 0.66 : 0 }}>
+                        <div className='w-full' style={{ opacity: 0.66 }}>
                             {isCalculating ? (
                                 <span style={{ }}>
                                     ...
                                 </span>
                             ) : (
-                                toTokenUSDValue || '\u00A0'
+                                toTokenUSDValue
                             )}
                         </div>
                         <div className='flex flex-row gap-[5px]'>

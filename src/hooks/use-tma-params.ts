@@ -14,14 +14,27 @@ interface TMAParams {
 // Parse startapp parameter for token address
 function parseStartAppParams(startParam: string): TMAParams | null {
   try {
-    // Special handling for "TON" keyword (including variations like "TON:8" or just "TON")
     const upperParam = startParam.toUpperCase();
-    if (upperParam === 'TON' || upperParam.startsWith('TON:')) {
-      console.log("TMA: Detected TON keyword in startapp parameter:", startParam);
+    
+    // Special case: "TON" or "TON:amount" represents the native TON coin
+    // Handle format like "TON:8" where 8 is the amount
+    if (upperParam === "TON" || upperParam.startsWith("TON:")) {
+      // TON zero address
+      const tonZeroAddress = '0:0000000000000000000000000000000000000000000000000000000000000000';
+      
+      // Extract amount if present (e.g., "TON:8" -> amount "8")
+      let amount = "1"; // Default to 1 TON
+      if (upperParam.includes(":")) {
+        const parts = startParam.split(":");
+        if (parts.length > 1 && parts[1]) {
+          amount = parts[1].trim();
+        }
+      }
+      
       return {
-        tokenAddress: '0:0000000000000000000000000000000000000000000000000000000000000000',
-        mode: "buy",
-        amount: "1"
+        tokenAddress: tonZeroAddress,
+        mode: "buy", // Default to buy mode
+        amount: amount
       };
     }
     
@@ -46,16 +59,6 @@ function parseStartAppParams(startParam: string): TMAParams | null {
     };
   } catch (error) {
     console.error("Failed to parse startapp parameters:", error);
-    // If parsing fails and it's a short string that doesn't start with a number,
-    // it might be a token symbol, try to return it as-is
-    if (startParam.length < 20 && !startParam.match(/^0:/)) {
-      console.log("TMA: Treating as potential token symbol:", startParam);
-      return {
-        tokenAddress: startParam,
-        mode: "buy",
-        amount: "1"
-      };
-    }
     return null;
   }
 }
@@ -180,17 +183,17 @@ export function useTMAParams() {
         return false;
       }
       
-      console.log("TMA: Processing token address:", params.tokenAddress);
+      // TON zero address constant
+      const TON_ZERO_ADDRESS = '0:0000000000000000000000000000000000000000000000000000000000000000';
       
-      // Special handling for TON native coin (all zeros address)
-      // Compare with trimmed version in case of whitespace
-      const trimmedAddress = params.tokenAddress.trim();
-      const tonAddress = '0:0000000000000000000000000000000000000000000000000000000000000000';
-      
-      if (trimmedAddress === tonAddress) {
-        console.log("TMA: Detected TON native coin address, storing params for processing");
-        // Store parameters - will be handled by the separate effect when default tokens are ready
-        setTmaParams({ ...params, tokenAddress: trimmedAddress });
+      // Special handling for TON (native token)
+      // When startapp=TON, we just want to set the amount to 1 TON
+      // Don't set tmaToken because swap form always sets TON as "from" token
+      // Setting TON as "to" would result in TON->TON which is invalid
+      if (params.tokenAddress === TON_ZERO_ADDRESS) {
+        console.log("TMA: Detected TON token, setting amount only (not token)");
+        setTmaParams(params);
+        // Don't set tmaToken - let swap form use its default "to" token (USDT fallback)
         setProcessedFlag(true);
         setTmaLoadingReason("");
         return true;
@@ -254,24 +257,7 @@ export function useTMAParams() {
     
     // Process in the background without blocking
     processParams();
-  }, []); // Remove dependencies to prevent infinite loops
-
-  // Effect to handle TON native coin when default tokens become available
-  useEffect(() => {
-    // Only run if we have TMA params with the TON address and no tmaToken is set yet
-    const tokenAddress = tmaParams?.tokenAddress?.trim();
-    const tonAddress = '0:0000000000000000000000000000000000000000000000000000000000000000';
-    
-    if (
-      tokenAddress === tonAddress &&
-      !tmaToken &&
-      !defaultTokensLoading &&
-      defaultTon
-    ) {
-      console.log('🎯 TMA: Default tokens loaded, setting TON as TMA token');
-      setTmaToken(defaultTon);
-    }
-  }, [tmaParams, tmaToken, defaultTokensLoading, defaultTon]);
+  }, [defaultTon, defaultUsdt]); // Include default tokens to handle TON case
 
   return {
     isTMAReady,

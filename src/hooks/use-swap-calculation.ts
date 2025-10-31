@@ -386,8 +386,12 @@ export function useSwapCalculation({
                 break;
 
             case 'TOKEN_CHANGE_FROM':
-                // User selected token from Send section - prioritize focused field, then preserve Send field value
-                if (isFromAmountFocused && fromAmount && parseFloat(fromAmount) > 0 && executeCalculationRef.current) {
+                // User selected token from Send section - prioritize the actual input source first
+                // If the Get field is the input source and has a value, prefer REVERSE to avoid clobbering TMA-driven toAmount
+                if (userInputRef === 'to' && toAmount && parseFloat(toAmount) > 0 && executeCalculationRef.current) {
+                    console.log('🔄 TOKEN_CHANGE_FROM: Input source is Get, performing reverse calculation');
+                    executeCalculationRef.current('REVERSE');
+                } else if (isFromAmountFocused && fromAmount && parseFloat(fromAmount) > 0 && executeCalculationRef.current) {
                     // Send field is focused and has value - perform forward calculation to update Get field
                     console.log('🔄 TOKEN_CHANGE_FROM: Send section token selected, Send field focused with value - performing forward calculation');
                     executeCalculationRef.current('FORWARD');
