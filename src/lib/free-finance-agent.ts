@@ -1,15 +1,35 @@
 "use server";
 
-import { groq } from '@ai-sdk/groq';
-import { generateText } from 'ai';
-import { HfInference } from '@huggingface/inference';
+import { callDeployedHFModel } from './huggingface-deployed-agent';
+
+// Optional dependencies (only if installed)
+let HfInference: any = null;
+let groq: any = null;
+let generateText: any = null;
+
+try {
+  const hfModule = require('@huggingface/inference');
+  HfInference = hfModule.HfInference;
+} catch (e) {
+  console.log('Hugging Face Inference not installed');
+}
+
+try {
+  const groqModule = require('@ai-sdk/groq');
+  const aiModule = require('ai');
+  groq = groqModule.groq;
+  generateText = aiModule.generateText;
+} catch (e) {
+  console.log('Groq not installed');
+}
 
 /**
  * 100% Free Finance AI Agent
  * 
  * Uses completely free APIs with no credit card required:
- * - Primary: Groq (30 RPM, Llama 3.3 70B)
- * - Fallback: Hugging Face (1K/month, Llama 3.3 8B)
+ * - Option 1: Your deployed HF Space (unlimited, free GPU)
+ * - Option 2: Groq (30 RPM, Llama 3.3 70B)
+ * - Option 3: Hugging Face Inference API (1K/month, Llama 3.3 8B)
  * 
  * Total cost: $0/month
  */
@@ -57,9 +77,29 @@ export async function freeFinanceAgent({
   userId,
   retryCount = 0,
 }: FreeAgentOptions): Promise<FreeAgentResponse> {
-  // Try Groq first (primary - best free option)
+  // Try your deployed Hugging Face Space first (if configured)
+  // This is YOUR model with unlimited requests (within GPU limits)
+  if (process.env.HF_SPACE_API_URL || process.env.HF_DEPLOYED_MODEL) {
+    try {
+      const response = await callDeployedHFModel({
+        message,
+        spaceUrl: process.env.HF_SPACE_API_URL,
+        modelName: process.env.HF_DEPLOYED_MODEL,
+      });
+      
+      return {
+        response,
+        source: 'huggingface', // Your deployed model
+      };
+    } catch (error) {
+      console.warn('Deployed HF model failed:', error);
+      // Fall through to Groq
+    }
+  }
+
+  // Try Groq (primary - best free option) - if available and installed
   // 30 RPM = 43,200 requests/day
-  if (process.env.GROQ_API_KEY && retryCount < 2) {
+  if (process.env.GROQ_API_KEY && groq && generateText && retryCount < 2) {
     try {
       const result = await generateText({
         model: groq('llama-3.3-70b-versatile'),
@@ -92,7 +132,7 @@ export async function freeFinanceAgent({
 
   // Fallback to Hugging Face (1K requests/month free)
   // Reserve for special cases or when Groq is down
-  if (process.env.HF_API_TOKEN) {
+  if (process.env.HF_API_TOKEN && HfInference) {
     try {
       const hf = new HfInference(process.env.HF_API_TOKEN);
       

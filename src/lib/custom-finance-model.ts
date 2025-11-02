@@ -1,8 +1,21 @@
 "use server";
 
-import { Together } from '@together-ai/sdk';
-import { createOpenAI } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+// Optional dependencies (only if installed)
+let Together: any = null;
+let createOpenAI: any = null;
+let generateText: any = null;
+
+try {
+  const togetherModule = require('@together-ai/sdk');
+  const openaiModule = require('@ai-sdk/openai');
+  const aiModule = require('ai');
+  Together = togetherModule.Together;
+  createOpenAI = openaiModule.createOpenAI;
+  generateText = aiModule.generateText;
+} catch (e) {
+  // Dependencies not installed
+  console.log('Custom finance model dependencies not installed');
+}
 
 /**
  * Custom Finance Model Wrapper
@@ -32,7 +45,7 @@ interface ModelResponse {
 }
 
 export class CustomFinanceModel {
-  private together: Together | null = null;
+  private together: any = null;
   private modelName: string;
 
   constructor() {
@@ -40,10 +53,14 @@ export class CustomFinanceModel {
     this.modelName = process.env.CUSTOM_FINANCE_MODEL || 
                      'meta-llama/Llama-3-8b-chat-hf';
     
-    if (process.env.TOGETHER_API_KEY) {
-      this.together = new Together({
-        apiKey: process.env.TOGETHER_API_KEY,
-      });
+    if (process.env.TOGETHER_API_KEY && Together) {
+      try {
+        this.together = new Together({
+          apiKey: process.env.TOGETHER_API_KEY,
+        });
+      } catch (error) {
+        console.warn('Failed to initialize Together AI:', error);
+      }
     }
   }
 

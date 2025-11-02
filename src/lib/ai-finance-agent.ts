@@ -1,9 +1,23 @@
 "use server";
 
-import { groq } from '@ai-sdk/groq';
-import { generateText, streamText } from 'ai';
 import { z } from 'zod';
 import { getCustomFinanceModel } from './custom-finance-model';
+
+// Optional Groq support (only if installed)
+let groq: any = null;
+let generateText: any = null;
+let streamText: any = null;
+
+try {
+  const groqModule = require('@ai-sdk/groq');
+  const aiModule = require('ai');
+  groq = groqModule.groq;
+  generateText = aiModule.generateText;
+  streamText = aiModule.streamText;
+} catch (e) {
+  // Groq not installed, will only use Hugging Face
+  console.log('Groq not installed, using Hugging Face only');
+}
 
 /**
  * Finance AI Agent for What Swap
@@ -94,33 +108,42 @@ export async function financeAgent({
       }
     }
 
-    // Fallback to Groq (free, fast)
-    if (streaming) {
-      const stream = streamText({
-        model: groq('llama-3.3-70b-versatile'),
-        system: FINANCE_SYSTEM_PROMPT,
-        prompt,
-        temperature: 0.7,
-        maxTokens: 500,
-      });
+    // Fallback to Groq (free, fast) - if available
+    if (process.env.GROQ_API_KEY && groq && generateText) {
+      if (streaming && streamText) {
+        try {
+          const stream = streamText({
+            model: groq('llama-3.3-70b-versatile'),
+            system: FINANCE_SYSTEM_PROMPT,
+            prompt,
+            temperature: 0.7,
+            maxTokens: 500,
+          });
+          return stream;
+        } catch (error) {
+          console.warn('Groq streaming failed:', error);
+        }
+      }
 
-      return stream;
+      try {
+        const result = await generateText({
+          model: groq('llama-3.3-70b-versatile'),
+          system: FINANCE_SYSTEM_PROMPT,
+          prompt,
+          temperature: 0.7,
+          maxTokens: 500,
+        });
+
+        return {
+          response: result.text,
+          usage: result.usage,
+          finishReason: result.finishReason,
+          modelSource: 'groq',
+        };
+      } catch (error) {
+        console.warn('Groq failed:', error);
+      }
     }
-
-    const result = await generateText({
-      model: groq('llama-3.3-70b-versatile'),
-      system: FINANCE_SYSTEM_PROMPT,
-      prompt,
-      temperature: 0.7,
-      maxTokens: 500,
-    });
-
-    return {
-      response: result.text,
-      usage: result.usage,
-      finishReason: result.finishReason,
-      modelSource: 'groq',
-    };
   } catch (error) {
     console.error('Finance agent error:', error);
     

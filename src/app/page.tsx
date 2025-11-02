@@ -9,6 +9,7 @@ import { CustomKeyboard } from './main/components/custom-keyboard';
 import { useKeyboardDetection } from '@/hooks/use-keyboard-detection';
 import { BackgroundLoadingIndicator } from '@/components/BackgroundLoadingIndicator';
 import { Page } from '@/components/Page';
+import { BottomNavigation } from '@/components/BottomNavigation';
 
 export default function Home() {
   const { colors } = useTheme();
@@ -29,6 +30,7 @@ export default function Home() {
         {isInputFocused ? null : <Footer error={swapError} toAmount={swapData.toAmount} toTokenSymbol={swapData.toTokenSymbol} />}
         {isInputFocused ? <CustomKeyboard /> : null}
         <BackgroundLoadingIndicator />
+        {!isInputFocused && <BottomNavigation />}
       </div>
     </Page>
   );
