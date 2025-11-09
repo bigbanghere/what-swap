@@ -1,0 +1,19 @@
+{
+  "translations": {
+    "swap_tokens": "Обмен токенов",
+    "get": "Получить",
+    "connect": "Подключить",
+    "disconnect": "Отключить",
+    "copy_address": "Копировать адрес",
+    "send": "Отправить",
+    "max": "Макс.",
+    "swap": "Обменять",
+    "crypto-exchange": "Свап — Лучший Курс",
+    "on": "Сеть",
+    "connect_wallet": "Подключить кошелек",
+    "no_pools": "Нет пулов",
+    "insufficient_balance": "Недостаточно токенов",
+    "enter_amount": "Введите сумму",
+    "swapping": "Обменяем..."
+  }
+}
