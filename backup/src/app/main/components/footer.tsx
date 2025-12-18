@@ -40,11 +40,11 @@ export function Footer({ error, toAmount, toTokenSymbol }: { error?: string | nu
         }}
       >
         <a 
-          href="https://t.me/bigbangbusiness" 
+          href="https://aaa.band/" 
           target="_blank" 
           rel="noopener noreferrer"
         >
-          <img src="/1.svg" alt="Big Bang Business" className="w-[66px] h-[30px]" />
+          <img src="/1.svg" alt="aaa.band" className="w-[66px] h-[30px]" />
         </a>
         <div className='w-[1px] h-[30px]'
           style={{
