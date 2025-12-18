@@ -39,7 +39,7 @@
     "react-dom": "^18",
     "react-icons": "^5.5.0",
     "tailwind-merge": "^3.3.1",
-    "vercel": "^48.4.1"
+    "vercel": "^50.1.2"
   },
   "devDependencies": {
     "@telegram-apps/mate": "^0.0.29",
